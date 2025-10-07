@@ -43,7 +43,11 @@ export class UserController {
   // Admin-only endpoint to assign a role to a user
   @UseGuards(JwtAuthGuard)
   @Post(':id/roles')
-  async assignRole(@Request() req: any, @Body() body: { role: string }, @Param('id') id: string) {
+  async assignRole(
+    @Request() req: any,
+    @Body() body: { role: string },
+    @Param('id') id: string,
+  ) {
     const caller = await this.userService.findById(req.user.sub);
     if (!caller.roles || !caller.roles.includes('ROLE_ADMIN')) {
       throw new ForbiddenException('Only admin can assign roles');

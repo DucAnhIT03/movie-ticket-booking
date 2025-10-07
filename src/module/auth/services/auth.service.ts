@@ -45,23 +45,32 @@ export class AuthService {
       password: hashed,
     });
 
-  const saved = await this.usersRepo.save(user);
+    const saved = await this.usersRepo.save(user);
     // auto-assign ROLE_USER if exists
     try {
-      const role = await this.rolesRepo.findOne({ where: { roleName: 'ROLE_USER' } });
+      const role = await this.rolesRepo.findOne({
+        where: { roleName: 'ROLE_USER' },
+      });
       if (role) {
-        await this.userRolesRepo.save(this.userRolesRepo.create({ userId: saved.id, roleId: role.id }));
+        await this.userRolesRepo.save(
+          this.userRolesRepo.create({ userId: saved.id, roleId: role.id }),
+        );
       }
     } catch (e) {
       // seeding might not have run yet or roles table missing; ignore
     }
     // reload user with roles
-    const reloaded = await this.usersRepo.findOne({ where: { id: saved.id }, relations: ['roles', 'roles.role'] });
+    const reloaded = await this.usersRepo.findOne({
+      where: { id: saved.id },
+      relations: ['roles', 'roles.role'],
+    });
     const token = this.jwtService.sign({ sub: saved.id, email: saved.email });
     // omit password and map roles
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...profile } = reloaded as any;
-    const roleNames = (reloaded?.roles || []).map((ur) => ur.role?.roleName).filter(Boolean);
+    const roleNames = (reloaded?.roles || [])
+      .map((ur) => ur.role?.roleName)
+      .filter(Boolean);
     return { user: { ...profile, roles: roleNames }, accessToken: token };
   }
 
@@ -78,9 +87,15 @@ export class AuthService {
   async login(dto: LoginDto) {
     let user: User | null = null;
     if (dto.email) {
-      user = await this.usersRepo.findOne({ where: { email: dto.email }, relations: ['roles', 'roles.role'] });
+      user = await this.usersRepo.findOne({
+        where: { email: dto.email },
+        relations: ['roles', 'roles.role'],
+      });
     } else if (dto.phone) {
-      user = await this.usersRepo.findOne({ where: { phone: dto.phone }, relations: ['roles', 'roles.role'] });
+      user = await this.usersRepo.findOne({
+        where: { phone: dto.phone },
+        relations: ['roles', 'roles.role'],
+      });
     }
     if (!user) throw new UnauthorizedException('Invalid credentials');
     const ok = await bcrypt.compare(dto.password, user.password);
@@ -88,7 +103,9 @@ export class AuthService {
     const token = this.jwtService.sign({ sub: user.id, email: user.email });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...profile } = user as any;
-    const roleNames = (user.roles || []).map((ur) => ur.role?.roleName).filter(Boolean);
+    const roleNames = (user.roles || [])
+      .map((ur) => ur.role?.roleName)
+      .filter(Boolean);
     return { user: { ...profile, roles: roleNames }, accessToken: token };
   }
 }

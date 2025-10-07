@@ -99,7 +99,7 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
 ## Using MySQL instead of SQLite
 
-The project defaults to an embedded SQLite database for local development. To use MySQL, create a `.env` file based on `.env.example` and set the MySQL variables, for example:
+The project defaults to an embedded SQLite database for local development. To use MySQL, create a `.env` file set the MySQL variables, for example:
 
 ```
 DB_TYPE=mysql
@@ -123,4 +123,4 @@ npm install
 npm run start:dev
 ```
 
-The app will connect to MySQL if the MySQL env variables are present; otherwise it uses `dev.sqlite`.
+The app will connect to MySQL if the MySQL env variables are present

@@ -27,10 +27,15 @@ export class UserService {
   ) {}
 
   async findById(id: number) {
-    const user = await this.usersRepo.findOne({ where: { id }, relations: ['roles', 'roles.role'] });
+    const user = await this.usersRepo.findOne({
+      where: { id },
+      relations: ['roles', 'roles.role'],
+    });
     if (!user) throw new NotFoundException('User not found');
     // map role names
-    const roleNames = (user.roles || []).map((ur) => ur.role?.roleName).filter(Boolean);
+    const roleNames = (user.roles || [])
+      .map((ur) => ur.role?.roleName)
+      .filter(Boolean);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...profile } = user as any;
     return { ...profile, roles: roleNames };
@@ -59,9 +64,13 @@ export class UserService {
   async assignRoleToUser(userId: number, roleName: string) {
     const role = await this.rolesRepo.findOne({ where: { roleName } });
     if (!role) throw new NotFoundException('Role not found');
-    const exists = await this.userRolesRepo.findOne({ where: { userId, roleId: role.id } });
+    const exists = await this.userRolesRepo.findOne({
+      where: { userId, roleId: role.id },
+    });
     if (!exists) {
-      await this.userRolesRepo.save(this.userRolesRepo.create({ userId, roleId: role.id }));
+      await this.userRolesRepo.save(
+        this.userRolesRepo.create({ userId, roleId: role.id }),
+      );
     }
     return { success: true };
   }

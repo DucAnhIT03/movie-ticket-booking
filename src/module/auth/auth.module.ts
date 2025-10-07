@@ -11,7 +11,7 @@ import { JwtStrategy } from './jwt/jwt.strategy';
 
 @Module({
   imports: [
-  TypeOrmModule.forFeature([User, Role, UserRole]),
+    TypeOrmModule.forFeature([User, Role, UserRole]),
     JwtModule.register({
       secret: jwtConstants.secret,
       signOptions: { expiresIn: jwtConstants.expiresIn },
