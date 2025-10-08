@@ -9,6 +9,10 @@ import { UserModule } from './module/user/user.module';
 import { User } from './module/user/entities/user.entity';
 import { Role } from './module/user/entities/role.entity';
 import { UserRole } from './module/user/entities/user-role.entity';
+import { Movie } from './module/movie/entities/movie.entity';
+import { Genre } from './module/movie/entities/genres.entity';
+import { MovieGenre } from './module/movie/entities/movie-genre.entity';
+import { MovieModule } from './module/movie/movie.module';
 
 @Module({
   imports: [
@@ -34,7 +38,7 @@ import { UserRole } from './module/user/entities/user-role.entity';
           username,
           password,
           database,
-          entities: [User, Role, UserRole],
+          entities: [User, Role, UserRole, Movie, Genre, MovieGenre],
           synchronize: cfg.get<string>('TYPEORM_SYNC') === 'true',
           logging: cfg.get<string>('TYPEORM_LOGGING') === 'true',
         } as any;
@@ -42,6 +46,7 @@ import { UserRole } from './module/user/entities/user-role.entity';
     }),
     AuthModule,
     UserModule,
+    MovieModule,
   ],
   controllers: [AppController],
   providers: [AppService],
