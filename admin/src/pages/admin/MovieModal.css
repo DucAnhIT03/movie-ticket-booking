@@ -1,0 +1,224 @@
+/* Toàn màn hình overlay mờ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+/* Hộp modal */
+.modal-content {
+  background: #1e2634;
+  color: #fff;
+  padding: 30px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.3s ease;
+}
+
+/* Hiệu ứng mở modal */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+}
+
+.modal-header h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  color: #fff;
+}
+
+.close-button {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  transition: 0.3s;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.close-button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Form */
+.modal-form .form-group {
+  margin-bottom: 20px;
+}
+
+/* Form row - 2 cột */
+.modal-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.modal-form .form-row .form-group {
+  margin-bottom: 0;
+}
+
+/* Responsive cho form-row */
+@media (max-width: 600px) {
+  .modal-form .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.modal-form label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.modal-form input,
+.modal-form textarea,
+.modal-form select {
+  width: 100%;
+  background: #2b3448;
+  border: 1px solid #3a465b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 15px;
+  transition: all 0.3s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.modal-form input:focus,
+.modal-form textarea:focus,
+.modal-form select:focus {
+  border-color: #1976d2;
+  outline: none;
+  background: #333d54;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.modal-form select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aaa' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+.modal-form select option {
+  background: #2b3448;
+  color: #fff;
+  padding: 8px;
+}
+
+.modal-form input::placeholder,
+.modal-form textarea::placeholder {
+  color: #888;
+}
+
+/* Footer */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.save-button,
+.cancel-button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  min-width: 100px;
+}
+
+.save-button {
+  background: #1976d2;
+  color: white;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.save-button:hover {
+  background: #0d5fb0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
+}
+
+.save-button:active {
+  transform: translateY(0);
+}
+
+.save-button:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.cancel-button {
+  background: #555;
+  color: #fff;
+}
+
+.cancel-button:hover {
+  background: #666;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cancel-button:active {
+  transform: translateY(0);
+}
+
+/* Thanh cuộn đẹp hơn */
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background-color: #444;
+  border-radius: 4px;
+}

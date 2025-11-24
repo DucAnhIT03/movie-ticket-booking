@@ -1,0 +1,256 @@
+/* ===== FESTIVAL PAGE ===== */
+.festival-section {
+  background-color: var(--background-color);
+  color: #fff;
+  padding: 0 0 60px 0;
+  margin-top: 0;
+  text-align: left;
+  min-height: 100vh;
+}
+
+/* Poster container - full width khít 2 bên lề */
+.festival-poster-container {
+  width: 100%;
+  margin-top: 80px;
+  margin-bottom: 40px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.festival-poster {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  display: block;
+  aspect-ratio: 16 / 9;
+}
+
+.festival-section .container {
+  margin: auto;
+}
+
+.reponsive-title {
+  display: none;
+}
+
+.festival-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  color: #fff;
+  text-transform: uppercase;
+  border-bottom: 2px solid #f9d71c;
+  display: inline-block;
+  padding-bottom: 6px;
+}
+
+.festival-list {
+  display: flex;
+  flex-direction: column;
+  margin: 25px auto;
+  width: 85%;
+  gap: 25px;
+}
+
+.festival-item {
+  border-bottom: 1px solid #333;
+  padding-bottom: 20px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* default image for each non-hero item (small) */
+.festival-item img {
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: #222;
+  display: block;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+
+
+/* hero (first) item: show only image and make it larger while preserving aspect ratio */
+/* .festival-item.hero{
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  background-color: #2640c1;
+  display: flex;
+  justify-content: center;
+} */
+
+.festival-hero .festival-hero-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  padding: 0;
+  border-radius: 0;
+  background-color: #2640c1;
+  opacity: 1;
+  transform: rotate(0deg);
+}
+
+/* body content takes remaining space */
+.festival-item .festival-item-body {
+  flex: 1 1 auto;
+}
+
+/* meta (time) aligned on the right */
+.festival-item-meta {
+  margin-left: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  min-width: 140px;
+}
+
+/* ensure title/time/content flow inside body */
+.festival-item .festival-item-time {
+  margin: 0;
+  color: #fff;
+}
+
+.reponsive-item-time {
+  display: none;
+}
+
+.festival-item-title {
+  font-size: 18px;
+  color: #fff;
+  font-weight: 700;
+  margin-bottom: 20px;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.festival-item-title:hover {
+  color: #f9d71c;
+}
+
+.festival-item-time {
+  font-size: 12px;
+  color: #9aa0a6;
+  margin: 0;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.festival-item-content {
+  color: #ccc;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-top: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 40px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.pagination .btn-outline {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.18s, border-color 0.18s, transform 0.12s;
+  white-space: nowrap;
+}
+
+.pagination .btn-outline:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.pagination .btn-outline:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.pagination .btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .festival-item {
+    display: flex;
+    gap: 12px;
+  }
+
+  .festival-item.hero img {
+    height: 360px;
+  }
+
+  .festival-item img {
+    width: 100%;
+    height: auto;
+  }
+
+  .festival-item-meta {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+
+  .festival-item-title {
+    display: none;
+  }
+
+  .reponsive-title {
+    display: block;
+    color: #fff;
+  }
+
+  .reponsive-item-time {
+    display: flex;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .festival-item-meta {
+    display: none;
+  }
+
+  .festival-item img {
+    width: 150px;
+    height: 150px;
+  }
+
+  .festival-hero .festival-hero-image {
+    height: auto;
+  }
+}
+
+@media (max-width: 400px) {
+         .festival-item-content {
+           display: -webkit-box;
+           -webkit-line-clamp: 5;
+           line-clamp: 5;
+           -webkit-box-orient: vertical;
+           overflow: hidden;
+           text-overflow: ellipsis;
+         }
+
+  .festival-hero .festival-hero-image {
+    height: auto;
+  }
+}

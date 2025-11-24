@@ -1,0 +1,95 @@
+/* FILM SECTION */
+.film-section {
+  margin-bottom: 40px;
+}
+
+.film-section .title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-left: 0;
+  margin-bottom: 20px;
+  height: auto;
+  width: auto;
+}
+
+.film-section .left-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  width: auto;
+}
+
+.film-section .circle {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ff0000;
+  flex-shrink: 0;
+}
+
+.film-section .left-group h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #fff;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.film-section .view-all {
+  color: #ccc;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.film-section .view-all:hover {
+  color: #fff;
+}
+
+/* FILM LIST - Grid Layout 4 cột */
+.film-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 10px;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-start;
+}
+
+/* Movie Card - 4 phim mỗi dòng, mỗi phim 229px */
+.film-list .movie-card {
+  /* Width: Fixed 229px theo Figma - Override width từ MovieCard.css */
+  width: 229px !important;
+  min-width: 229px !important;
+  max-width: 229px !important;
+  flex-shrink: 0;
+  flex-grow: 0;
+  box-sizing: border-box;
+}
+
+/* CSS cũ .card đã được thay thế bởi .movie-card trong MovieCard.css */
+
+.film-list-loading,
+.film-list-error,
+.film-list-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #ccc;
+}
+
+.film-list-error {
+  color: #ff6b6b;
+}
+
+.film-list-empty {
+  color: #888;
+}

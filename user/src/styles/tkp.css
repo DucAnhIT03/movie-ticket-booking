@@ -1,0 +1,179 @@
+/* ===== PHẦN CHỌN GHẾ ===== */
+.seat-section {
+  text-align: center;
+  padding: 40px 0 60px;
+  background: #0b0b0b;
+  color: #fff;
+}
+
+.seat-header {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 150px;
+}
+
+.seat-header p {
+    font-size: 14px;
+}
+.seat-header .seat-picker {
+    border: 1px solid #EF4444;
+    padding: 8px 16px;
+    border-radius: 12px;
+    width: 230px;
+}
+
+
+/* ===== BỐ CỤC GHẾ ===== */
+.seat-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.seat-row {
+  display: flex;
+  gap: 6px;
+}
+
+/* ===== GHẾ ===== */
+.seat {
+  width: 30px;
+  height: 30px;
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Trạng thái ghế */
+.seat.booked {
+  background: #1f1f1f;
+  color: #666; 
+  font-size: 16px; 
+  font-weight: bold;
+  cursor: not-allowed;
+}
+.seat.selected {
+  background: #007bff; /* Xanh dương */
+}
+.seat.normal {
+  background: #2f2f2f;
+}
+.seat.vip {
+  background: #ff8c00; /* Cam */
+  color: #000;
+}
+.seat.double {
+  background: #d32f2f; /* Đỏ */
+}
+
+/* Hiệu ứng hover */
+.seat:hover:not(.booked):not(.selected) {
+  filter: brightness(1.2);
+  transform: scale(1.05);
+}
+
+/* ===== CHÚ THÍCH GHẾ (LEGEND) ===== */
+/* ===== CHÚ THÍCH GHẾ ===== */
+.legend {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+  margin: 40px 0 20px;
+  font-size: 15px;
+  color: #ddd;
+  background: #0b0b0b;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 400;
+}
+
+/* Ô ghế trong legend */
+.legend-item .seat {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  display: inline-block;
+  font-size: 0;
+}
+
+/* Màu ghế */
+.legend-item .seat.booked {
+  color: #666;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.seat.selected {
+  background: #007bff;
+}
+.seat.normal {
+  background: #2f2f2f;
+}
+.seat.vip {
+  background: #ff8c00;
+}
+.seat.double {
+  background: #d32f2f;
+}
+
+/* Giúp chữ cân hàng với ô ghế */
+.legend-item span:last-child {
+  color: #fff;
+  font-size: 14px;
+}
+
+
+/* ===== NÚT HÀNH ĐỘNG ===== */
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 25px;
+}
+
+.actions .button {
+  padding: 10px 28px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+/* Nút quay lại */
+.actions .btn-outline {
+  border: 1px solid #fff;
+  background: transparent;
+  color: #fff;
+}
+.actions .btn-outline:hover {
+  background: #fff;
+  color: #000;
+}
+
+/* Nút thanh toán */
+.actions .btn-red {
+  background: linear-gradient(to right, #ff3c00, #e30713);
+  border: none;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(255, 60, 0, 0.4);
+}
+.actions .btn-red:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}

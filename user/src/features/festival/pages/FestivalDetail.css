@@ -1,0 +1,76 @@
+/* ========== FESTIVAL DETAIL PAGE ========== */
+.festival-detail {
+  color: #fff;
+  background: #0b0c0e;
+  font-family: Arial, sans-serif;
+  margin-top: 80px;
+  line-height: 1.7;
+}
+
+.festival-detail .container {
+  width: 85%;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.gallery.container {
+  margin-bottom: 30px;
+}
+
+.gallery img {
+  max-width: 100%;
+  margin: 10px 0;
+}
+
+/* ===== CONTENT LAYOUT (FLEX VERSION) ===== */
+.content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  padding: 20px 0 80px;
+}
+
+.text-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.text-content h1 {
+  font-size: 34px;
+  margin: 0 0 16px;
+}
+
+.text-content .lead {
+  font-size: 16px;
+  color: #d7d7d7;
+  margin-bottom: 16px;
+}
+
+.text-content>p {
+  color: #cfcfcf;
+  margin-bottom: 20px;
+}
+
+.text-content ul>p,ul>li {
+  font-weight: 600;
+}
+
+.text-content ul li {
+  list-style-type: none;
+}
+
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .content {
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px 0 48px;
+  }
+
+  .right {
+    width: 100%;
+    order: 2;
+  }
+}

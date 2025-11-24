@@ -1,0 +1,20 @@
+# Node.js
+node_modules/
+dist/
+build/
+.env
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log
+
+# IDEs
+*.idea/
+
+# Thư mục tạm
+tmp/

@@ -1,0 +1,182 @@
+/* ===== HERO ===== */
+.hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* Background image sẽ được set động từ inline style */
+  padding: 60px 0;
+  height: 550px;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 20, 27, 0.75); 
+  backdrop-filter: blur(3px);
+  z-index: 1;
+}
+
+.hero > * {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-content {
+  display: flex;
+  align-items: flex-end;
+  gap: 30px;
+  width: 90%;
+  margin: auto;
+}
+
+.top-row h1 {
+  display: none;
+}
+
+.top-side>p {
+  display: none;
+}
+
+.main-content img {
+  width: 238px;
+  height: 333px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #000;
+}
+
+.movie-infor {
+  flex: 1;
+  color: #fff;
+}
+
+.movie-infor h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: #333;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.meta {
+  color: #ccc;
+  margin-bottom: 8px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.cast,
+.desc {
+  color: #ccc;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.rating span {
+  color: #e63946;
+}
+
+.actions {
+  margin-top: 15px;
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+/* === Responsive cho Tablet & Mobile === */
+@media (max-width: 1440px) {
+  .hero-content {
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .movie-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    width: 100%;
+  }
+
+  .poster {
+    flex-shrink: 0;
+  }
+
+  .poster img {
+    width: 200px;
+    height: 250px;
+  }
+
+  .movie-infor h1,
+  .movie-infor .meta {
+    text-align: left;
+  }
+
+  .movie-infor h1 {
+    display: none;
+  }
+
+  .movie-infor .meta {
+    display: none;
+  }
+
+  .top-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .top-side>p {
+    display: flex;
+  }
+
+  .top-row h1 {
+    display: inline-block;
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .cast,
+  .desc,
+  .rating,
+  .actions {
+    width: 100%;
+  }
+
+  .button {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+}
+
+/* === Mobile nhỏ (≤480px) === */
+@media (max-width: 390px) {
+  .poster img {
+    width: 150px;
+    height: 200px;
+  }
+
+  .movie-infor h1 {
+    font-size: 16px;
+  }
+
+  .movie-infor .meta {
+    font-size: 14px;
+  }
+}

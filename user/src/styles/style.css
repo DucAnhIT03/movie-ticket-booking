@@ -1,0 +1,576 @@
+/* ===== RESET & BASE ===== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --background-color: #0b0b0b;
+}
+
+body {
+  font-family: "Montserrat", Arial, sans-serif;
+  background: var(--background-color);
+  color: #fff;
+}
+
+/* ===== HEADER ===== */
+.button {
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-outline {
+  border: 1px solid #666;
+  background: transparent;
+  color: #fff;
+}
+
+.btn-red {
+  background: #e63946;
+  border: none;
+  color: #fff;
+}
+
+.btn-yellow {
+  background: #f9d71c;
+  border: none;
+  color: #000;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #000;
+  height: 80px;
+  padding: 0 60px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99;
+}
+
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.menu img {
+  width: 70px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.nav a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  position: relative;
+  margin: 0 15px;
+  transition: color 0.3s ease;
+}
+
+.menu a:hover {
+  color: #ff3c00;
+}
+
+.menu a::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #ff3c00;
+  transition: width 0.3s ease;
+}
+
+.menu a:hover::after {
+  width: 100%;
+}
+
+/* BUTTONS */
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.btn button {
+  border: none;
+  border-radius: 9999px;
+  padding: 10px 28px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn .login {
+  background: linear-gradient(to left, #fe6969, #e30713);
+  color: #fff;
+}
+
+.btn .login:hover {
+  background: #fff;
+  color: #000;
+}
+
+.btn .register {
+  background-color: transparent;
+  color: #fff;
+  border: 1px solid #666;
+}
+
+.btn .register:hover {
+  background-color: #e63400;
+}
+
+/* ===== HERO ===== */
+.hero {
+  background: linear-gradient(180deg, #111, var(--background-color));
+  padding: 60px 0;
+  margin-top: 60px;
+}
+
+.hero-content {
+  display: flex;
+  gap: 30px;
+  width: 90%;
+  margin: auto;
+}
+
+.poster img {
+  width: 250px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #000;
+}
+
+.movie-info {
+  flex: 1;
+}
+
+.movie-info h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.tag {
+  background: #333;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.meta,
+.cast,
+.desc {
+  color: #ccc;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.rating span {
+  color: #e63946;
+}
+
+.actions {
+  margin-top: 15px;
+  display: flex;
+  justify-content: flex-start;
+  /* canh trái */
+  gap: 10px;
+}
+
+/* ===== SCHEDULE ===== */
+.schedule {
+  padding: 30px 0;
+  text-align: center;
+}
+
+.dates {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+  background: #141414;
+}
+
+.date {
+  width: 75px;
+  height: 91px;
+  padding: 10px 0;
+  color: #ccc;
+}
+
+.date.active {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+}
+
+.note {
+  color: #f59b2b;
+  margin-bottom: 15px;
+  font-size: 13px;
+}
+
+.times {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.times button {
+  background: #111;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 20px;
+  padding: 10px 65px;
+  width: 167px;
+  cursor: pointer;
+}
+
+.times button:hover {
+  background: #e63946;
+}
+
+/* ===== SEAT SELECTION ===== */
+.seat-section {
+  text-align: center;
+  padding: 40px 0 60px;
+  background: var(--background-color);
+}
+
+.seat-header {
+  margin-bottom: 20px;
+}
+
+.screen {
+  width: 100%;
+}
+
+.screen img {
+  width: 80%;
+}
+
+.seat-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.seat-row {
+  display: flex;
+  gap: 6px;
+}
+
+.seat {
+  width: 40px;
+  height: 40px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.seat:hover {
+  background: #444;
+}
+
+.seat.selected {
+  background: #ff8c00;
+}
+
+.seat.booked {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.seat.vip {
+  background: #e63946;
+}
+
+.seat.double {
+  background: #f9d71c;
+  color: #000;
+}
+
+
+.summary {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.summary p {
+  margin: 5px 0;
+  color: #ccc;
+}
+
+.seat-section .actions {
+  margin-top: 25px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  background: #10141b;
+  color: #ccc;
+  text-align: center;
+  padding: 40px 0;
+  border-top: 1px solid #222;
+  font-size: 14px;
+}
+.footer-container {
+  max-width: 1200px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+.footer-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 25px;
+  margin-bottom: 10px;
+}
+.footer-links a {
+  color: #ccc;
+  text-decoration: none;
+  transition: 0.3s;
+}
+.footer-links a:hover {
+  color: #f9d71c;
+}
+.social-icons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.social-icons img {
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+}
+.social-icons img.store {
+  width: 120px;
+  height: auto;
+}
+.social-icons img.gov {
+  width: 130px;
+  height: auto;
+}
+.footer-info {
+  text-align: center;
+  line-height: 1.6;
+  font-size: 13px;
+  max-width: 800px;
+  margin-top: 10px;
+}
+.footer-info strong {
+  color: #fff;
+}
+
+/* ====== Mặc định cho desktop (≥1440px) ====== */
+body {
+  background-color: var(--background-color);
+  /* màu nền demo */
+  font-size: 18px;
+  color: #000;
+}
+
+@media (max-width: 1439px) and (min-width: 768px) {
+
+  /* ====== Tablet (768px → 1439px) ====== */
+  body {
+    background-color: var(--background-color);
+    font-size: 16px;
+    color: #333;
+  }
+}
+
+@media (max-width: 767px) and (min-width: 391px) {
+
+  /* ====== Mobile trung bình (391px → 767px) ====== */
+  body {
+    background-color: var(--background-color);
+    font-size: 14px;
+    color: #222;
+  }
+}
+
+@media (max-width: 390px) {
+
+  /* ====== Mobile nhỏ (≤390px) ====== */
+  body {
+    background-color: var(--background-color);
+    font-size: 13px;
+    color: #111;
+  }
+}
+
+.ticket-section {
+  width: 90%;
+  margin: 80px auto;
+}
+
+.ticket-section h1 {
+  font-size: 32px;
+  margin-bottom: 6px;
+  color: #fff;
+}
+
+.ticket-section h1.price {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.ticket-section .subtitle {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #ccc;
+  margin-bottom: 30px;
+}
+
+/* === BẢNG GIÁ === */
+.ticket-table {
+  background: var(--background-color);
+  border-radius: 8px;
+  color: #ccc;
+}
+
+.ticket-table h2 {
+  text-align: left;
+  margin-bottom: 15px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+th,
+td {
+  border: 1px solid #333;
+  padding: 12px 10px;
+  text-align: center;
+  font-size: 14px;
+}
+
+th {
+  background: #0d0d0d;
+  color: #eee;
+}
+
+.vip {
+  color: #f9d71c;
+  font-weight: bold;
+}
+
+.sweetbox {
+  color: #e63946;
+  font-weight: bold;
+}
+
+.price-note {
+  color: #ccc;
+  margin-bottom: 15px;
+  font-size: 13px;
+}
+
+/* === QUY ĐỊNH, GHI CHÚ === */
+.rules,
+.priority {
+  line-height: 1.7;
+  color: #ccc;
+  font-size: 15px;
+}
+
+.rules strong,
+.priority strong {
+  color: #fff;
+}
+
+.priority {
+  text-align: left;
+  margin-top: 20px;
+  color: #ccc;
+  line-height: 24px;
+  font-size: 16px;
+}
+
+.priority strong {
+  color: #fff;
+}
+
+.priority ul {
+  margin-left: 20px;
+  margin-top: 10px;
+}
+
+.priority li {
+  margin-bottom: 6px;
+}
+
+.priority h3 {
+  margin-top: 15px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.priority .object {
+  list-style-type: none;
+}
+
+.rules p {
+  margin-top: 12px;
+  line-height: 24px;
+  font-size: 16px;
+}
+
+.line {
+  color: #fff;
+  margin: 10px 0;
+}
+
+.ticket-end {
+  color: #fff;
+  line-height: 24px;
+  font-size: 16px;
+}
+
+.ticket-end p {
+  font-weight: 400;
+  margin-top: 15px;
+}
+
+.ticket-end .movie-room {
+  font-style: italic;
+}

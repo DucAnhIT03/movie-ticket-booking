@@ -1,0 +1,17 @@
+.content {
+  display: flex;
+  justify-content: space-between;
+  padding: 40px 60px;
+  gap: 40px;
+}
+
+.left {
+  flex: 80%;
+}
+
+.right {
+  flex: 20%;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}

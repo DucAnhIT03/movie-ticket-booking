@@ -1,0 +1,325 @@
+{
+  "info": {
+    "name": "Email System - All Tests",
+    "description": "Complete collection of email endpoints for testing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Debug & Status",
+      "item": [
+        {
+          "name": "Test Connection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mail/debug/test-connection",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "debug", "test-connection"]
+            }
+          }
+        },
+        {
+          "name": "Simple Test",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/debug/simple-test",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "debug", "simple-test"]
+            }
+          }
+        },
+        {
+          "name": "Email Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mail/debug/logs",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "debug", "logs"]
+            }
+          }
+        },
+        {
+          "name": "Queue Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mail/debug/queue-status",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "debug", "queue-status"]
+            }
+          }
+        },
+        {
+          "name": "Queue Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mail/stats",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Direct Send (No Queue)",
+      "item": [
+        {
+          "name": "Send Email Direct",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"subject\": \"Test Email\",\n  \"html\": \"<h1>Test</h1><p>This is a test email</p>\",\n  \"text\": \"Test email\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/send",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "send"]
+            }
+          }
+        },
+        {
+          "name": "Send with Template",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"subject\": \"Welcome\",\n  \"type\": \"WELCOME\",\n  \"data\": {\n    \"userName\": \"Nguyễn Văn A\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/send",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "send"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Email Templates",
+      "item": [
+        {
+          "name": "Welcome Email",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"userName\": \"Nguyễn Văn A\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/welcome",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "welcome"]
+            }
+          }
+        },
+        {
+          "name": "Registration Confirmation",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"userName\": \"Nguyễn Văn A\",\n  \"confirmationLink\": \"https://cinema.com/verify?token=abc123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/registration",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "registration"]
+            }
+          }
+        },
+        {
+          "name": "Verification OTP",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"userName\": \"Nguyễn Văn A\",\n  \"otpCode\": \"123456\",\n  \"expiresIn\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/verification-otp",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "verification-otp"]
+            }
+          }
+        },
+        {
+          "name": "Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"userName\": \"Nguyễn Văn A\",\n  \"resetLink\": \"https://cinema.com/reset?token=abc123\",\n  \"expiresIn\": 60\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/password-reset",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "password-reset"]
+            }
+          }
+        },
+        {
+          "name": "Booking Confirmation",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"bookingId\": 12345,\n  \"movieTitle\": \"Avatar 2\",\n  \"theaterName\": \"CGV Vincom\",\n  \"screenName\": \"Phòng 1\",\n  \"showTime\": \"2025-12-31T18:00:00.000Z\",\n  \"seats\": [\"A1\", \"A2\", \"A3\"],\n  \"totalPrice\": 300000,\n  \"userName\": \"Nguyễn Văn A\",\n  \"bookingDate\": \"2025-12-25T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/booking-confirmation",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "booking-confirmation"]
+            }
+          }
+        },
+        {
+          "name": "Booking Invoice",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"bookingId\": 12345,\n  \"movieTitle\": \"Avatar 2\",\n  \"theaterName\": \"CGV Vincom\",\n  \"screenName\": \"Phòng 1\",\n  \"showTime\": \"2025-12-31T18:00:00.000Z\",\n  \"seats\": [\"A1\", \"A2\"],\n  \"totalPrice\": 300000,\n  \"userName\": \"Nguyễn Văn A\",\n  \"bookingDate\": \"2025-12-25T10:00:00.000Z\",\n  \"invoiceNumber\": \"INV-2025-001\",\n  \"paymentMethod\": \"Credit Card\",\n  \"paymentStatus\": \"PAID\",\n  \"transactionId\": \"TXN-123456\",\n  \"paymentDate\": \"2025-12-25T10:05:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/booking-invoice",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "booking-invoice"]
+            }
+          }
+        },
+        {
+          "name": "Showtime Reminder",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"userName\": \"Nguyễn Văn A\",\n  \"bookingId\": 12345,\n  \"movieTitle\": \"Avatar 2\",\n  \"theaterName\": \"CGV Vincom\",\n  \"screenName\": \"Phòng 1\",\n  \"showTime\": \"2025-12-31T18:00:00.000Z\",\n  \"seats\": [\"A1\", \"A2\"],\n  \"reminderTime\": \"2 giờ\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/showtime-reminder",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "showtime-reminder"]
+            }
+          }
+        },
+        {
+          "name": "Promotion Notification",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"userName\": \"Nguyễn Văn A\",\n  \"promotionTitle\": \"Giảm giá 50% cho thành viên\",\n  \"promotionDescription\": \"Ưu đãi đặc biệt dành cho bạn! Giảm 50% cho tất cả vé xem phim trong tháng này.\",\n  \"discountCode\": \"PROMO50\",\n  \"discountValue\": 50,\n  \"discountType\": \"PERCENT\",\n  \"validUntil\": \"2025-12-31T23:59:59.000Z\",\n  \"imageUrl\": \"https://example.com/promo-image.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/promotion-notification",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "promotion-notification"]
+            }
+          }
+        },
+        {
+          "name": "Festival Notification",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"userName\": \"Nguyễn Văn A\",\n  \"festivalTitle\": \"Lễ Hội Phim Quốc Tế 2025\",\n  \"festivalDescription\": \"Khám phá những bộ phim hay nhất từ khắp nơi trên thế giới\",\n  \"startDate\": \"2025-01-01T00:00:00.000Z\",\n  \"endDate\": \"2025-01-15T23:59:59.000Z\",\n  \"imageUrl\": \"https://example.com/festival-image.jpg\",\n  \"featuredMovies\": [\n    \"Avatar 2\",\n    \"Spider-Man: No Way Home\",\n    \"Dune: Part Two\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/test/festival-notification",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "test", "festival-notification"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Queue Management",
+      "item": [
+        {
+          "name": "Enqueue Email",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"{{test_email}}\",\n  \"subject\": \"Welcome\",\n  \"type\": \"WELCOME\",\n  \"data\": {\n    \"userName\": \"Nguyễn Văn A\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mail/queue",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "queue"]
+            }
+          }
+        },
+        {
+          "name": "Retry Failed Jobs",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mail/retry",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "retry"]
+            }
+          }
+        },
+        {
+          "name": "Clean Jobs",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mail/clean?grace=86400000",
+              "host": ["{{base_url}}"],
+              "path": ["mail", "clean"],
+              "query": [
+                {"key": "grace", "value": "86400000"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "test_email",
+      "value": "your-email@gmail.com",
+      "type": "string"
+    }
+  ]
+}
+

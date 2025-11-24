@@ -1,0 +1,61 @@
+.footer {
+  background: #10141b;
+  color: #ccc;
+  text-align: center;
+  padding: 40px 0;
+  border-top: 1px solid #222;
+  font-size: 14px;
+}
+.footer-container {
+  max-width: 1200px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+.footer-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 25px;
+  margin-bottom: 10px;
+}
+.footer-links a {
+  color: #ccc;
+  text-decoration: none;
+  transition: 0.3s;
+}
+.footer-links a:hover {
+  color: #f9d71c;
+}
+.social-icons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.social-icons img {
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+}
+.social-icons img.store {
+  width: 120px;
+  height: auto;
+}
+.social-icons img.gov {
+  width: 130px;
+  height: auto;
+}
+.footer-info {
+  text-align: center;
+  line-height: 1.6;
+  font-size: 13px;
+  max-width: 800px;
+  margin-top: 10px;
+}
+.footer-info strong {
+  color: #fff;
+}

@@ -1,0 +1,57 @@
+.admin-dashboard {
+  min-height: 100vh;
+  background: #f0f2f5;
+}
+
+.admin-nav {
+  background: #1e3c72;
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.logout-btn:hover {
+  background: white;
+  color: #1e3c72;
+}
+
+.admin-content {
+  padding: 2rem;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.stat-card h3 {
+  margin: 0 0 0.5rem;
+  color: #666;
+}
+
+.stat-card p {
+  margin: 0;
+  font-size: 2rem;
+  color: #1e3c72;
+  font-weight: bold;
+}

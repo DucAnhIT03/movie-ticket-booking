@@ -1,0 +1,152 @@
+.notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.notification-modal {
+  background: #1a1f29;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.notification-header h3 {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.close-btn:hover {
+  opacity: 0.7;
+}
+
+.notification-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notification-loading,
+.notification-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #888;
+}
+
+.notification-empty p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.notification-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  gap: 15px;
+  transition: all 0.3s ease;
+  overflow: hidden; /* Ngăn nội dung tràn ra ngoài */
+  min-width: 0; /* Cho phép flex item shrink */
+}
+
+.notification-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(102, 126, 234, 0.5);
+}
+
+.notification-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.notification-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0; /* Cho phép flex item shrink */
+  overflow: hidden; /* Ngăn nội dung tràn */
+}
+
+.notification-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.notification-description {
+  width: 100%;
+}
+
+.notification-details {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.notification-discount,
+.notification-date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #667eea;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.notification-code {
+  color: #888;
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.notification-code strong {
+  color: #667eea;
+  font-weight: 600;
+}
+

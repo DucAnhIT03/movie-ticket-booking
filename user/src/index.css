@@ -1,0 +1,51 @@
+/* CSS Variables for consistent theming */
+:root {
+  --primary-color: #ff3c00;
+  --secondary-color: #1a1a1a;
+  --accent-color: #007bff;
+  --danger-color: #ff3c00;
+  --success-color: #51cf66;
+  --warning-color: #ffa500;
+  --dark-color: #1a1a1a;
+  --darker-color: #282828;
+  --light-color: #ffffff;
+  --text-color: #ffffff;
+  --text-light: #cccccc;
+  --border-color: #444444;
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.7);
+  --border-radius: 8px;
+  --border-radius-lg: 20px;
+  --transition: all 0.3s ease;
+}
+
+/* Base HTML styles */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Remove default margins and ensure consistent box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Base body styles */
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--dark-color);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure the root element takes full height */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}

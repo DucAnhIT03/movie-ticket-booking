@@ -1,0 +1,319 @@
+.ticket-section {
+  width: 90%;
+  margin: 80px auto;
+}
+
+.ticket-section h1 {
+  font-size: 32px;
+  margin-bottom: 6px;
+  color: #fff;
+}
+
+.ticket-section h1.price {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.ticket-section .subtitle {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #ccc;
+  margin-bottom: 30px;
+}
+
+/* === BẢNG GIÁ === */
+.ticket-table {
+  background: var(--background-color);
+  border-radius: 8px;
+  color: #ccc;
+}
+
+.ticket-table h2 {
+  text-align: left;
+  margin-bottom: 15px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+th,
+td {
+  border: 1px solid #333;
+  padding: 12px 10px;
+  text-align: center;
+  font-size: 14px;
+}
+
+th {
+  background: #0d0d0d;
+  color: #eee;
+}
+
+.vip {
+  color: #f9d71c;
+  font-weight: bold;
+}
+
+.sweetbox {
+  color: #e63946;
+  font-weight: bold;
+}
+
+.price-note {
+  color: #ccc;
+  margin-bottom: 15px;
+  font-size: 13px;
+}
+
+/* === QUY ĐỊNH, GHI CHÚ === */
+.rules,
+.priority {
+  line-height: 1.7;
+  color: #ccc;
+  font-size: 15px;
+}
+
+.rules strong,
+.priority strong {
+  color: #fff;
+}
+
+.priority {
+  text-align: left;
+  margin-top: 20px;
+  color: #ccc;
+  line-height: 24px;
+  font-size: 16px;
+}
+
+.priority strong {
+  color: #fff;
+}
+
+.priority ul {
+  margin-left: 20px;
+  margin-top: 10px;
+}
+
+.priority li {
+  margin-bottom: 6px;
+}
+
+.priority h3 {
+  margin-top: 15px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.priority .object {
+  list-style-type: none;
+}
+
+.rules p {
+  margin-top: 12px;
+  line-height: 24px;
+  font-size: 16px;
+}
+
+.line {
+  color: #fff;
+  margin: 10px 0;
+}
+
+.ticket-end {
+  color: #fff;
+  line-height: 24px;
+  font-size: 16px;
+}
+
+.ticket-end p {
+  font-weight: 400;
+  margin-top: 15px;
+}
+
+.ticket-end .movie-room {
+  font-style: italic;
+}
+
+/* === TIN TỨC TRANG GIÁ VÉ === */
+.ticket-section .news-content {
+  color: #666;
+  line-height: 1.6;
+}
+
+.ticket-section .news-content p {
+  margin: 8px 0;
+}
+
+.ticket-section .news-content h1,
+.ticket-section .news-content h2,
+.ticket-section .news-content h3 {
+  color: #333;
+  margin: 12px 0 8px 0;
+}
+
+.ticket-section .news-content ul,
+.ticket-section .news-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.ticket-section .news-content a {
+  color: #e53935;
+  text-decoration: underline;
+}
+
+.ticket-section .news-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.ticket-section .news-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+
+.ticket-section .news-content table td,
+.ticket-section .news-content table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+/* === NỘI DUNG TIN TỨC THAY THẾ BẢNG GIÁ === */
+.ticket-news-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.ticket-news-body {
+  color: #ccc;
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+.ticket-news-body p {
+  margin: 12px 0;
+}
+
+/* Text Align Support */
+.ticket-news-body p[style*="text-align: left"],
+.ticket-news-body h1[style*="text-align: left"],
+.ticket-news-body h2[style*="text-align: left"],
+.ticket-news-body h3[style*="text-align: left"] {
+  text-align: left;
+}
+
+.ticket-news-body p[style*="text-align: center"],
+.ticket-news-body h1[style*="text-align: center"],
+.ticket-news-body h2[style*="text-align: center"],
+.ticket-news-body h3[style*="text-align: center"] {
+  text-align: center;
+}
+
+.ticket-news-body p[style*="text-align: right"],
+.ticket-news-body h1[style*="text-align: right"],
+.ticket-news-body h2[style*="text-align: right"],
+.ticket-news-body h3[style*="text-align: right"] {
+  text-align: right;
+}
+
+.ticket-news-body h1,
+.ticket-news-body h2,
+.ticket-news-body h3 {
+  color: #fff;
+  margin: 20px 0 12px 0;
+}
+
+.ticket-news-body h1 {
+  font-size: 28px;
+}
+
+.ticket-news-body h2 {
+  font-size: 24px;
+}
+
+.ticket-news-body h3 {
+  font-size: 20px;
+}
+
+.ticket-news-body ul,
+.ticket-news-body ol {
+  margin: 12px 0;
+  padding-left: 30px;
+}
+
+.ticket-news-body li {
+  margin: 6px 0;
+}
+
+.ticket-news-body strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.ticket-news-body a {
+  color: #e53935;
+  text-decoration: underline;
+}
+
+.ticket-news-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+/* Table Styles - Support both regular table and TipTap table */
+.ticket-news-body table,
+.ticket-news-body .tiptap-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  background: rgba(255, 255, 255, 0.05);
+  table-layout: fixed;
+}
+
+.ticket-news-body .tableWrapper {
+  margin: 20px 0;
+  overflow-x: auto;
+  width: 100%;
+}
+
+.ticket-news-body table td,
+.ticket-news-body table th,
+.ticket-news-body .tiptap-table td,
+.ticket-news-body .tiptap-table th {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px;
+  text-align: left;
+  min-width: 1em;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.ticket-news-body table th,
+.ticket-news-body .tiptap-table th {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-weight: 600;
+}
+
+.ticket-news-body table td,
+.ticket-news-body .tiptap-table td {
+  color: #ccc;
+}

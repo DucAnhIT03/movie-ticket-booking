@@ -1,0 +1,137 @@
+.promotions-wrapper {
+  background-color: #0f1115;
+  color: #fff;
+  min-height: 100vh;
+  font-family: "Poppins", sans-serif;
+}
+
+.promotions-content {
+  padding: 120px 40px 60px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.promotions-title {
+  font-size: 36px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 50px;
+  color: #ffffff;
+}
+
+.promotions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  justify-content: center;
+}
+
+.promotion-card {
+  background: #1b1e23;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.promotion-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.promo-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+
+.promo-info {
+  padding: 16px;
+}
+
+.promo-date {
+  color: #a0a0a0;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.promo-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 40px;
+}
+
+.pagination .btn-outline {
+  background: transparent;
+  border: 1px solid #666;
+  font-weight: 500;
+  font-size: 14px;
+  color: #fff;
+  width: 93px;
+  height: 36px;
+  padding: 8px 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.pagination .btn-outline:hover {
+  background-color: #e63946;
+  border-color: #e63946;
+}
+
+.pagination .btn-outline.back {
+  opacity: 0.5;
+}
+
+.pagination .btn-outline.back:hover {
+  opacity: 0.5;
+  background-color: transparent;
+  border-color: #666;
+}
+
+@media (max-width: 1200px) {
+  .promotions-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .promotions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .promotions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .promotions-content {
+    padding: 100px 20px 40px;
+  }
+
+  .promotions-title {
+    font-size: 28px;
+  }
+
+  .promotions-navigation {
+    justify-content: center;
+  }
+}

@@ -1,0 +1,150 @@
+.poster-management {
+  color: #fff;
+  padding: 20px;
+}
+
+.poster-info-box {
+  background: #1a1f29;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 800px;
+}
+
+.poster-upload-section {
+  margin-bottom: 30px;
+}
+
+.poster-upload-label {
+  display: block;
+  margin-bottom: 20px;
+}
+
+.poster-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #242b36;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: fit-content;
+}
+
+.poster-upload-btn:hover:not(:disabled) {
+  background: #2a303d;
+  border-color: #667eea;
+}
+
+.poster-upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.poster-preview-container {
+  margin-top: 20px;
+}
+
+.poster-preview-wrapper {
+  position: relative;
+  display: inline-block;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #242b36;
+  padding: 10px;
+}
+
+.poster-preview-img {
+  width: 720px; /* 50% của 1440px để preview */
+  height: 405px; /* 50% của 810px để preview */
+  object-fit: contain;
+  display: block;
+  background: #0b0b0b;
+}
+
+.poster-remove-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #e53935;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.poster-remove-btn:hover:not(:disabled) {
+  background: #c62828;
+  transform: scale(1.1);
+}
+
+.poster-remove-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.poster-dimensions {
+  margin-top: 10px;
+  color: #aaa;
+  font-size: 13px;
+  text-align: center;
+}
+
+.poster-dimensions strong {
+  color: #fff;
+}
+
+.poster-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.poster-save-btn {
+  padding: 12px 24px;
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.poster-save-btn:hover:not(:disabled) {
+  background: #c62828;
+}
+
+.poster-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+
+
+
+
+
+
+
+
+
+

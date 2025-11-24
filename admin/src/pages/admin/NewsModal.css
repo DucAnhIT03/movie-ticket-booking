@@ -1,0 +1,851 @@
+.news-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.news-modal {
+  background: #1a1f29;
+  border-radius: 12px;
+  width: 95%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.news-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.news-modal-header h2 {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.news-modal-close {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.news-modal-close:hover {
+  color: #fff;
+}
+
+.news-modal-form {
+  padding: 25px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.news-modal-field {
+  margin-bottom: 20px;
+}
+
+.news-modal-field label {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.news-modal-field input,
+.news-modal-field textarea {
+  width: 100%;
+  background: #242b36;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.news-modal-field input:focus,
+.news-modal-field textarea:focus {
+  border-color: #667eea;
+}
+
+.news-modal-field input:disabled,
+.news-modal-field textarea:disabled,
+.news-modal-field select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.news-modal-select {
+  width: 100%;
+  background: #242b36;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.news-modal-select:focus {
+  border-color: #667eea;
+}
+
+.news-modal-select option {
+  background: #242b36;
+  color: #fff;
+}
+
+.news-modal-field textarea {
+  resize: vertical;
+  min-height: 150px;
+}
+
+.news-modal-error {
+  display: block;
+  color: #e53935;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.news-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.news-modal-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.news-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.news-modal-btn-cancel {
+  background: #242b36;
+  color: #fff;
+}
+
+.news-modal-btn-cancel:hover:not(:disabled) {
+  background: #2a303d;
+}
+
+.news-modal-btn-save {
+  background: #e53935;
+  color: #fff;
+}
+
+.news-modal-btn-save:hover:not(:disabled) {
+  background: #c62828;
+}
+
+.news-modal-image-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.news-modal-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #242b36;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: fit-content;
+}
+
+.news-modal-upload-btn:hover {
+  background: #2a303d;
+  border-color: #667eea;
+}
+
+.news-modal-image-preview {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+}
+
+.news-modal-preview-img {
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.news-modal-remove-img {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #e53935;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.news-modal-remove-img:hover:not(:disabled) {
+  background: #c62828;
+  transform: scale(1.1);
+}
+
+.news-modal-remove-img:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* TipTap Editor Styles */
+.tiptap-wrapper {
+  background: #242b36;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tiptap-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #1a1f29;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+}
+
+.tiptap-btn {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tiptap-btn:hover:not(:disabled) {
+  background: #242b36;
+  color: #fff;
+}
+
+.tiptap-btn.active {
+  background: #667eea;
+  color: #fff;
+}
+
+.tiptap-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tiptap-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 4px;
+}
+
+.tiptap-editor-wrapper {
+  min-height: 300px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.tiptap-editor {
+  padding: 16px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 300px;
+  outline: none;
+}
+
+.tiptap-editor p {
+  margin: 0 0 12px 0;
+}
+
+.tiptap-editor p:last-child {
+  margin-bottom: 0;
+}
+
+/* Text Align Styles */
+.tiptap-editor p[style*="text-align: left"],
+.tiptap-editor h1[style*="text-align: left"],
+.tiptap-editor h2[style*="text-align: left"],
+.tiptap-editor h3[style*="text-align: left"] {
+  text-align: left;
+}
+
+.tiptap-editor p[style*="text-align: center"],
+.tiptap-editor h1[style*="text-align: center"],
+.tiptap-editor h2[style*="text-align: center"],
+.tiptap-editor h3[style*="text-align: center"] {
+  text-align: center;
+}
+
+.tiptap-editor p[style*="text-align: right"],
+.tiptap-editor h1[style*="text-align: right"],
+.tiptap-editor h2[style*="text-align: right"],
+.tiptap-editor h3[style*="text-align: right"] {
+  text-align: right;
+}
+
+.tiptap-editor h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 16px 0 12px 0;
+  color: #fff;
+}
+
+.tiptap-editor h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 14px 0 10px 0;
+  color: #fff;
+}
+
+.tiptap-editor h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 12px 0 8px 0;
+  color: #fff;
+}
+
+.tiptap-editor ul,
+.tiptap-editor ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.tiptap-editor li {
+  margin: 4px 0;
+}
+
+.tiptap-editor strong {
+  font-weight: 600;
+  color: #fff;
+}
+
+.tiptap-editor em {
+  font-style: italic;
+}
+
+.tiptap-editor a {
+  color: #667eea;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tiptap-editor a:hover {
+  color: #7c8ef5;
+}
+
+.tiptap-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 12px 0;
+}
+
+/* Table Styles in Editor */
+.tiptap-editor .tableWrapper {
+  margin: 16px 0;
+  overflow-x: auto;
+  width: 100%;
+}
+
+.tiptap-editor .tiptap-table {
+  border-collapse: collapse;
+  margin: 0;
+  table-layout: fixed;
+  width: 100%;
+  overflow: hidden;
+  display: table;
+  position: relative;
+}
+
+.tiptap-editor .tiptap-table td,
+.tiptap-editor .tiptap-table th {
+  min-width: 1em;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  display: table-cell;
+  user-select: text; /* Cho phép select text nhưng không select cell */
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  cursor: text; /* Đảm bảo cursor là text */
+}
+
+/* Đảm bảo resize handle có thể tương tác */
+.tiptap-editor .tiptap-table th,
+.tiptap-editor .tiptap-table td {
+  position: relative;
+}
+
+/* Ngăn chặn cell selection */
+.tiptap-editor .tiptap-table td::selection,
+.tiptap-editor .tiptap-table th::selection {
+  background: rgba(100, 150, 255, 0.3);
+}
+
+.tiptap-editor .tiptap-table td::-moz-selection,
+.tiptap-editor .tiptap-table th::-moz-selection {
+  background: rgba(100, 150, 255, 0.3);
+}
+
+/* Ngăn chặn drag selection qua nhiều cell */
+.tiptap-editor .tiptap-table {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Ngăn chặn cell selection decoration */
+  pointer-events: auto;
+}
+
+.tiptap-editor .tiptap-table td,
+.tiptap-editor .tiptap-table th {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  /* Ngăn chặn cell selection */
+  position: relative;
+  isolation: isolate;
+}
+
+/* Ẩn cell selection decoration nếu có */
+.tiptap-editor .tiptap-table .selectedCell::before,
+.tiptap-editor .tiptap-table .selectedCell::after {
+  display: none !important;
+}
+
+.tiptap-editor .tiptap-table .selectedCell {
+  pointer-events: none;
+}
+
+/* Resize handle styles */
+.tiptap-editor .tiptap-table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: rgba(100, 150, 255, 0.5);
+  cursor: col-resize !important;
+  pointer-events: auto !important;
+  z-index: 100 !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  transition: width 0.2s, background 0.2s;
+}
+
+.tiptap-editor .tiptap-table .column-resize-handle:hover {
+  background: rgba(100, 150, 255, 0.9);
+  width: 6px;
+}
+
+.tiptap-editor .tiptap-table .column-resize-handle:active {
+  background: rgba(100, 150, 255, 1);
+  width: 6px;
+}
+
+/* Đảm bảo resize cursor hoạt động */
+.tiptap-editor .tiptap-table .resize-cursor {
+  cursor: col-resize !important;
+  pointer-events: auto !important;
+}
+
+/* Style cho table khi đang resize */
+.tiptap-editor .tiptap-table.resizing {
+  user-select: none;
+}
+
+.tiptap-editor .tiptap-table.resizing * {
+  user-select: none;
+}
+
+/* Ngăn chặn cell selection hoàn toàn */
+.tiptap-editor .tiptap-table td[data-cell-selected],
+.tiptap-editor .tiptap-table th[data-cell-selected] {
+  background: transparent !important;
+}
+
+.tiptap-editor .tiptap-table .cell-selected {
+  display: none !important;
+}
+
+/* Ngăn chặn các decoration liên quan đến cell selection */
+.tiptap-editor .tiptap-table .cell-selection {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.tiptap-editor .tiptap-table th {
+  font-weight: 600;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.tiptap-editor .tiptap-table td {
+  color: #fff;
+}
+
+.tiptap-editor .tiptap-table-row {
+  display: table-row;
+}
+
+.tiptap-editor .tiptap-table-header {
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.tiptap-editor .tiptap-table-cell {
+  display: table-cell;
+  color: #fff;
+}
+
+.tiptap-editor .tiptap-table .selectedCell:after {
+  display: none !important; /* Tắt cell selection highlight để tránh lỗi */
+}
+
+.tiptap-editor .tiptap-table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #667eea;
+  pointer-events: none;
+}
+
+.tiptap-editor .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #666;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap-link {
+  color: #667eea;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tiptap-link:hover {
+  color: #7c8ef5;
+}
+
+/* Table Styles */
+.tiptap-table,
+table {
+  border-collapse: collapse;
+  margin: 16px 0;
+  table-layout: fixed;
+  width: 100%;
+  overflow: hidden;
+  display: table;
+}
+
+.tiptap-table td,
+.tiptap-table th,
+table td,
+table th {
+  min-width: 1em;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  display: table-cell;
+  user-select: text; /* Cho phép select text nhưng không select cell */
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+.tiptap-table th,
+table th {
+  font-weight: 600;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.tiptap-table td,
+table td {
+  color: #fff;
+}
+
+.tiptap-table .selectedCell:after {
+  display: none !important; /* Tắt cell selection highlight để tránh lỗi */
+}
+
+.tiptap-table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #667eea;
+  pointer-events: none;
+}
+
+.tableWrapper {
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+.resize-cursor {
+  cursor: ew-resize;
+  cursor: col-resize;
+}
+
+/* Border Menu Styles */
+.border-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #1e2329;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px;
+  z-index: 1000;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  margin-top: 4px;
+}
+
+.border-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 11px;
+  min-width: 80px;
+  width: 100%;
+}
+
+.border-menu-item:hover {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: #667eea;
+}
+
+.border-menu-item:active {
+  background: rgba(102, 126, 234, 0.3);
+}
+
+/* Table Picker Styles */
+.table-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: #1a1f29;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  min-width: 200px;
+}
+
+.table-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+  gap: 2px;
+  width: 200px;
+  height: 200px;
+  margin-bottom: 8px;
+}
+
+.table-picker-cell {
+  width: 18px;
+  height: 18px;
+  background: #242b36;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.table-picker-cell:hover {
+  background: rgba(102, 126, 234, 0.3);
+  border-color: #667eea;
+}
+
+.table-picker-cell.selected {
+  background: #667eea;
+  border-color: #7c8ef5;
+}
+
+.table-picker-label {
+  text-align: center;
+  color: #fff;
+  font-size: 12px;
+  padding: 4px;
+  background: #242b36;
+  border-radius: 4px;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Font Size Menu Styles */
+.font-size-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: #1a1f29;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px;
+  z-index: 1000;
+  min-width: 120px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.font-size-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+
+.font-size-menu-item:hover {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: #667eea;
+}
+
+.font-size-menu-item:active {
+  background: rgba(102, 126, 234, 0.3);
+}
+
+/* Color Menu Styles */
+.color-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: #1a1f29;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px;
+  z-index: 1000;
+  min-width: 240px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.color-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.color-menu-item {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.color-menu-item:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.color-menu-item:active {
+  transform: scale(0.95);
+}
+

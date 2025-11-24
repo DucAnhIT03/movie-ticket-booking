@@ -1,0 +1,234 @@
+.festival-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.festival-modal {
+  background: #1a1f29;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.festival-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.festival-modal-header h2 {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.festival-modal-close {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.festival-modal-close:hover {
+  color: #fff;
+}
+
+.festival-modal-form {
+  padding: 25px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.festival-modal-field {
+  margin-bottom: 20px;
+}
+
+.festival-modal-field label {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.festival-modal-field input,
+.festival-modal-field textarea {
+  width: 100%;
+  background: #242b36;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.festival-modal-field input:focus,
+.festival-modal-field textarea:focus {
+  border-color: #667eea;
+}
+
+.festival-modal-field input:disabled,
+.festival-modal-field textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.festival-modal-field textarea {
+  resize: vertical;
+  min-height: 150px;
+}
+
+.festival-modal-error {
+  display: block;
+  color: #e53935;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.festival-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.festival-modal-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.festival-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.festival-modal-btn-cancel {
+  background: #242b36;
+  color: #fff;
+}
+
+.festival-modal-btn-cancel:hover:not(:disabled) {
+  background: #2a303d;
+}
+
+.festival-modal-btn-save {
+  background: #e53935;
+  color: #fff;
+}
+
+.festival-modal-btn-save:hover:not(:disabled) {
+  background: #c62828;
+}
+
+.festival-modal-image-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.festival-modal-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #242b36;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: fit-content;
+}
+
+.festival-modal-upload-btn:hover {
+  background: #2a303d;
+  border-color: #667eea;
+}
+
+.festival-modal-image-preview {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+}
+
+.festival-modal-preview-img {
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.festival-modal-remove-img {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #e53935;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.festival-modal-remove-img:hover:not(:disabled) {
+  background: #c62828;
+  transform: scale(1.1);
+}
+
+.festival-modal-remove-img:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+
+
+
+
+
+
+
+
+
+

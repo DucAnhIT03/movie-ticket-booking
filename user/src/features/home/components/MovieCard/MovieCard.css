@@ -1,0 +1,283 @@
+.movie-card {
+  /* ============================================
+     HƯỚNG DẪN CHỈNH SỬA CARD CONTAINER
+     ============================================ */
+  
+  /* Flow: Vertical - Sắp xếp các phần tử theo chiều dọc */
+  display: flex;
+  flex-direction: column;
+  
+  /* Width: Fixed (229px) - Chính xác không có padding/border */
+  width: 229px;
+  min-width: 229px;
+  max-width: 229px;
+  
+  /* Height: Fixed (378px) */
+  height: 378px;
+  min-height: 378px;
+  max-height: 378px;
+  
+  /* Gap: 12px - Khoảng cách giữa image và info container
+     Để thay đổi khoảng cách: sửa giá trị 12px
+     Lưu ý: Nếu thay đổi gap, cần tính lại height của info container:
+     Info container height = 378px - 290px - gap */
+  gap: 12px;
+  
+  /* Không có border, border-radius, outline cho card */
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  background-color: transparent;
+  
+  /* Padding: 0 - Không có padding để ảnh khít viền trên
+     Nếu muốn thêm khoảng trống: thêm padding-top (ví dụ: padding-top: 5px) */
+  padding: 0 !important;
+  
+  /* Margin: 0 - Margin được xử lý bởi FilmList
+     Nếu muốn thêm khoảng cách giữa các card: thêm margin */
+  margin: 0 !important;
+  
+  text-align: left;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+  flex-grow: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  
+  /* align-items: stretch - Các phần tử con stretch theo chiều ngang */
+  align-items: stretch;
+  
+  /* justify-content: flex-start - Các phần tử bắt đầu từ trên cùng
+     Để ảnh khít viền trên: giữ flex-start
+     Nếu muốn căn giữa: đổi thành center */
+  justify-content: flex-start;
+}
+
+.movie-card:hover {
+  transform: translateY(-5px);
+}
+
+.movie-card img {
+  /* ============================================
+     HƯỚNG DẪN CHỈNH SỬA ẢNH POSTER
+     ============================================ */
+  
+  /* Width: 100% - Fill đầy width của card (229px) để không có khoảng trống */
+  width: 100%;
+  max-width: 100%;
+  min-width: 100%;
+  
+  /* Height: Fixed 290px */
+  height: 290px;
+  
+  /* Radius: 12px - Bo góc ảnh
+     Để thay đổi độ bo góc: sửa giá trị 12px
+     Để bỏ bo góc: đặt 0 */
+  border-radius: 12px;
+  
+  /* object-fit: cover - Ảnh sẽ fill đầy khung, có thể crop
+     Các tùy chọn khác:
+     - contain: Ảnh hiển thị đầy đủ, có thể có khoảng trống
+     - fill: Ảnh bị kéo dãn để fill khung
+     - none: Ảnh giữ kích thước gốc */
+  object-fit: cover;
+  
+  display: block;
+  flex-shrink: 0;
+  background-color: #2a2f39;
+  
+  /* Margin: 0 - QUAN TRỌNG: Để ảnh khít viền trên và hai bên
+     Nếu ảnh có khoảng trống: đảm bảo margin: 0 */
+  margin: 0;
+  
+  /* Padding: 0 - Không có padding
+     Nếu muốn thêm padding trong ảnh: thêm padding */
+  padding: 0;
+  
+  border: none;
+  outline: none;
+  
+  /* align-self: stretch - Ảnh stretch để fill width của card */
+  align-self: stretch;
+}
+
+.movie-info-container {
+  /* ============================================
+     HƯỚNG DẪN CHỈNH SỬA INFO CONTAINER
+     ============================================ */
+  
+  /* Flow: Vertical - Sắp xếp genre/date và title theo chiều dọc */
+  display: flex;
+  flex-direction: column;
+  
+  /* Width: Fill 229px */
+  width: 229px;
+  
+  /* Height: Hug (76px) - Theo Figma là Hug nhưng để đảm bảo card = 378px, dùng fixed */
+  height: 76px;
+  
+  /* Gap: 4px - Khoảng cách giữa genre/date và title
+     Để thay đổi: sửa giá trị 4px */
+  gap: 4px;
+  
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.movie-card .movie-title,
+.movie-card h4.movie-title {
+  /* ============================================
+     HƯỚNG DẪN CHỈNH SỬA TÊN PHIM
+     ============================================ */
+  
+  /* Width: Fixed 229px */
+  width: 229px;
+  
+  /* Height: Fixed 48px */
+  height: 48px;
+  
+  /* Typography */
+  font-family: 'Montserrat', sans-serif;
+  
+  /* Font Size: 16px - Kích thước chữ
+     Để thay đổi: sửa giá trị 16px
+     Nếu text bị tràn: giảm xuống (ví dụ: 14px)
+     Nếu text quá nhỏ: tăng lên (ví dụ: 18px) */
+  font-size: 16px !important;
+  
+  /* Font Weight: 700 - Độ đậm (Bold)
+     Các tùy chọn: 400 (normal), 500 (medium), 600 (semi-bold), 700 (bold) */
+  font-weight: 700;
+  font-style: normal;
+  
+  /* Line Height: 24px - Khoảng cách giữa các dòng
+     Công thức: line-height × số dòng = height
+     Ví dụ: 24px × 2 dòng = 48px
+     Để thay đổi: sửa giá trị 24px, nhớ tính lại height */
+  line-height: 24px;
+  
+  letter-spacing: 0%;
+  
+  /* Color: #FFFFFF - Màu trắng
+     Để thay đổi màu: sửa mã hex (ví dụ: #FF0000 cho đỏ) */
+  color: #FFFFFF !important;
+  
+  /* Text Wrapping - Hiển thị tối đa 2 dòng
+     -webkit-line-clamp: 2 - Giới hạn 2 dòng
+     Để thay đổi số dòng: sửa giá trị 2
+     Nếu muốn 1 dòng: đổi thành 1 và height = line-height */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  text-align: left;
+  box-sizing: border-box;
+  
+  /* Word Wrapping - Xử lý từ dài
+     word-wrap: normal - Wrap tự nhiên theo từ
+     overflow-wrap: break-word - Chỉ break khi cần thiết
+     Nếu text bị break giữa từ: thử đổi word-wrap thành break-word */
+  word-wrap: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+}
+
+.movie-card p {
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.movie-genre {
+  /* Width: Auto (Hug content) - Thể loại bên trái */
+  width: auto;
+  min-width: 0;
+  flex: 0 1 auto;
+  
+  /* Height: Fixed 20px */
+  height: 20px;
+  
+  /* Typography: Montserrat, Weight 400, Size 14px, Line height 20px */
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 20px;
+  letter-spacing: 0%;
+  
+  /* Colors: #5D6A81 */
+  color: #5D6A81 !important;
+  
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.movie-date {
+  /* Width: Auto - Ngày bên phải */
+  width: auto;
+  min-width: 67px;
+  flex: 0 0 auto;
+  
+  /* Height: Fixed 20px */
+  height: 20px;
+  
+  /* Typography: Montserrat, Weight 400, Size 14px, Line height 20px */
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 20px;
+  letter-spacing: 0%;
+  
+  /* Colors: #5D6A81 */
+  color: #5D6A81 !important;
+  
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.movie-des {
+  /* Flow: Horizontal - Thể loại bên trái, ngày bên phải */
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  
+  /* Width: Fixed 229px */
+  width: 229px;
+  
+  /* Height: Fixed 20px */
+  height: 20px;
+  
+  /* Gap: 0 - Không cần gap vì dùng space-between */
+  gap: 0;
+  
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
