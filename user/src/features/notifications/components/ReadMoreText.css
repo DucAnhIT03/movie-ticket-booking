@@ -21,7 +21,7 @@
   text-overflow: ellipsis;
   -webkit-line-clamp: 3;
   line-clamp: 3;
-  max-height: calc(1.5em * 3); /* 14px * 1.5 * 3 = 63px */
+  max-height: calc(1.5em * 3); 
   word-break: break-word;
   hyphens: auto;
 }

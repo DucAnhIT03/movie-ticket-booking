@@ -11,6 +11,9 @@ export class EventResponseDto {
   @ApiProperty({ nullable: true })
   description!: string | null;
   
+  @ApiProperty({ nullable: true, description: 'Bài viết chi tiết sự kiện' })
+  content!: string | null;
+
   @ApiProperty({ nullable: true })
   image!: string | null;
   
@@ -25,6 +28,12 @@ export class EventResponseDto {
   
   @ApiProperty({ enum: ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'] })
   status!: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
+
+  @ApiProperty({ description: 'Có phải sự kiện đặc biệt hay không', default: false })
+  is_special!: boolean;
+
+  @ApiProperty({ description: 'Số lượt đăng ký tham dự', default: 0 })
+  registrations_count?: number;
   
   @ApiProperty()
   created_at!: Date;

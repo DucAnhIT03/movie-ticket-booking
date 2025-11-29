@@ -26,6 +26,7 @@ import { ChangePasswordDto } from '../../auth/dtos/request/change-password.dto';
 import { AssignRoleDto } from '../dtos/request/assign-role.dto';
 import { UserResponseDto } from '../dtos/response/user.response.dto';
 import { CloudinaryService } from '../../../providers/cloudinary/cloudinary.service';
+import { CreateEmployeeDto } from '../dtos/request/create-employee.dto';
 
 function validateImageFile(file: Express.Multer.File): void {
   const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -158,6 +159,16 @@ export class UserController {
   changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
     if (!req || !req.user) throw new UnauthorizedException();
     return this.userService.changePassword(req.user.sub, dto);
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('employees')
+  @ApiOperation({ summary: 'Tạo tài khoản nhân viên - Chỉ admin' })
+  @ApiBody({ type: CreateEmployeeDto })
+  @ApiResponse({ status: 201, description: 'Tạo tài khoản nhân viên thành công', type: UserResponseDto })
+  async createEmployee(@Body() dto: CreateEmployeeDto) {
+    const result = await this.userService.createEmployeeAccount(dto);
+    return UserResponseDto.fromEntity(result);
   }
 
   @UseGuards(AdminGuard)

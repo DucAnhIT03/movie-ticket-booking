@@ -14,7 +14,11 @@ export class RolesSeeder implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      const needed: Array<'ROLE_USER' | 'ROLE_ADMIN'> = ['ROLE_USER', 'ROLE_ADMIN'];
+      const needed: Array<'ROLE_USER' | 'ROLE_ADMIN' | 'ROLE_EMPLOYEE'> = [
+        'ROLE_USER',
+        'ROLE_ADMIN',
+        'ROLE_EMPLOYEE',
+      ];
       for (const roleName of needed) {
         const existing = await this.rolesRepo.findOne({ where: { roleName } });
         if (!existing) {

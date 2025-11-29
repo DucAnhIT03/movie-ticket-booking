@@ -1,9 +1,9 @@
-/* ===== HERO ===== */
+
 .hero {
   position: relative;
   display: flex;
   align-items: center;
-  /* Background image sẽ được set động từ inline style */
+  
   padding: 60px 0;
   height: 550px;
   overflow: hidden;
@@ -25,7 +25,7 @@
 
 .hero-content {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 30px;
   width: 90%;
   margin: auto;
@@ -39,16 +39,27 @@
   display: none;
 }
 
+.main-content {
+  display: flex;
+  align-items: flex-start;
+}
+
 .main-content img {
   width: 238px;
   height: 333px;
   border-radius: 10px;
   box-shadow: 0 0 10px #000;
+  flex-shrink: 0;
 }
 
 .movie-infor {
   flex: 1;
   color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  height: 333px; /* Cùng chiều cao với poster */
 }
 
 .movie-infor h1 {
@@ -87,10 +98,11 @@
 }
 
 .actions {
-  margin-top: 15px;
+  margin-top: auto; /* Đẩy nút xuống dưới cùng */
   display: flex;
   justify-content: flex-start;
   gap: 10px;
+  padding-top: 15px;
 }
 
 /* === Responsive cho Tablet & Mobile === */

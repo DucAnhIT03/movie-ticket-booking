@@ -36,22 +36,28 @@ export class TicketPricesService {
     return ticketPrice;
   }
 
-  // method name getPrice — keeps controller/service consistent
+
   async getPrice(type_seat: string, type_movie: string, date: Date, time?: string, movieId?: number, theaterId?: number): Promise<number | null> {
-    // dayType: false = ngày thường (T2-T5), true = cuối tuần (T6, T7, CN)
-    // date.getDay(): 0 = CN, 1 = T2, 2 = T3, 3 = T4, 4 = T5, 5 = T6, 6 = T7
-    // Đảm bảo date được set về local timezone để getDay() trả về đúng
-    const dateLocal = new Date(date);
-    dateLocal.setHours(12, 0, 0, 0); // Set về giữa ngày để tránh timezone issue
+    
+    // Đảm bảo date được xử lý đúng với local timezone
+    // Tạo date mới từ year, month, day để tránh timezone issues
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    const dateLocal = new Date(year, month, day, 12, 0, 0, 0); // Set 12:00 để tránh timezone shift
     const dayOfWeek = dateLocal.getDay();
-    // Ngày thường: T2 (1), T3 (2), T4 (3), T5 (4) -> dayType = false
-    // Cuối tuần: T6 (5), T7 (6), CN (0) -> dayType = true
-    const dayType = (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6); // T6, T7, CN = cuối tuần (boolean)
+   
+    
+    const dayType = dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6;
     
     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     console.log('📅 [BACKEND] Calculating dayType:', {
       typeSeat: type_seat,
       inputDate: date,
+      inputDateISO: date.toISOString(),
+      year,
+      month,
+      day,
       localDate: dateLocal,
       dayOfWeek,
       dayName: dayNames[dayOfWeek],
@@ -60,51 +66,51 @@ export class TicketPricesService {
       dayTypeValue: dayType ? 1 : 0
     });
     
-    // TypeORM sẽ tự động convert boolean sang bit (0/1) khi query MySQL
-    // Kiểm tra ngày áp dụng (nếu có startDate và endDate)
-    // Sử dụng nhiều cách để đảm bảo so sánh đúng với BIT type trong MySQL
+    
     const dayTypeValue = dayType ? 1 : 0;
+    // Ưu tiên tìm giá vé có dayType khớp với ngày hiện tại (không chấp nhận NULL)
+    // Chỉ dùng dayType = NULL làm fallback nếu không tìm thấy giá vé cụ thể
     const queryBuilder = this.ticketPriceRepository.createQueryBuilder('tp')
       .where('tp.typeSeat = :typeSeat', { typeSeat: type_seat })
-      // Thử nhiều cách so sánh BIT type
-      .andWhere('(tp.dayType = :dayType OR CAST(tp.dayType AS UNSIGNED) = :dayType OR tp.dayType = :dayTypeBool)', { 
-        dayType: dayTypeValue,
-        dayTypeBool: dayType 
-      });
+      // Chỉ lấy giá vé có dayType khớp với ngày hiện tại (không chấp nhận NULL)
+      // Sử dụng CAST để đảm bảo so sánh đúng với BIT type trong MySQL
+      .andWhere(
+        'CAST(tp.dayType AS UNSIGNED) = :dayTypeValue',
+        {
+          dayTypeValue: dayTypeValue,
+        },
+      );
     
-    // Logic ưu tiên: 
-    // 1. Nếu có movieId: tìm ticket có movieId cụ thể HOẶC movieId = NULL (áp dụng cho tất cả phim cùng type)
-    // 2. Nếu không có movieId: chỉ tìm ticket có movieId = NULL và typeMovie khớp
+
     if (movieId) {
-      // Tìm ticket có movieId cụ thể HOẶC movieId = NULL (áp dụng cho tất cả)
+      // Ưu tiên giá dành riêng cho phim, nếu không có thì dùng giá chung (movieId = NULL)
       queryBuilder.andWhere('(tp.movieId = :movieId OR tp.movieId IS NULL)', { movieId });
-      // Nếu ticket có movieId = NULL, phải khớp typeMovie
-      queryBuilder.andWhere('(tp.movieId IS NOT NULL OR tp.typeMovie = :typeMovie)', { typeMovie: type_movie });
+      // Nếu price áp dụng chung (movieId = NULL) thì chấp nhận typeMovie null hoặc khớp
+      queryBuilder.andWhere(
+        '(tp.movieId IS NOT NULL OR tp.typeMovie IS NULL OR tp.typeMovie = :typeMovie)',
+        { typeMovie: type_movie },
+      );
     } else {
-      // Không có movieId, chỉ tìm ticket có movieId = NULL và typeMovie khớp
+      // Không chọn phim cụ thể => chỉ lấy price áp dụng chung
       queryBuilder.andWhere('tp.movieId IS NULL');
-      queryBuilder.andWhere('tp.typeMovie = :typeMovie', { typeMovie: type_movie });
+      queryBuilder.andWhere('(tp.typeMovie IS NULL OR tp.typeMovie = :typeMovie)', {
+        typeMovie: type_movie,
+      });
     }
     
-    // Kiểm tra ngày áp dụng: nếu có startDate/endDate thì phải nằm trong khoảng
-    // Chỉ so sánh phần date, không so sánh time
-    // Format date để so sánh: YYYY-MM-DD (dùng local date để tránh timezone issue)
-    const year = dateLocal.getFullYear();
-    const month = String(dateLocal.getMonth() + 1).padStart(2, '0');
-    const day = String(dateLocal.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`; // YYYY-MM-DD (local timezone)
     
-    // Nếu có startDate thì date phải >= startDate
-    // Nếu có endDate thì date phải <= endDate
-    // Nếu không có startDate/endDate thì áp dụng cho tất cả ngày
+    const yearStr = String(dateLocal.getFullYear());
+    const monthStr = String(dateLocal.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(dateLocal.getDate()).padStart(2, '0');
+    const dateStr = `${yearStr}-${monthStr}-${dayStr}`; // YYYY-MM-DD (local timezone)
+    
+   
     queryBuilder.andWhere(
       '(tp.startDate IS NULL OR DATE(tp.startDate) <= :dateStr) AND (tp.endDate IS NULL OR DATE(tp.endDate) >= :dateStr)',
       { dateStr }
     );
     
-    // Kiểm tra giờ nếu có: nếu có startTime/endTime thì phải nằm trong khoảng
-    // So sánh time dạng HH:MM:SS
-    // Lưu ý: Nếu time là '00:00' hoặc '00:00:00', có thể là giá trị mặc định, nên cần xử lý đặc biệt
+ 
     if (time && time !== '00:00' && time !== '00:00:00') {
       // Đảm bảo time có format HH:MM:SS
       const timeStr = time.length === 5 ? `${time}:00` : time;
@@ -113,11 +119,7 @@ export class TicketPricesService {
         { time: timeStr }
       );
     }
-    // Nếu time là '00:00' hoặc không có, bỏ qua filter thời gian (lấy ticket áp dụng cho cả ngày)
     
-    // Logic ưu tiên theaterId:
-    // 1. Nếu có theaterId, ưu tiên giá vé có theaterId cụ thể trước
-    // 2. Nếu không có, mới dùng giá vé có theaterId = null (áp dụng cho tất cả)
     if (theaterId) {
       // Tìm giá vé có theaterId cụ thể trước
       queryBuilder.andWhere('(tp.theaterId = :theaterId OR tp.theaterId IS NULL)', { theaterId });
@@ -189,15 +191,26 @@ export class TicketPricesService {
         theaterId 
       });
       
-      // Fallback: Nếu không tìm thấy ticket với dayType đúng, thử tìm với dayType khác (hoặc bỏ filter dayType)
-      console.log('🔄 Trying fallback: searching without dayType filter...');
+      // Fallback: Nếu không tìm thấy ticket với dayType cụ thể, thử tìm với dayType = NULL (áp dụng mọi ngày)
+      // CHỈ dùng fallback này nếu thực sự không có giá vé cụ thể cho ngày này
+      console.log('🔄 Trying fallback: searching for tickets with dayType = NULL (applies to all days)...');
       const fallbackQueryBuilder = this.ticketPriceRepository.createQueryBuilder('tp')
-        .where('tp.typeSeat = :typeSeat', { typeSeat: type_seat });
+        .where('tp.typeSeat = :typeSeat', { typeSeat: type_seat })
+        .andWhere('tp.dayType IS NULL'); // CHỈ lấy giá vé có dayType = NULL
       
       if (movieId) {
-        fallbackQueryBuilder.andWhere('tp.movieId = :movieId', { movieId });
+        fallbackQueryBuilder.andWhere('(tp.movieId = :movieId OR tp.movieId IS NULL)', {
+          movieId,
+        });
+        fallbackQueryBuilder.andWhere(
+          '(tp.movieId IS NOT NULL OR tp.typeMovie IS NULL OR tp.typeMovie = :typeMovie)',
+          { typeMovie: type_movie },
+        );
       } else {
-        fallbackQueryBuilder.andWhere('tp.typeMovie = :typeMovie', { typeMovie: type_movie });
+        fallbackQueryBuilder.andWhere('tp.movieId IS NULL');
+        fallbackQueryBuilder.andWhere('(tp.typeMovie IS NULL OR tp.typeMovie = :typeMovie)', {
+          typeMovie: type_movie,
+        });
       }
       
       // Kiểm tra ngày áp dụng
@@ -228,7 +241,8 @@ export class TicketPricesService {
       const fallbackTickets = await fallbackQueryBuilder.getMany();
       
       if (fallbackTickets.length > 0) {
-        console.log('✅ Fallback found tickets:', fallbackTickets.length);
+        console.log('✅ Fallback found tickets with dayType = NULL:', fallbackTickets.length);
+        console.log('⚠️ WARNING: Using fallback ticket (dayType = NULL) because no specific ticket found for', dayType ? 'weekend' : 'weekday');
         // Sử dụng ticket đầu tiên từ fallback query
         const ticket = fallbackTickets[0];
         console.log('💰 Using fallback ticket price:', ticket.price, 'for', type_seat);

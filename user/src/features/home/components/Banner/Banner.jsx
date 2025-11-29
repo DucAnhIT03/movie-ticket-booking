@@ -31,7 +31,7 @@ export default function Banner() {
     }
   };
 
-  // Auto-play: tự động chuyển banner sau 5 giây
+  
   useEffect(() => {
     if (banners.length <= 1) return;
 

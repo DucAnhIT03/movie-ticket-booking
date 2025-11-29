@@ -53,14 +53,16 @@ export class AdminAuthController {
   async adminLogin(@Body() dto: LoginDto) {
     const result = await this.authService.login(dto, { allowAdmin: true });
     
-    // Kiểm tra role ADMIN
+   
     const userRoles = result.user?.roles || [];
-    const isAdmin = userRoles.some(
-      (role) => role === 'ROLE_ADMIN' || role === 'ADMIN' || role === 'admin'
+    const canAccessBackoffice = userRoles.some((role) =>
+      ['ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ADMIN', 'admin', 'EMPLOYEE', 'employee'].includes(role),
     );
 
-    if (!isAdmin) {
-      throw new UnauthorizedException('Bạn không có quyền truy cập trang quản trị. Chỉ tài khoản admin mới được phép đăng nhập.');
+    if (!canAccessBackoffice) {
+      throw new UnauthorizedException(
+        'Bạn không có quyền truy cập trang quản trị. Chỉ tài khoản admin hoặc nhân viên được phép đăng nhập.',
+      );
     }
 
     return result;

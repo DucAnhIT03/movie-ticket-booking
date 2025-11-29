@@ -14,37 +14,37 @@ export default function SeatManagement() {
   const [selectedScreenId, setSelectedScreenId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Grid configuration
-  const [rows, setRows] = useState(10); // A-J
-  const [cols, setCols] = useState(15); // 1-15
+  
+  const [rows, setRows] = useState(10); 
+  const [cols, setCols] = useState(15); 
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingSeat, setEditingSeat] = useState(null);
-  const [selectedSeats, setSelectedSeats] = useState([]); // Multi-select
+  const [selectedSeats, setSelectedSeats] = useState([]); 
   const [seatType, setSeatType] = useState("STANDARD");
   const [isVariable, setIsVariable] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [seatPrice, setSeatPrice] = useState("");
-  const [movieType, setMovieType] = useState("2D"); // For price lookup
-  const [ticketPrices, setTicketPrices] = useState({}); // Cache prices
-  const [selectedScreen, setSelectedScreen] = useState(null); // Store selected screen info
+  const [movieType, setMovieType] = useState("2D"); 
+  const [ticketPrices, setTicketPrices] = useState({}); 
+  const [selectedScreen, setSelectedScreen] = useState(null); 
 
   useEffect(() => {
     loadTheaters();
   }, []);
 
-  // Tính toán rows và cols dựa trên seat_capacity
+  
   const calculateLayout = (capacity) => {
     if (!capacity || capacity <= 0) {
       return { rows: 10, cols: 15 };
     }
     
-    // Tỷ lệ phòng chiếu thường là 16:9 hoặc 4:3
-    // Ưu tiên layout gần vuông hơn để dễ quản lý
-    const aspectRatio = 1.5; // cols/rows ratio
+   
+    
+    const aspectRatio = 1.5; 
     const estimatedCols = Math.ceil(Math.sqrt(capacity * aspectRatio));
     const estimatedRows = Math.ceil(capacity / estimatedCols);
     
-    // Đảm bảo không vượt quá 26 hàng (A-Z)
+    
     const finalRows = Math.min(estimatedRows, 26);
     const finalCols = Math.ceil(capacity / finalRows);
     
@@ -62,11 +62,11 @@ export default function SeatManagement() {
 
   useEffect(() => {
     if (selectedScreenId) {
-      // Tìm thông tin screen đã chọn
+      
       const screen = screens.find(s => s.id === parseInt(selectedScreenId, 10));
       if (screen) {
         setSelectedScreen(screen);
-        // Tự động tính toán layout dựa trên seat_capacity
+        
         const layout = calculateLayout(screen.seat_capacity);
         setRows(layout.rows);
         setCols(layout.cols);
@@ -76,7 +76,7 @@ export default function SeatManagement() {
       setSeats([]);
       setSelectedScreen(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [selectedScreenId, screens]);
 
   const loadTheaters = async () => {
@@ -96,7 +96,7 @@ export default function SeatManagement() {
       const res = await screenService.getAllScreens();
       if (res.status === 200) {
         const allScreens = res.data.items || res.data || [];
-        // Lọc screens theo theater đã chọn
+        
         const filteredScreens = allScreens.filter(s => s.theater_id === parseInt(selectedTheaterId, 10));
         setScreens(filteredScreens);
       }
@@ -122,7 +122,7 @@ export default function SeatManagement() {
     }
   };
 
-  // Tạo sơ đồ ghế tự động dựa trên seat_capacity
+  
   const generateSeats = async () => {
     if (!selectedScreenId || !selectedScreen) {
       toast.error("Vui lòng chọn phòng chiếu trước!");
@@ -135,7 +135,7 @@ export default function SeatManagement() {
       return;
     }
 
-    // Kiểm tra số ghế hiện có
+  
     const currentSeatCount = seats.length;
     const availableSlots = capacity - currentSeatCount;
 
@@ -144,14 +144,12 @@ export default function SeatManagement() {
       return;
     }
 
-    // Sử dụng rows và cols từ input (người dùng tự nhập)
     const totalSeats = rows * cols;
     
-    // Đảm bảo không tạo quá số ghế còn lại (availableSlots)
-    // Và không vượt quá tổng sức chứa (capacity)
+    
     const actualSeats = Math.min(totalSeats, availableSlots, capacity);
     
-    // Kiểm tra nếu vượt quá số ghế còn lại
+    
     if (totalSeats > availableSlots) {
       toast.error(`Bạn đã nhập ${totalSeats} ghế nhưng chỉ còn ${availableSlots} ghế có thể tạo!`);
       return;
@@ -193,7 +191,6 @@ export default function SeatManagement() {
     try {
       const results = await seatService.createSeatsBatch(seatsToCreate);
       
-      // Xử lý kết quả từ Promise.allSettled
       let successCount = 0;
       let failCount = 0;
       const errorMessages = [];
@@ -201,7 +198,7 @@ export default function SeatManagement() {
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
           const res = result.value;
-          // Kiểm tra nếu có error property (từ catch)
+          
           if (res.error) {
             failCount++;
             const errorMsg = res.message || `HTTP ${res.status}` || "Lỗi không xác định";
@@ -209,7 +206,7 @@ export default function SeatManagement() {
               errorMessages.push(errorMsg);
             }
           } else {
-            // Kiểm tra HTTP status code
+        
             const httpStatus = res.status;
             if (httpStatus === 201 || httpStatus === 200) {
               successCount++;
@@ -222,7 +219,7 @@ export default function SeatManagement() {
             }
           }
         } else {
-          // Promise.allSettled result bị rejected
+    
           failCount++;
           const errorMsg = result.reason?.message || result.reason || "Lỗi không xác định";
           if (!errorMessages.includes(errorMsg)) {
@@ -235,7 +232,6 @@ export default function SeatManagement() {
         toast.success(`Đã tạo ${successCount} ghế thành công!`);
         loadSeats();
         
-        // Kiểm tra lại sau khi tạo
         const newTotal = currentSeatCount + successCount;
         if (newTotal >= capacity) {
           toast.info(`Phòng đã đạt sức chứa tối đa: ${capacity} ghế`);
@@ -265,8 +261,7 @@ export default function SeatManagement() {
       toast.info("Vui lòng bật chế độ chỉnh sửa trước!");
       return;
     }
-    
-    // Lấy seatNumber từ seat hoặc từ object được truyền vào
+   
     const seatNumber = seat?.seatNumber;
     if (!seatNumber) {
       console.error("Không tìm thấy seatNumber:", seat);
@@ -276,8 +271,6 @@ export default function SeatManagement() {
     const seatId = seat?.id;
     const seatData = seat || { seatNumber: seatNumber, screenId: parseInt(selectedScreenId, 10) };
     
-    // Multi-select mặc định (không cần Ctrl)
-    // So sánh bằng cả id và seatNumber để đảm bảo match
     const isSelected = selectedSeats.find(s => {
       if (seatId && s.id) {
         return s.id === seatId;
@@ -286,7 +279,7 @@ export default function SeatManagement() {
     });
     
     if (isSelected) {
-      // Bỏ chọn ghế
+      
       const newSelected = selectedSeats.filter(s => {
         if (seatId && s.id) {
           return s.id !== seatId;
@@ -295,7 +288,6 @@ export default function SeatManagement() {
       });
       setSelectedSeats(newSelected);
       
-      // Nếu còn ghế được chọn, cập nhật editingSeat
       if (newSelected.length > 0) {
         setEditingSeat(newSelected[0]);
         if (newSelected[0].id) {
@@ -308,19 +300,18 @@ export default function SeatManagement() {
         setEditingSeat(null);
       }
     } else {
-      // Thêm ghế vào danh sách chọn
+
       const newSelected = [...selectedSeats, seatData];
       setSelectedSeats(newSelected);
       setEditingSeat(seatData);
       
-      // Nếu là ghế đã tồn tại, load thông tin
       if (seat && seat.id) {
         setSeatType(seat.type || "STANDARD");
         setIsVariable(seat.isVariable || false);
         setIsHidden(seat.isHidden || false);
         loadSeatPrice(seat.type || "STANDARD");
       } else {
-        // Ghế mới - giữ nguyên giá trị hiện tại hoặc reset
+        
         if (selectedSeats.length === 0) {
           setSeatType("STANDARD");
           setIsVariable(false);
@@ -334,7 +325,7 @@ export default function SeatManagement() {
   const loadSeatPrice = async (type) => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      // Thử lấy giá từ 2D trước (mặc định)
+      
       const key = `${type}_2D_${today}`;
       
       if (ticketPrices[key]) {
@@ -342,10 +333,10 @@ export default function SeatManagement() {
         return;
       }
 
-      // Thử lấy giá từ 2D
+      
       const res = await ticketPriceService.getPrice(type, '2D', today);
       if (res.status === 200 && res.data) {
-        // Response có thể là số hoặc object
+        
         const price = typeof res.data === 'number' ? res.data : (res.data.price || res.data);
         if (price && !isNaN(price) && price > 0) {
           setTicketPrices({ ...ticketPrices, [key]: price });
@@ -353,8 +344,7 @@ export default function SeatManagement() {
           return;
         }
       }
-      
-      // Nếu không có giá 2D, thử 3D
+     
       const res3D = await ticketPriceService.getPrice(type, '3D', today);
       if (res3D.status === 200 && res3D.data) {
         const price = typeof res3D.data === 'number' ? res3D.data : (res3D.data.price || res3D.data);
@@ -366,7 +356,6 @@ export default function SeatManagement() {
         }
       }
       
-      // Nếu không có giá nào, để trống
       setSeatPrice("");
     } catch (error) {
       console.error("Error loading price:", error);
@@ -389,7 +378,7 @@ export default function SeatManagement() {
 
     setIsLoading(true);
     try {
-      // Lấy theaterId từ screen đã chọn
+      
       const currentScreen = screens.find(s => s.id === parseInt(selectedScreenId, 10));
       const theaterId = currentScreen?.theater_id || null;
 
@@ -403,7 +392,7 @@ export default function SeatManagement() {
 
           let seatResult;
           if (seat.id) {
-            // Cập nhật ghế đã tồn tại
+            
             seatResult = await seatService.updateSeat(seat.id, updateData);
           } else {
             // Tạo ghế mới
@@ -416,31 +405,27 @@ export default function SeatManagement() {
             });
           }
 
-          // Xử lý giá vé: chỉ tạo/cập nhật khi có nhập giá mới
-          // Nếu không nhập gì, giá vé giữ nguyên (không thay đổi)
-          // Giá vé có hiệu lực từ hôm nay đến 1 năm sau để đảm bảo user luôn thấy giá mới
-          // QUAN TRỌNG: Sử dụng seat.type của từng ghế riêng biệt, không dùng seatType chung
+        
           if (seatPrice && seatPrice.trim() !== '' && !isNaN(parseFloat(seatPrice)) && parseFloat(seatPrice) > 0) {
             try {
               const priceValue = parseFloat(seatPrice);
               
-              // Lấy ngày hôm nay (chỉ lấy phần date, không có time)
+             
               const today = new Date();
               today.setHours(0, 0, 0, 0);
-              const todayStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+              const todayStr = today.toISOString().split('T')[0]; 
               
-              // Tính ngày kết thúc: 1 năm sau (để giá có hiệu lực lâu dài)
+            
               const endDate = new Date(today);
               endDate.setFullYear(endDate.getFullYear() + 1);
-              const endDateStr = endDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+              const endDateStr = endDate.toISOString().split('T')[0]; 
               
-              // Lấy loại ghế của ghế hiện tại (ưu tiên seat.type, fallback về seatType)
+            
               const currentSeatType = seat.type || seatType || "STANDARD";
               
-              // Tạo giá vé cho cả 2D và 3D, và cho cả ngày thường VÀ cuối tuần
-              // để đảm bảo giá áp dụng cho tất cả trường hợp
+             
               const movieTypes = ['2D', '3D'];
-              const dayTypes = [false, true]; // false = ngày thường (T2-T5), true = cuối tuần (T6, T7, CN)
+              const dayTypes = [false, true]; 
               
               let successCount = 0;
               let failCount = 0;
@@ -448,18 +433,18 @@ export default function SeatManagement() {
               for (const typeMovie of movieTypes) {
                 for (const dayType of dayTypes) {
                   const ticketPriceData = {
-                    typeSeat: currentSeatType, // Sử dụng loại ghế của ghế hiện tại
+                    typeSeat: currentSeatType, 
                     typeMovie: typeMovie,
                     price: priceValue,
                     dayType: dayType,
                     startTime: "01:00",
                     endTime: "23:59",
-                    theaterId: theaterId, // null = áp dụng cho tất cả rạp, có giá trị = áp dụng cho rạp cụ thể
-                    startDate: todayStr, // Ngày bắt đầu = hôm nay
-                    endDate: endDateStr, // Ngày kết thúc = 1 năm sau (có hiệu lực lâu dài)
+                    theaterId: theaterId, 
+                    startDate: todayStr, 
+                    endDate: endDateStr, 
                   };
 
-                  // Tạo giá vé mới (có hiệu lực từ hôm nay đến 1 năm sau)
+                  
                   try {
                     const priceRes = await ticketPriceService.createTicketPrice(ticketPriceData);
                     if (priceRes.status === 201 || priceRes.status === 200) {
@@ -476,7 +461,6 @@ export default function SeatManagement() {
                 }
               }
               
-              // Log tổng kết cho từng ghế
               if (successCount > 0) {
                 console.log(`✅ Đã tạo ${successCount} giá vé cho ghế ${seat.seatNumber || seat.id} (${currentSeatType})`);
               }
@@ -485,14 +469,12 @@ export default function SeatManagement() {
               }
             } catch (priceError) {
               console.error(`Error saving ticket price for seat ${seat.seatNumber || seat.id}:`, priceError);
-              // Không throw error để không ảnh hưởng đến việc lưu ghế
-              // Chỉ log warning
+              
               const errorMsg = priceError.response?.data?.message || priceError.message || "Lỗi không xác định";
               console.warn(`Không thể lưu giá vé cho ghế ${seat.seatNumber || seat.id}: ${errorMsg}`);
             }
           } else {
-            // Không nhập giá hoặc giá không hợp lệ
-            // Giá vé giữ nguyên (không tạo mới, không cập nhật)
+            
             console.log(`Không có giá mới cho ghế ${seat.seatNumber || seat.id}, giữ nguyên giá cũ`);
           }
           
@@ -509,17 +491,16 @@ export default function SeatManagement() {
 
       const results = await Promise.allSettled(updatePromises);
       
-      // Xử lý kết quả từ Promise.allSettled
       let successCount = 0;
       let failCount = 0;
       const errorMessages = [];
 
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
-          // result.value là { status: 'fulfilled'/'rejected', value: res, reason: ..., seat: ... }
+          
           const res = result.value;
           if (res.status === 'fulfilled') {
-            // Kiểm tra HTTP status code từ response
+            
             const httpStatus = res.value?.status;
             if (httpStatus === 200 || httpStatus === 201) {
               successCount++;
@@ -531,7 +512,7 @@ export default function SeatManagement() {
               }
             }
           } else {
-            // res.status === 'rejected'
+           
             failCount++;
             const errorMsg = res.reason || "Lỗi không xác định";
             if (!errorMessages.includes(errorMsg)) {
@@ -539,7 +520,7 @@ export default function SeatManagement() {
             }
           }
         } else {
-          // Promise.allSettled result bị rejected (không nên xảy ra vì đã catch trong map)
+       
           failCount++;
           const errorMsg = result.reason?.message || result.reason || "Lỗi không xác định";
           if (!errorMessages.includes(errorMsg)) {
@@ -639,10 +620,10 @@ export default function SeatManagement() {
         setIsLoading(false);
       }
     } else if (bookedSeats.length > 0) {
-      // Tất cả ghế đã được đặt
+      
       toast.error(`Không thể xóa! Tất cả ${bookedSeats.length} ghế đã được đặt.`);
     } else {
-      // Tất cả ghế chưa được đặt - xóa hết
+  
       if (!window.confirm(
         `Bạn có chắc chắn muốn xóa toàn bộ ${seats.length} ghế của phòng này không?\n\n` +
         `Hành động này không thể hoàn tác!`
@@ -673,7 +654,7 @@ export default function SeatManagement() {
     }
   };
 
-  // Parse seat number để lấy row và col
+  
   const parseSeatNumber = (seatNumber) => {
     const match = seatNumber.match(/^([A-Z]+)(\d+)$/);
     if (match) {
@@ -682,7 +663,6 @@ export default function SeatManagement() {
     return null;
   };
 
-  // Tạo grid từ seats
   const createSeatGrid = () => {
     const grid = {};
     seats.forEach(seat => {
@@ -698,12 +678,12 @@ export default function SeatManagement() {
   const seatGrid = createSeatGrid();
   const rowsArray = Array.from({ length: rows }, (_, i) => String.fromCharCode(65 + i));
 
-  // Kiểm tra ghế đã được đặt
+
   const isSeatBooked = (seat) => {
     return seat?.bookingSeats && seat.bookingSeats.length > 0;
   };
 
-  // Kiểm tra ghế có được chọn không
+  
   const isSeatSelected = (seat, seatNumber) => {
     if (selectedSeats.length === 0) return false;
     
@@ -713,17 +693,17 @@ export default function SeatManagement() {
     if (!currentSeatNumber) return false;
     
     return selectedSeats.some(s => {
-      // So sánh bằng ID nếu cả hai đều có ID
+    
       if (currentSeatId && s.id) {
         return s.id === currentSeatId;
       }
-      // So sánh bằng seatNumber
+      
       const sNumber = String(s.seatNumber || "");
       return sNumber === currentSeatNumber;
     });
   };
 
-  // Kiểm tra ghế có đang được chỉnh sửa không
+ 
   const isSeatEditing = (seat, seatNumber) => {
     if (!editingSeat) return false;
     
@@ -734,15 +714,15 @@ export default function SeatManagement() {
     
     if (!currentSeatNumber && !currentSeatId) return false;
     
-    // So sánh bằng ID nếu cả hai đều có ID
+   
     if (currentSeatId && editingId) {
       return currentSeatId === editingId;
     }
-    // So sánh bằng seatNumber
+   
     return currentSeatNumber === editingNumber;
   };
 
-  // Lấy màu cho từng loại ghế
+ 
   const getSeatColor = (seat) => {
     if (!seat) return "#2b3448"; // Chưa có ghế
     if (seat.isHidden) return "#ffffff"; // Ghế bị ẩn - màu trắng

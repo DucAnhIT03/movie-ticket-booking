@@ -72,5 +72,13 @@ export class CreateMovieDto {
   @IsDateString({}, { message: 'Ngày kết thúc công chiếu phải là định dạng ngày giờ hợp lệ (ISO 8601)' })
   @ApiPropertyOptional({ example: '2025-02-15T00:00:00.000Z', description: 'Ngày kết thúc công chiếu' })
   endDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional({ 
+    example: 'PHIM ĐƯỢC PHỔ BIẾN ĐẾN NGƯỜI XEM TỪ ĐỦ 13 TUỔI TRỞ LÊN (13+)', 
+    description: 'Cảnh báo yêu cầu của phim' 
+  })
+  ratingWarning?: string;
 }
 

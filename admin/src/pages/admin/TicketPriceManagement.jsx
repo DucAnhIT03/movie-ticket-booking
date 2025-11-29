@@ -17,7 +17,7 @@ export default function TicketPriceManagement() {
   const [theaters, setTheaters] = useState([]);
   const [movies, setMovies] = useState([]);
 
-  // Load từ API
+  
   useEffect(() => {
     loadTicketPrices();
     loadTheaters();
@@ -57,7 +57,7 @@ export default function TicketPriceManagement() {
       if (response.status === 200) {
         const data = response.data;
         const items = data.items || data || [];
-        // Convert từ camelCase sang snake_case để tương thích với code hiện tại
+        
         const convertedItems = items.map(item => ({
           id: item.id,
           type_seat: item.typeSeat || item.type_seat,
@@ -96,32 +96,31 @@ export default function TicketPriceManagement() {
   };
 
   const handleSavePrice = async (data) => {
-    // Validate price
+  
     if (data.price < 0) {
       toast.error("Giá vé không được nhỏ hơn 0!");
       return;
     }
 
-    // Validate seat type
+   
     const validSeat = ["STANDARD", "VIP", "SWEETBOX"];
     if (!validSeat.includes(data.type_seat)) {
       toast.error("Loại ghế không hợp lệ!");
       return;
     }
 
-    // Validate movie - phải chọn phim hoặc loại phim
     if (!data.movie_id && !data.type_movie) {
       toast.error("Vui lòng chọn phim hoặc loại phim!");
       return;
     }
 
-    // Validate thời gian
+ 
     if (data.start_time >= data.end_time) {
       toast.error("Giờ kết thúc phải lớn hơn giờ bắt đầu!");
       return;
     }
 
-    // Validate ngày
+
     if (data.start_date && data.end_date && new Date(data.start_date) > new Date(data.end_date)) {
       toast.error("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!");
       return;
@@ -130,22 +129,22 @@ export default function TicketPriceManagement() {
     try {
       const selectedTheaterIds = data.theater_ids || [];
       
-      // Lấy typeMovie từ phim được chọn nếu có
-      let typeMovie = data.type_movie || '2D'; // Mặc định là 2D
+     
+      let typeMovie = data.type_movie || '2D'; 
       if (data.movie_id) {
         const selectedMovie = movies.find(m => m.id === parseInt(data.movie_id));
         if (selectedMovie && selectedMovie.type) {
-          typeMovie = selectedMovie.type; // Lấy type từ phim (2D hoặc 3D)
+          typeMovie = selectedMovie.type; 
         }
       }
       
-      // Đảm bảo có typeMovie hoặc movieId
+      
       if (!typeMovie && !data.movie_id) {
         toast.error("Vui lòng chọn phim hoặc loại phim!");
         return;
       }
       
-      // Nếu có chọn rạp, tạo giá vé cho mỗi rạp
+    
       if (selectedTheaterIds.length > 0) {
         const ticketPrices = selectedTheaterIds.map(theaterId => {
           const ticketData = {
@@ -157,15 +156,15 @@ export default function TicketPriceManagement() {
             theaterId: theaterId,
           };
           
-          // Luôn thêm typeMovie (bắt buộc)
+       
           ticketData.typeMovie = typeMovie;
           
-          // Thêm movieId nếu có
+         
           if (data.movie_id) {
             ticketData.movieId = parseInt(data.movie_id);
           }
           
-          // Thêm dates nếu có
+        
           if (data.start_date) {
             ticketData.startDate = data.start_date;
           }
@@ -186,7 +185,7 @@ export default function TicketPriceManagement() {
           console.error("Error response:", response);
         }
       } else {
-        // Nếu không chọn rạp, tạo giá vé áp dụng cho tất cả rạp (theaterId = null)
+        
         const apiData = {
           typeSeat: data.type_seat,
           price: parseFloat(data.price),
@@ -196,15 +195,15 @@ export default function TicketPriceManagement() {
           theaterId: null,
         };
         
-        // Luôn thêm typeMovie (bắt buộc)
+        
         apiData.typeMovie = typeMovie;
         
-        // Thêm movieId nếu có
+       
         if (data.movie_id) {
           apiData.movieId = parseInt(data.movie_id);
         }
         
-        // Thêm dates nếu có
+      
         if (data.start_date) {
           apiData.startDate = data.start_date;
         }
@@ -213,7 +212,7 @@ export default function TicketPriceManagement() {
         }
 
         if (data.id) {
-          // Update
+        
           const response = await ticketPriceService.updateTicketPrice(data.id, apiData);
           if (response.status === 200) {
             toast.success("Cập nhật giá vé thành công!");
@@ -222,7 +221,7 @@ export default function TicketPriceManagement() {
             toast.error("Lỗi khi cập nhật giá vé");
           }
         } else {
-          // Create
+      
           const response = await ticketPriceService.createTicketPrice(apiData);
           if (response.status === 201 || response.status === 200) {
             toast.success("Tạo giá vé thành công!");
@@ -265,7 +264,7 @@ export default function TicketPriceManagement() {
     loadTicketPrices();
   };
 
-  // ✅ Filter theo type_seat hoặc type_movie
+
   const filtered = ticketPrices.filter(
     (t) =>
       t.type_seat.toLowerCase().includes(searchTerm.toLowerCase()) ||

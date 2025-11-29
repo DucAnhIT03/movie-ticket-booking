@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Trash2, Settings, Search, Film, Calendar } from "lucide-react";
+import { PlusCircle, Trash2, Settings, Search, Film, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-toastify";
 import MovieModal from "./MovieModal";
 import MovieShowtimeManager from "./MovieShowtimeManager";
@@ -12,11 +12,16 @@ import { sortByNewest } from "../../utils/sortUtils";
 
 export default function MovieManagement() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
   const [genres, setGenres] = useState([]);
   const [theaters, setTheaters] = useState([]);
   const [screens, setScreens] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,18 +30,30 @@ export default function MovieManagement() {
   const [selectedMovieForShowtime, setSelectedMovieForShowtime] = useState(null);
 
   useEffect(() => {
-    loadMovies();
     loadGenres();
     loadTheaters();
     loadScreens();
   }, []);
 
+  useEffect(() => {
+    loadMovies();
+  }, [page, limit, query]);
+
   const loadMovies = async () => {
     setIsLoading(true);
     try {
-      const res = await movieService.getAllMovies();
+      const params = {
+        page,
+        limit,
+        search: query || undefined,
+      };
+      const res = await movieService.getAllMovies(params);
       if (res.status === 200) {
-        setMovies(sortByNewest(res.data.items || res.data || []));
+        const data = res.data || {};
+        const items = data.items || [];
+        setMovies(sortByNewest(items));
+        setTotal(data.total || items.length);
+        setTotalPages(data.totalPages || 1);
       } else if (res.status === 401) {
         toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
       } else if (res.status === 403) {
@@ -123,6 +140,7 @@ export default function MovieManagement() {
         releaseDate: releaseDate,
         startDate: startDate,
         endDate: endDate,
+        ratingWarning: movieData.ratingWarning || movieData.rating_warning || null,
       };
 
       // Chỉ thêm file nếu có upload mới
@@ -476,7 +494,12 @@ export default function MovieManagement() {
       const res = await movieService.deleteMovie(movieId);
       if (res.status === 200) {
         toast.success("Xóa phim thành công!");
-        loadMovies();
+        // Nếu trang hiện tại không còn item nào, quay về trang trước
+        if (movies.length === 1 && page > 1) {
+          setPage(page - 1);
+        } else {
+          loadMovies();
+        }
       } else if (res.status === 404) {
         toast.error("Không tìm thấy phim");
       } else {
@@ -493,15 +516,27 @@ export default function MovieManagement() {
     setShowShowtimeManager(true);
   };
 
-  // ✅ Tìm kiếm (client-side)
-  const filtered = movies.filter((m) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      (m.title || "").toLowerCase().includes(searchLower) ||
-      (m.author || "").toLowerCase().includes(searchLower) ||
-      (m.country || "").toLowerCase().includes(searchLower)
-    );
-  });
+  const handleSearch = () => {
+    setPage(1);
+    setQuery(searchTerm.trim());
+  };
+
+  const handleResetSearch = () => {
+    setSearchTerm("");
+    setQuery("");
+    setPage(1);
+  };
+
+  const gotoPrev = () => {
+    if (page > 1) setPage((prev) => prev - 1);
+  };
+
+  const gotoNext = () => {
+    if (page < totalPages) setPage((prev) => prev + 1);
+  };
+
+  const currentRangeStart = (page - 1) * limit + 1;
+  const currentRangeEnd = Math.min(total, page * limit);
 
   return (
     <div style={{ color: "#fff" }}>
@@ -509,27 +544,64 @@ export default function MovieManagement() {
         <Film /> Quản Lý Phim
       </h1>
 
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
-        <div style={{ position: "relative" }}>
-          <Search
-            style={{ position: "absolute", left: "10px", top: "8px", color: "#aaa" }}
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Tìm kiếm phim..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", gap: "10px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <div style={{ position: "relative" }}>
+            <Search
+              style={{ position: "absolute", left: "10px", top: "8px", color: "#aaa" }}
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Tìm kiếm phim..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                }
+              }}
+              style={{
+                background: "#1a1f29",
+                color: "#fff",
+                border: "1px solid #333",
+                borderRadius: "5px",
+                padding: "8px 10px 8px 35px",
+                width: "250px",
+                outline: "none"
+              }}
+            />
+          </div>
+          <button
+            onClick={handleSearch}
             style={{
-              background: "#1a1f29",
+              background: "#2563eb",
               color: "#fff",
-              border: "1px solid #333",
-              borderRadius: "5px",
-              padding: "8px 10px 8px 35px",
-              width: "250px",
-              outline: "none"
+              padding: "8px 16px",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "500",
             }}
-          />
+          >
+            Tìm kiếm
+          </button>
+          {query && (
+            <button
+              onClick={handleResetSearch}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                padding: "8px 16px",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "500",
+              }}
+            >
+              Xóa lọc
+            </button>
+          )}
         </div>
 
         <button
@@ -556,9 +628,9 @@ export default function MovieManagement() {
         <div style={{ textAlign: "center", padding: "40px", color: "#fff" }}>
           Đang tải dữ liệu...
         </div>
-      ) : filtered.length === 0 ? (
+      ) : movies.length === 0 ? (
         <div style={{ textAlign: "center", padding: "40px", color: "#fff" }}>
-          {searchTerm ? "Không tìm thấy phim nào" : "Chưa có phim nào"}
+          {query ? "Không tìm thấy phim nào" : "Chưa có phim nào"}
         </div>
       ) : (
         <table style={{ width: "100%", borderCollapse: "collapse", background: "#1a1f29", color: "#fff" }}>
@@ -577,7 +649,7 @@ export default function MovieManagement() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((movie) => (
+            {movies.map((movie) => (
               <tr key={movie.id} style={{ borderBottom: "1px solid #2a303d" }}>
                 <td style={{ padding: "10px", textAlign: "center" }}>
                   {movie.image ? (
@@ -688,6 +760,88 @@ export default function MovieManagement() {
         </table>
       )}
 
+      {/* Phân trang */}
+      {!isLoading && movies.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "16px",
+            flexWrap: "wrap",
+            gap: "10px",
+          }}
+        >
+          <div style={{ color: "#cbd5f5" }}>
+            {total > 0
+              ? `Hiển thị ${currentRangeStart}-${currentRangeEnd} trong ${total} phim`
+              : "Không có dữ liệu"}
+          </div>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <select
+              value={limit}
+              onChange={(e) => {
+                setLimit(Number(e.target.value));
+                setPage(1);
+              }}
+              style={{
+                background: "#1a1f29",
+                color: "#fff",
+                border: "1px solid #333",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: "pointer",
+              }}
+            >
+              {[10, 20, 50].map((size) => (
+                <option key={size} value={size}>
+                  {size} / trang
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={gotoPrev}
+              disabled={page === 1 || isLoading}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: page === 1 || isLoading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                opacity: page === 1 || isLoading ? 0.5 : 1,
+              }}
+            >
+              <ChevronLeft size={16} /> Trước
+            </button>
+            <div style={{ display: "flex", alignItems: "center", color: "#cbd5f5" }}>
+              Trang {page}/{Math.max(totalPages, 1)}
+            </div>
+            <button
+              onClick={gotoNext}
+              disabled={page >= totalPages || isLoading}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: page >= totalPages || isLoading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                opacity: page >= totalPages || isLoading ? 0.5 : 1,
+              }}
+            >
+              Sau <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
         <MovieModal
           title={selectedMovie ? "Sửa Phim" : "Thêm Phim"}
@@ -711,7 +865,8 @@ export default function MovieManagement() {
               ? genres
                   .filter(g => selectedMovie.genres.includes(g.genreName))
                   .map(g => g.id)
-              : []
+              : [],
+            ratingWarning: selectedMovie.ratingWarning || selectedMovie.rating_warning || ""
           } : null}
           fields={[
             { name: "title", label: "Tiêu đề", type: "text", required: true },
@@ -766,6 +921,12 @@ export default function MovieManagement() {
             },
             { name: "start_date", label: "Ngày bắt đầu công chiếu", type: "date", required: !selectedMovie, row: "start-end-date" },
             { name: "end_date", label: "Ngày kết thúc công chiếu", type: "date", required: !selectedMovie, row: "start-end-date" },
+            { 
+              name: "ratingWarning", 
+              label: "Cảnh báo yêu cầu của phim", 
+              type: "text",
+              placeholder: "Ví dụ: PHIM ĐƯỢC PHỔ BIẾN ĐẾN NGƯỜI XEM TỪ ĐỦ 13 TUỔI TRỞ LÊN (13+)"
+            },
             {
               name: "showtimes",
               label: "Giờ chiếu trong ngày (có thể thêm nhiều giờ)",

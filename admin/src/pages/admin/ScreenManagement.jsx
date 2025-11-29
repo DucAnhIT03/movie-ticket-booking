@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Trash2, Settings, Search, Monitor } from "lucide-react";
+import { PlusCircle, Trash2, Settings, Search, Monitor, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-toastify";
 import MovieModal from "./MovieModal"; // vẫn dùng modal cũ
 import screenService from "../../services/screens/screenService";
@@ -8,25 +8,43 @@ import { sortByNewest } from "../../utils/sortUtils";
 
 export default function ScreenManagement() {
     const [searchTerm, setSearchTerm] = useState("");
+    const [query, setQuery] = useState("");
     const [screens, setScreens] = useState([]);
     const [theaters, setTheaters] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [total, setTotal] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedScreen, setSelectedScreen] = useState(null);
+    const [theaterFilter, setTheaterFilter] = useState("");
 
-    // ✅ Lấy dữ liệu từ API
+  
     useEffect(() => {
-        loadScreens();
         loadTheaters();
     }, []);
+
+    useEffect(() => {
+        loadScreens();
+    }, [page, limit, query, theaterFilter]);
 
     const loadScreens = async () => {
         setIsLoading(true);
         try {
-            const res = await screenService.getAllScreens();
+            const params = {
+                page,
+                limit,
+                search: query || undefined,
+                theater_id: theaterFilter || undefined,
+            };
+            const res = await screenService.getAllScreens(params);
             if (res.status === 200) {
-                // Backend trả về { items: [], total, page, limit, totalPages }
-                setScreens(sortByNewest(res.data.items || res.data || []));
+                const data = res.data || {};
+                const items = data.items || [];
+                setScreens(sortByNewest(items));
+                setTotal(data.total || items.length);
+                setTotalPages(data.totalPages || 1);
             } else if (res.status === 401) {
                 toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
             } else if (res.status === 403) {
@@ -51,7 +69,7 @@ export default function ScreenManagement() {
             }
         } catch (error) {
             console.error("Error loading theaters:", error);
-            // Không hiển thị toast vì đây là load background
+            
         }
     };
 
@@ -66,7 +84,7 @@ export default function ScreenManagement() {
     };
 
     const handleSaveScreen = async (data) => {
-        // ✅ Validate
+        
         if (!data.name || !data.name.trim()) {
             toast.error("Tên phòng chiếu không được để trống!");
             return;
@@ -92,11 +110,11 @@ export default function ScreenManagement() {
 
         try {
             if (data.id) {
-                // Cập nhật phòng
+                
                 const res = await screenService.updateScreen(data.id, payload);
                 if (res.status === 200) {
                     toast.success("Cập nhật phòng chiếu thành công!");
-                    loadScreens(); // Reload danh sách
+                    loadScreens(); 
                     handleCloseModal();
                 } else if (res.status === 404) {
                     toast.error("Không tìm thấy phòng chiếu");
@@ -106,11 +124,11 @@ export default function ScreenManagement() {
                     toast.error(res.data?.message || "Lỗi khi cập nhật phòng chiếu");
                 }
             } else {
-                // Thêm phòng mới
+                
                 const res = await screenService.createScreen(payload);
                 if (res.status === 201) {
                     toast.success("Thêm phòng chiếu thành công!");
-                    loadScreens(); // Reload danh sách
+                    loadScreens(); 
                     handleCloseModal();
                 } else if (res.status === 400) {
                     toast.error(res.data?.message || "Dữ liệu không hợp lệ");
@@ -134,7 +152,12 @@ export default function ScreenManagement() {
             const res = await screenService.deleteScreen(id);
             if (res.status === 200) {
                 toast.success("Xóa phòng chiếu thành công!");
-                loadScreens(); // Reload danh sách
+                
+                if (screens.length === 1 && page > 1) {
+                    setPage(page - 1);
+                } else {
+                    loadScreens();
+                }
             } else if (res.status === 404) {
                 toast.error("Không tìm thấy phòng chiếu");
             } else {
@@ -146,13 +169,36 @@ export default function ScreenManagement() {
         }
     };
 
-    // ✅ Helper function để lấy thông tin rạp từ theater_id
+    const handleSearch = () => {
+        setPage(1);
+        setQuery(searchTerm.trim());
+    };
+
+    const handleResetSearch = () => {
+        setSearchTerm("");
+        setQuery("");
+        setTheaterFilter("");
+        setPage(1);
+    };
+
+    const gotoPrev = () => {
+        if (page > 1) setPage((prev) => prev - 1);
+    };
+
+    const gotoNext = () => {
+        if (page < totalPages) setPage((prev) => prev + 1);
+    };
+
+    const currentRangeStart = (page - 1) * limit + 1;
+    const currentRangeEnd = Math.min(total, page * limit);
+
+    
     const getTheaterInfo = (theaterId) => {
         const theater = theaters.find(t => t.id === theaterId);
         return theater || null;
     };
 
-    // ✅ Format ngày tháng
+    
     const formatDate = (dateString) => {
         if (!dateString) return "—";
         try {
@@ -169,19 +215,6 @@ export default function ScreenManagement() {
         }
     };
 
-    // ✅ Tìm kiếm (client-side)
-    const filtered = screens.filter((s) => {
-        const searchLower = searchTerm.toLowerCase();
-        const theater = getTheaterInfo(s.theater_id);
-        return (
-            (s.name || "").toLowerCase().includes(searchLower) ||
-            String(s.id).includes(searchTerm) ||
-            String(s.theater_id).includes(searchTerm) ||
-            String(s.seat_capacity).includes(searchTerm) ||
-            (theater?.name || "").toLowerCase().includes(searchLower) ||
-            (theater?.location || "").toLowerCase().includes(searchLower)
-        );
-    });
 
     return (
         <div style={{ color: "#fff" }}>
@@ -203,52 +236,117 @@ export default function ScreenManagement() {
                     display: "flex",
                     justifyContent: "space-between",
                     marginBottom: "15px",
+                    gap: "10px",
+                    flexWrap: "wrap",
+                    alignItems: "center",
                 }}
             >
-                <div style={{ position: "relative" }}>
-                    <Search
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ position: "relative" }}>
+                        <Search
+                            style={{
+                                position: "absolute",
+                                left: "10px",
+                                top: "8px",
+                                color: "#aaa",
+                            }}
+                            size={18}
+                        />
+                        <input
+                            type="text"
+                            placeholder="Tìm theo tên phòng hoặc tên rạp..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyPress={(e) => {
+                                if (e.key === "Enter") {
+                                    handleSearch();
+                                }
+                            }}
+                            style={{
+                                background: "#1a1f29",
+                                color: "#fff",
+                                border: "1px solid #333",
+                                borderRadius: "5px",
+                                padding: "8px 10px 8px 35px",
+                                width: "260px",
+                                outline: "none",
+                            }}
+                        />
+                    </div>
+                    <button
+                        onClick={handleSearch}
                         style={{
-                            position: "absolute",
-                            left: "10px",
-                            top: "8px",
-                            color: "#aaa",
+                            background: "#2563eb",
+                            color: "#fff",
+                            padding: "8px 16px",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontWeight: "500",
                         }}
-                        size={18}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Tìm kiếm phòng chiếu..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                    >
+                        Tìm kiếm
+                    </button>
+                    {query && (
+                        <button
+                            onClick={handleResetSearch}
+                            style={{
+                                background: "#1f2937",
+                                color: "#fff",
+                                padding: "8px 16px",
+                                border: "1px solid #374151",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontWeight: "500",
+                            }}
+                        >
+                            Xóa lọc
+                        </button>
+                    )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <select
+                        value={theaterFilter}
+                        onChange={(e) => {
+                            setPage(1);
+                            setTheaterFilter(e.target.value);
+                        }}
                         style={{
                             background: "#1a1f29",
                             color: "#fff",
                             border: "1px solid #333",
-                            borderRadius: "5px",
-                            padding: "8px 10px 8px 35px",
-                            width: "250px",
-                            outline: "none",
+                            borderRadius: "6px",
+                            padding: "8px 12px",
+                            minWidth: "200px",
                         }}
-                    />
-                </div>
+                    >
+                        <option value="">Tất cả rạp</option>
+                        {theaters.map((t) => (
+                            <option key={t.id} value={t.id}>
+                                {t.name}
+                            </option>
+                        ))}
+                    </select>
 
-                <button
-                    onClick={() => handleOpenModal(null)}
-                    style={{
-                        background: "#e53935",
-                        color: "#fff",
-                        padding: "10px 18px",
-                        border: "none",
-                        borderRadius: "6px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        cursor: "pointer",
-                        fontWeight: "500",
-                    }}
-                >
-                    <PlusCircle size={18} /> Thêm Phòng Chiếu
-                </button>
+                    <button
+                        onClick={() => handleOpenModal(null)}
+                        style={{
+                            background: "#e53935",
+                            color: "#fff",
+                            padding: "10px 18px",
+                            border: "none",
+                            borderRadius: "6px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            cursor: "pointer",
+                            fontWeight: "500",
+                        }}
+                    >
+                        <PlusCircle size={18} /> Thêm Phòng Chiếu
+                    </button>
+                </div>
             </div>
 
             {/* Loading state */}
@@ -256,9 +354,9 @@ export default function ScreenManagement() {
                 <div style={{ textAlign: "center", padding: "40px", color: "#fff" }}>
                     Đang tải dữ liệu...
                 </div>
-            ) : filtered.length === 0 ? (
+            ) : screens.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "40px", color: "#fff" }}>
-                    {searchTerm ? "Không tìm thấy phòng chiếu nào" : "Chưa có phòng chiếu nào"}
+                    {query ? "Không tìm thấy phòng chiếu nào" : "Chưa có phòng chiếu nào"}
                 </div>
             ) : (
                 /* Bảng phòng chiếu */
@@ -271,8 +369,7 @@ export default function ScreenManagement() {
                     }}
                 >
                     <thead style={{ background: "#242b36" }}>
-                        <tr>
-                            <th style={{ padding: "10px", textAlign: "center" }}>ID</th>
+                    <tr>
                             <th style={{ padding: "10px", textAlign: "center" }}>Tên phòng</th>
                             <th style={{ padding: "10px", textAlign: "center" }}>
                                 Số lượng ghế
@@ -285,11 +382,10 @@ export default function ScreenManagement() {
                     </thead>
 
                     <tbody>
-                        {filtered.map((screen) => {
+                        {screens.map((screen) => {
                             const theater = getTheaterInfo(screen.theater_id);
                             return (
                                 <tr key={screen.id} style={{ borderBottom: "1px solid #2a303d" }}>
-                                    <td style={{ padding: "10px", textAlign: "center" }}>{screen.id || "—"}</td>
                                     <td style={{ padding: "10px", textAlign: "center" }}>{screen.name || "—"}</td>
                                     <td style={{ padding: "10px", textAlign: "center" }}>
                                         {screen.seat_capacity !== undefined ? screen.seat_capacity : "—"}
@@ -339,6 +435,88 @@ export default function ScreenManagement() {
                         })}
                     </tbody>
                 </table>
+            )}
+
+            {/* Phân trang */}
+            {!isLoading && screens.length > 0 && (
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: "16px",
+                        flexWrap: "wrap",
+                        gap: "10px",
+                    }}
+                >
+                    <div style={{ color: "#cbd5f5" }}>
+                        {total > 0
+                            ? `Hiển thị ${currentRangeStart}-${currentRangeEnd} trong ${total} phòng chiếu`
+                            : "Không có dữ liệu"}
+                    </div>
+                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                        <select
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setPage(1);
+                            }}
+                            style={{
+                                background: "#1a1f29",
+                                color: "#fff",
+                                border: "1px solid #333",
+                                borderRadius: "6px",
+                                padding: "6px 12px",
+                                cursor: "pointer",
+                            }}
+                        >
+                            {[10, 20, 50].map((size) => (
+                                <option key={size} value={size}>
+                                    {size} / trang
+                                </option>
+                            ))}
+                        </select>
+                        <button
+                            onClick={gotoPrev}
+                            disabled={page === 1 || isLoading}
+                            style={{
+                                background: "#1f2937",
+                                color: "#fff",
+                                border: "1px solid #374151",
+                                borderRadius: "6px",
+                                padding: "6px 12px",
+                                cursor: page === 1 || isLoading ? "not-allowed" : "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                opacity: page === 1 || isLoading ? 0.5 : 1,
+                            }}
+                        >
+                            <ChevronLeft size={16} /> Trước
+                        </button>
+                        <div style={{ display: "flex", alignItems: "center", color: "#cbd5f5" }}>
+                            Trang {page}/{Math.max(totalPages, 1)}
+                        </div>
+                        <button
+                            onClick={gotoNext}
+                            disabled={page >= totalPages || isLoading}
+                            style={{
+                                background: "#1f2937",
+                                color: "#fff",
+                                border: "1px solid #374151",
+                                borderRadius: "6px",
+                                padding: "6px 12px",
+                                cursor: page >= totalPages || isLoading ? "not-allowed" : "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                opacity: page >= totalPages || isLoading ? 0.5 : 1,
+                            }}
+                        >
+                            Sau <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
             )}
 
             {/* Modal thêm/sửa phòng */}

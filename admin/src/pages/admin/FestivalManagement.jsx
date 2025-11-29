@@ -18,13 +18,12 @@ export default function FestivalManagement() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   
-  // Poster state
   const [poster, setPoster] = useState(null);
   const [posterLoading, setPosterLoading] = useState(false);
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const [posterPreview, setPosterPreview] = useState("");
 
-  // ✅ Load dữ liệu từ API
+
   const loadFestivals = async () => {
     setLoading(true);
     try {
@@ -50,7 +49,7 @@ export default function FestivalManagement() {
     loadFestivals();
   }, [page]);
   
-  // Load poster
+ 
   const loadPoster = async () => {
     setPosterLoading(true);
     try {
@@ -66,7 +65,7 @@ export default function FestivalManagement() {
     }
   };
   
-  // Handle poster image change
+ 
   const handlePosterImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -78,12 +77,12 @@ export default function FestivalManagement() {
     }
   };
   
-  // Handle remove poster preview
+
   const handleRemovePosterPreview = () => {
     setPosterPreview("");
   };
   
-  // Handle save poster
+
   const handleSavePoster = async () => {
     setUploadingPoster(true);
     
@@ -96,13 +95,13 @@ export default function FestivalManagement() {
       if (file) {
         formData.append("file", file);
       } else if (posterPreview) {
-        // Nếu có preview (URL cũ hoặc URL mới từ upload khác)
+        
         formData.append("image_url", posterPreview);
       } else if (poster?.image_url) {
-        // Giữ nguyên URL cũ nếu có
+      
         formData.append("image_url", poster.image_url);
       } else {
-        // Nếu không có gì, gửi null để xóa poster
+      
         formData.append("image_url", "");
       }
 
@@ -127,7 +126,7 @@ export default function FestivalManagement() {
     }
   };
 
-  // Tìm kiếm với debounce
+ 
   useEffect(() => {
     const timer = setTimeout(() => {
       if (page === 1) {
@@ -140,30 +139,29 @@ export default function FestivalManagement() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // ✅ Mở modal
+ 
   const handleOpenModal = (item) => {
     setSelectedFestival(item);
     setIsModalOpen(true);
   };
 
-  // ✅ Đóng modal
+ 
   const handleCloseModal = () => {
     setSelectedFestival(null);
     setIsModalOpen(false);
   };
 
-  // ✅ Lưu festival
+
   const handleSaveFestival = async (data) => {
     setIsSaving(true);
     try {
-      // Tạo FormData để gửi (backend expect FormData vì có FileInterceptor)
+     
       const formData = new FormData();
       formData.append("title", data.title);
       if (data.content !== undefined && data.content !== null) {
         formData.append("content", data.content);
       }
-      // Nếu image là File object, gửi với key "file" (backend expect "file")
-      // Nếu image là URL string, gửi với key "image"
+    
       if (data.image) {
         if (data.image instanceof File || data.image instanceof Blob) {
           formData.append("file", data.image);
@@ -180,10 +178,10 @@ export default function FestivalManagement() {
 
       let response;
       if (data.id) {
-        // Cập nhật
+       
         response = await festivalService.update(data.id, formData);
       } else {
-        // Tạo mới
+        
         response = await festivalService.create(formData);
       }
 
@@ -192,7 +190,7 @@ export default function FestivalManagement() {
         if (page !== 1) {
           setPage(1);
         } else {
-          loadFestivals(); // Reload danh sách
+          loadFestivals(); 
         }
       } else {
         const errorMsg = response.data?.message || "Có lỗi xảy ra khi lưu lễ hội";
@@ -206,7 +204,7 @@ export default function FestivalManagement() {
     }
   };
 
-  // ✅ Xóa festival
+  
   const handleDeleteFestival = async (id) => {
     if (!window.confirm("Bạn chắc chắn muốn xóa lễ hội này?")) {
       return;
@@ -216,7 +214,7 @@ export default function FestivalManagement() {
     try {
       const response = await festivalService.delete(id);
       if (response.status === 200) {
-        loadFestivals(); // Reload danh sách
+        loadFestivals(); 
       } else {
         const errorMsg = response.data?.message || "Có lỗi xảy ra khi xóa lễ hội";
         alert(errorMsg);
@@ -229,7 +227,7 @@ export default function FestivalManagement() {
     }
   };
 
-  // ✅ Format ngày tháng
+  
   const formatDate = (dateString) => {
     if (dateString) {
       const date = new Date(dateString);

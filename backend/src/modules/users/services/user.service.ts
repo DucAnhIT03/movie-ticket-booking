@@ -9,7 +9,8 @@ import { ChangePasswordDto } from '../../auth/dtos/request/change-password.dto';
 import { UsersRepository } from '../repositories/users.repository';
 import { RoleRepository } from '../repositories/role.repository';
 import { UserRoleRepository } from '../repositories/user-role.repository';
-import { Status } from '../../../common/constants/enums';
+import { Roles, Status } from '../../../common/constants/enums';
+import { CreateEmployeeDto } from '../dtos/request/create-employee.dto';
 
 @Injectable()
 export class UserService {
@@ -28,7 +29,7 @@ export class UserService {
     const roleNames = (user.roles || [])
       .map((ur) => ur.role?.roleName)
       .filter(Boolean);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    
     const { password, ...profile } = user as any;
     return { ...profile, roles: roleNames };
   }
@@ -40,7 +41,7 @@ export class UserService {
     });
     if (!user) throw new NotFoundException('User not found');
     
-    // Chỉ cập nhật các field có giá trị trong dto
+
     if (dto.firstName !== undefined) user.firstName = dto.firstName;
     if (dto.lastName !== undefined) user.lastName = dto.lastName;
     if (dto.email !== undefined) user.email = dto.email;
@@ -50,7 +51,7 @@ export class UserService {
     
     const saved = await this.usersRepo.save(user);
     
-    // Reload với relations để trả về đầy đủ thông tin
+   
     const updatedUser = await this.usersRepo.findOne({
       where: { id: saved.id },
       relations: ['roles', 'roles.role'],
@@ -60,7 +61,7 @@ export class UserService {
       .map((ur) => ur.role?.roleName)
       .filter(Boolean);
     
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
     const { password, ...profile } = updatedUser as any;
     return { ...profile, roles: roleNames };
   }
@@ -76,12 +77,13 @@ export class UserService {
   }
 
   async assignRoleToUser(userId: number, roleName: string) {
-    // Validate roleName is a valid role
-    if (roleName !== 'ROLE_ADMIN' && roleName !== 'ROLE_USER') {
+    const normalizedRole = roleName?.toUpperCase() as Roles;
+    const allowedRoles: Roles[] = [Roles.ROLE_ADMIN, Roles.ROLE_USER, Roles.ROLE_EMPLOYEE];
+    if (!allowedRoles.includes(normalizedRole)) {
       throw new BadRequestException('Invalid role name');
     }
-    const role = await this.rolesRepo.findOne({ 
-      where: { roleName: roleName as 'ROLE_ADMIN' | 'ROLE_USER' } 
+    const role = await this.rolesRepo.findOne({
+      where: { roleName: normalizedRole } as any,
     });
     if (!role) throw new NotFoundException('Role not found');
     const exists = await this.userRolesRepo.findOne({
@@ -95,6 +97,50 @@ export class UserService {
     return { success: true };
   }
 
+  async createEmployeeAccount(dto: CreateEmployeeDto) {
+    const existing = await this.usersRepo.findOne({
+      where: { email: dto.email },
+    });
+    if (existing) {
+      throw new BadRequestException('Email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = this.usersRepo.create({
+      firstName: dto.firstName,
+      lastName: dto.lastName ?? '',
+      email: dto.email,
+      phone: dto.phone ?? undefined,
+      password: hashedPassword,
+      status: Status.ACTIVE,
+    });
+
+    const saved = await this.usersRepo.save(user);
+
+    const employeeRole = await this.rolesRepo.findOne({
+      where: { roleName: Roles.ROLE_EMPLOYEE } as any,
+    });
+    if (!employeeRole) {
+      throw new NotFoundException('Employee role not found');
+    }
+
+    await this.userRolesRepo.save(
+      this.userRolesRepo.create({ userId: saved.id, roleId: employeeRole.id }),
+    );
+
+    const reloaded = await this.usersRepo.findOne({
+      where: { id: saved.id },
+      relations: ['roles', 'roles.role'],
+    });
+
+    const roleNames = (reloaded?.roles || [])
+      .map((ur) => ur.role?.roleName)
+      .filter(Boolean);
+
+    const { password, ...profile } = reloaded as any;
+    return { ...profile, roles: roleNames };
+  }
+
   async findAll() {
     const users = await this.usersRepo.find({
       relations: ['roles', 'roles.role'],
@@ -103,7 +149,7 @@ export class UserService {
       const roleNames = (user.roles || [])
         .map((ur) => ur.role?.roleName)
         .filter(Boolean);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
       const { password, ...profile } = user as any;
       return { ...profile, roles: roleNames };
     });

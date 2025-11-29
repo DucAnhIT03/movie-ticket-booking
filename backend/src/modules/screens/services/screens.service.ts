@@ -18,10 +18,29 @@ export class ScreensService {
     return this.screensRepo.create(payload);
   }
 
-  async findAll(params?: { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; search?: string; theater_id?: number }): Promise<{ items: ScreenEntity[]; total: number; page: number; limit: number; totalPages: number }> {
+  async findAll(params?: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    search?: string;
+    theater_id?: number;
+  }): Promise<{ items: ScreenEntity[]; total: number; page: number; limit: number; totalPages: number }> {
     const page = Math.max(1, params?.page ?? 1);
     const limit = Math.max(1, Math.min(100, params?.limit ?? 10));
-    const sortBy = params?.sortBy ?? 'created_at';
+
+    // Map tên cột ở API sang tên thuộc tính entity để TypeORM hiểu đúng
+    const sortByMap: Record<string, string> = {
+      id: 'id',
+      name: 'name',
+      seat_capacity: 'seatCapacity',
+      theater_id: 'theaterId',
+      created_at: 'createdAt',
+      updated_at: 'updatedAt',
+    };
+
+    const requestedSortBy = params?.sortBy;
+    const sortBy = requestedSortBy && sortByMap[requestedSortBy] ? sortByMap[requestedSortBy] : 'createdAt';
     const sortOrder = params?.sortOrder ?? 'desc';
     const search = params?.search?.trim() || undefined;
     const theaterId = params?.theater_id;

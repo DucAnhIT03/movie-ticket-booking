@@ -740,7 +740,8 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
                   name={field.name}
                   value={formData[field.name] ?? ''}
                   onChange={handleChange}
-                          required={field.required !== false}
+                  required={field.required !== false}
+                  placeholder={field.placeholder || ''}
                 />
               )}
             </div>

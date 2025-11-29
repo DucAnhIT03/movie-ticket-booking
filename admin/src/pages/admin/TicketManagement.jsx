@@ -1,88 +1,214 @@
-import React, { useState, useEffect } from "react";
-import { PlusCircle, Trash2, Settings, Search, Ticket } from "lucide-react";
-import MovieModal from "./MovieModal";
-import { sortByNewest } from "../../utils/sortUtils";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Search,
+  Ticket,
+  RefreshCcw,
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle,
+  Trash2,
+} from "lucide-react";
+import { toast } from "react-toastify";
+import bookingService from "../../services/bookings/bookingService";
 
 export default function TicketManagement() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [tickets, setTickets] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [channelFilter, setChannelFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  // ✅ Lưu dữ liệu vào localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem("tickets");
-    if (stored) setTickets(sortByNewest(JSON.parse(stored)));
-    else {
-      // dữ liệu mẫu
-      setTickets(sortByNewest([
-        {
-          id: 1,
-          user_id: 101,
-          showtime_id: 201,
-          total_seat: 3,
-          total_price_movie: 270000,
-          created_at: new Date(),
-          updated_at: null,
-        },
-      ]));
+  const statusOptions = useMemo(
+    () => [
+      { label: "Tất cả trạng thái", value: "" },
+      { label: "Đã thanh toán", value: "BOOKED" },
+      { label: "Chờ thanh toán", value: "PENDING" },
+      { label: "Đã hủy", value: "CANCELLED" },
+      { label: "Thanh toán lỗi", value: "FAILED" },
+    ],
+    [],
+  );
+
+  const channelOptions = useMemo(
+    () => [
+      { label: "Mọi kênh", value: "" },
+      { label: "Online", value: "ONLINE" },
+      { label: "Tại quầy", value: "OFFLINE" },
+    ],
+    [],
+  );
+
+  const fetchTickets = async (override = {}) => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit,
+        q: query || undefined,
+        status: statusFilter || undefined,
+        channel: channelFilter || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        ...override,
+      };
+      const response = await bookingService.getAdminBookings(params);
+      if (response.status === 200) {
+        const data = response.data || {};
+        setTickets(data.items || []);
+        setTotal(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+        if (data.page && data.page !== page) {
+          setPage(data.page);
+        }
+      } else if (response.status === 401) {
+        toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại!");
+      } else if (response.status === 403) {
+        toast.error("Bạn không có quyền truy cập danh sách vé.");
+      } else {
+        toast.error(response.data?.message || "Không thể tải danh sách vé đã đặt.");
+      }
+    } catch (error) {
+      console.error("Fetch admin bookings error:", error);
+      toast.error("Lỗi kết nối đến server.");
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    localStorage.setItem("tickets", JSON.stringify(tickets));
-  }, [tickets]);
+    fetchTickets();
+   
+  }, [page, limit, query, statusFilter, channelFilter]);
 
-  const handleOpenModal = (ticket) => {
-    setSelectedTicket(ticket);
-    setIsModalOpen(true);
+  const handleSearch = () => {
+    setPage(1);
+    setQuery(searchInput.trim());
   };
 
-  const handleCloseModal = () => {
-    setSelectedTicket(null);
-    setIsModalOpen(false);
+  const handleResetFilters = () => {
+    setSearchInput("");
+    setQuery("");
+    setStatusFilter("");
+    setChannelFilter("");
+    setStartDate("");
+    setEndDate("");
+    setPage(1);
+    fetchTickets({
+      page: 1,
+      q: undefined,
+      status: undefined,
+      channel: undefined,
+      startDate: undefined,
+      endDate: undefined,
+    });
   };
 
-  const handleSaveTicket = (data) => {
-    // ✅ Kiểm tra dữ liệu hợp lệ
-    if (data.total_seat < 0 || data.total_price_movie < 0) {
-      alert("Tổng số ghế và tổng giá tiền không được nhỏ hơn 0!");
+  const handleRefresh = () => {
+    fetchTickets();
+  };
+
+  const handleDelete = async (bookingId) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa vé này không?")) {
       return;
     }
 
-    if (data.id) {
-      // cập nhật vé
-      setTickets((prev) =>
-        sortByNewest(
-          prev.map((t) =>
-            t.id === data.id ? { ...data, updated_at: new Date() } : t
-          )
-        )
-      );
-    } else {
-      // thêm vé mới
-      const newTicket = {
-        ...data,
-        id: Date.now(),
-        created_at: new Date(),
-        updated_at: null,
+    try {
+      const response = await bookingService.deleteBooking(bookingId);
+      if (response.status === 200) {
+        toast.success("Xóa vé thành công!");
+        fetchTickets(); // Làm mới danh sách
+      } else if (response.status === 401) {
+        toast.error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại!");
+      } else if (response.status === 403) {
+        toast.error("Bạn không có quyền xóa vé.");
+      } else if (response.status === 404) {
+        toast.error("Không tìm thấy vé để xóa.");
+      } else {
+        toast.error(response.data?.message || "Không thể xóa vé.");
+      }
+    } catch (error) {
+      console.error("Delete booking error:", error);
+      toast.error("Lỗi kết nối đến server.");
+    }
+  };
+
+  const gotoPrev = () => {
+    if (page > 1) setPage((prev) => prev - 1);
+  };
+
+  const gotoNext = () => {
+    if (page < totalPages) setPage((prev) => prev + 1);
+  };
+
+  const getPaymentInfo = (booking) => {
+    const payments = booking.payments || [];
+    if (payments.some((p) => p.payment_status === "COMPLETED")) {
+      const completed = payments.find((p) => p.payment_status === "COMPLETED");
+      // Lấy thời gian thanh toán từ updated_at hoặc completed_at
+      const paidAt = completed?.updated_at || completed?.completed_at || completed?.paid_at || completed?.created_at;
+      return {
+        label: "Đã thanh toán",
+        color: "#22c55e",
+        method: completed?.payment_method || "N/A",
+        paidAt: paidAt,
       };
-      setTickets((prev) => sortByNewest([newTicket, ...prev]));
     }
-    handleCloseModal();
+    if (payments.some((p) => p.payment_status === "CANCELLED")) {
+      const cancelled = payments.find((p) => p.payment_status === "CANCELLED");
+      const cancelledAt = cancelled?.updated_at || cancelled?.created_at;
+      return { 
+        label: "Đã hủy", 
+        color: "#ef4444", 
+        method: "—",
+        paidAt: cancelledAt,
+      };
+    }
+    if (payments.some((p) => p.payment_status === "FAILED")) {
+      const failed = payments.find((p) => p.payment_status === "FAILED");
+      const failedAt = failed?.updated_at || failed?.created_at;
+      return { 
+        label: "Thanh toán lỗi", 
+        color: "#f97316", 
+        method: "—",
+        paidAt: failedAt,
+      };
+    }
+    if (payments.some((p) => p.payment_status === "PENDING") || payments.length === 0) {
+      const pending = payments[0];
+      return {
+        label: "Chờ thanh toán",
+        color: "#fbbf24",
+        method: pending?.payment_method || "—",
+        paidAt: null,
+      };
+    }
+    return { 
+      label: "Không xác định", 
+      color: "#9ca3af", 
+      method: "—",
+      paidAt: null,
+    };
   };
 
-  const handleDeleteTicket = (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa vé này không?")) {
-      setTickets((prev) => prev.filter((t) => t.id !== id));
-    }
+  const formatCurrency = (value) => {
+    if (value == null) return "—";
+    return `${Number(value).toLocaleString("vi-VN")} đ`;
   };
 
-  const filtered = tickets.filter(
-    (t) =>
-      t.user_id.toString().includes(searchTerm) ||
-      t.showtime_id.toString().includes(searchTerm)
-  );
+  const formatDateTime = (value) => {
+    if (!value) return "—";
+    return new Date(value).toLocaleString("vi-VN");
+  };
+
+  const currentRangeStart = (page - 1) * limit + 1;
+  const currentRangeEnd = Math.min(total, page * limit);
 
   return (
     <div style={{ color: "#fff" }}>
@@ -95,144 +221,479 @@ export default function TicketManagement() {
           gap: "10px",
         }}
       >
-        <Ticket /> Quản Lý Vé
+        <Ticket /> Quản Lý Thông Tin Vé Đã Đặt
       </h1>
 
-      {/* Thanh tìm kiếm & nút thêm */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "12px",
           marginBottom: "15px",
+          alignItems: "flex-end",
         }}
       >
-        <div style={{ position: "relative" }}>
+        <div
+          style={{
+            position: "relative",
+            flex: "0 0 420px",
+            minWidth: "260px",
+            maxWidth: "420px",
+          }}
+        >
           <Search
             style={{ position: "absolute", left: "10px", top: "8px", color: "#aaa" }}
             size={18}
           />
           <input
             type="text"
-            placeholder="Tìm theo user_id hoặc showtime_id..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Tìm theo mã hóa đơn hoặc số điện thoại..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             style={{
               background: "#1a1f29",
               color: "#fff",
               border: "1px solid #333",
-              borderRadius: "5px",
+              borderRadius: "6px",
               padding: "8px 10px 8px 35px",
-              width: "280px",
+              width: "100%",
+              height: "40px",
               outline: "none",
             }}
           />
         </div>
 
-        <button
-          onClick={() => handleOpenModal(null)}
+        {/* Nhóm lọc theo ngày luôn chiếm 1 hàng riêng để tránh đè lên ô tìm kiếm */}
+        <div
           style={{
-            background: "#e53935",
-            color: "#fff",
-            padding: "10px 18px",
-            border: "none",
-            borderRadius: "6px",
             display: "flex",
+            gap: "12px",
             alignItems: "center",
-            gap: "6px",
-            cursor: "pointer",
-            fontWeight: "500",
+            flexWrap: "wrap",
+            flex: "1 1 100%",
+            minWidth: "260px",
           }}
         >
-          <PlusCircle size={18} /> Thêm Vé
-        </button>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              flex: "1 1 120px",
+            }}
+          >
+            <span style={{ fontSize: "12px", color: "#9ca3af" }}>Từ ngày</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setPage(1);
+                setStartDate(e.target.value);
+              }}
+              style={{
+                background: "#1a1f29",
+                color: "#fff",
+                border: "1px solid #333",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                minWidth: "120px",
+                height: "40px",
+              }}
+            />
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              flex: "1 1 120px",
+            }}
+          >
+            <span style={{ fontSize: "12px", color: "#9ca3af" }}>Đến ngày</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setPage(1);
+                setEndDate(e.target.value);
+              }}
+              style={{
+                background: "#1a1f29",
+                color: "#fff",
+                border: "1px solid #333",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                minWidth: "120px",
+                height: "40px",
+              }}
+            />
+          </div>
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setPage(1);
+            setStatusFilter(e.target.value);
+          }}
+          style={{
+            background: "#1a1f29",
+            color: "#fff",
+            border: "1px solid #333",
+            borderRadius: "6px",
+            padding: "8px 12px",
+            minWidth: "160px",
+            height: "40px",
+            flex: "0 1 160px",
+          }}
+        >
+          {statusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={channelFilter}
+          onChange={(e) => {
+            setPage(1);
+            setChannelFilter(e.target.value);
+          }}
+          style={{
+            background: "#1a1f29",
+            color: "#fff",
+            border: "1px solid #333",
+            borderRadius: "6px",
+            padding: "8px 12px",
+            minWidth: "150px",
+            height: "40px",
+            flex: "0 1 150px",
+          }}
+        >
+          {channelOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={limit}
+          onChange={(e) => {
+            setLimit(Number(e.target.value));
+            setPage(1);
+          }}
+          style={{
+            background: "#1a1f29",
+            color: "#fff",
+            border: "1px solid #333",
+            borderRadius: "6px",
+            padding: "8px 12px",
+            minWidth: "100px",
+            height: "40px",
+            flex: "0 1 100px",
+          }}
+        >
+          {[10, 20, 50].map((size) => (
+            <option key={size} value={size}>
+              {size} / trang
+            </option>
+          ))}
+        </select>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "8px",
+            flex: "1 1 240px",
+          }}
+        >
+          <button
+            onClick={handleSearch}
+            style={{
+              background: "#2563eb",
+              color: "#fff",
+              padding: "10px 16px",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "500",
+              flex: "0 1 90px",
+            }}
+          >
+            Tìm kiếm
+          </button>
+          <button
+            onClick={handleResetFilters}
+            style={{
+              background: "#1f2937",
+              color: "#fff",
+              padding: "10px 16px",
+              border: "1px solid #374151",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "500",
+              flex: "0 1 90px",
+            }}
+          >
+            Xóa lọc
+          </button>
+          <button
+            onClick={handleRefresh}
+            style={{
+              background: "#374151",
+              color: "#fff",
+              padding: "10px 16px",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              flex: "0 1 100px",
+            }}
+          >
+            <RefreshCcw size={16} /> Làm mới
+          </button>
+        </div>
       </div>
 
-      {/* Bảng vé */}
-      <table
+      <div style={{ borderRadius: "10px", overflow: "hidden", border: "1px solid #2a303d", overflowX: "auto" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            background: "#1a1f29",
+            color: "#fff",
+            tableLayout: "auto",
+          }}
+        >
+          <thead style={{ background: "#242b36", textAlign: "left" }}>
+            <tr>
+              <th style={{ padding: "10px", maxWidth: "180px", minWidth: "150px" }}>Mã hóa đơn</th>
+              <th style={{ padding: "10px" }}>Khách hàng</th>
+              <th style={{ padding: "10px" }}>Liên hệ</th>
+              <th style={{ padding: "10px" }}>Suất chiếu</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "80px" }}>Tổng ghế</th>
+              <th style={{ padding: "10px" }}>Tổng giá</th>
+              <th style={{ padding: "10px", whiteSpace: "nowrap" }}>Thanh toán</th>
+              <th style={{ padding: "10px", whiteSpace: "nowrap" }}>Kênh</th>
+              <th style={{ padding: "10px" }}>Ngày tạo</th>
+              <th style={{ padding: "10px", textAlign: "center", whiteSpace: "nowrap" }}>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={10} style={{ padding: "30px", textAlign: "center" }}>
+                  Đang tải dữ liệu...
+                </td>
+              </tr>
+            ) : tickets.length === 0 ? (
+              <tr>
+                <td colSpan={10} style={{ padding: "30px", textAlign: "center", color: "#cbd5f5" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                    <AlertCircle size={18} />
+                    <span>Không có vé nào phù hợp với bộ lọc.</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              tickets.map((ticket) => {
+                const paymentInfo = getPaymentInfo(ticket);
+                const userLabel =
+                  ticket.customerName ||
+                  `${ticket.user?.firstName || ""} ${ticket.user?.lastName || ""}`.trim() ||
+                  ticket.user?.email ||
+                  "Người dùng hệ thống";
+                const contact = ticket.customerPhone || ticket.user?.phone || "—";
+                const movieTitle = ticket.showtime?.movie?.title || "Chưa xác định";
+                const showtimeStart = ticket.showtime?.startTime
+                  ? new Date(ticket.showtime.startTime).toLocaleString("vi-VN")
+                  : "—";
+
+                // Xác định thông tin hiển thị dưới tên khách hàng
+                let staffInfo = "—";
+                if (ticket.channel === "OFFLINE") {
+                  // Nếu là thanh toán tại quầy, hiển thị tên nhân viên
+                  if (ticket.createdByStaff) {
+                    // Ưu tiên hiển thị tên đầy đủ (firstName + lastName)
+                    let staffName = "";
+                    if (ticket.createdByStaff.firstName || ticket.createdByStaff.lastName) {
+                      staffName = `${ticket.createdByStaff.firstName || ""} ${ticket.createdByStaff.lastName || ""}`.trim();
+                    }
+                    // Nếu không có tên đầy đủ, dùng username hoặc email
+                    if (!staffName) {
+                      staffName = ticket.createdByStaff.username || ticket.createdByStaff.email || "Nhân viên";
+                    }
+                    staffInfo = staffName;
+                  } else if (ticket.createdByStaffId) {
+                    // Có ID nhưng không có thông tin staff object
+                    staffInfo = "Nhân viên";
+                  } else {
+                    // Không có thông tin staff
+                    staffInfo = "Tại quầy";
+                  }
+                } else if (ticket.channel === "ONLINE") {
+                  // Nếu là thanh toán online
+                  staffInfo = "Thanh toán online";
+                }
+
+                return (
+                  <tr key={ticket.id} style={{ borderBottom: "1px solid #2a303d" }}>
+                    <td style={{ 
+                      padding: "10px", 
+                      maxWidth: "180px", 
+                      minWidth: "150px",
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                      overflow: "hidden"
+                    }} title={ticket.invoiceCode || ticket.invoice_code || "—"}>
+                      {ticket.invoiceCode || ticket.invoice_code || "—"}
+                    </td>
+                    <td style={{ padding: "10px" }}>
+                      <div style={{ fontWeight: 600 }}>{userLabel}</div>
+                      <div style={{ fontSize: "12px", color: "#9ca3af" }}>{staffInfo}</div>
+                    </td>
+                    <td style={{ padding: "10px" }}>{contact}</td>
+                    <td style={{ padding: "10px" }}>
+                      <div>{movieTitle}</div>
+                      <div style={{ fontSize: "12px", color: "#9ca3af" }}>{showtimeStart}</div>
+                    </td>
+                    <td style={{ padding: "10px", textAlign: "center", width: "80px" }}>{ticket.totalSeat || ticket.total_seat || 0}</td>
+                    <td style={{ padding: "10px" }}>{formatCurrency(ticket.totalPriceMovie || ticket.total_price_movie)}</td>
+                    <td style={{ padding: "10px" }}>
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "rgba(255,255,255,0.05)",
+                          borderRadius: "999px",
+                          padding: "4px 10px",
+                          color: paymentInfo.color,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "999px",
+                            background: paymentInfo.color,
+                          }}
+                        />
+                        {paymentInfo.label}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>
+                        {paymentInfo.method !== "—" ? `Phương thức: ${paymentInfo.method}` : ""}
+                      </div>
+                      {paymentInfo.paidAt && (
+                        <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>
+                          {formatDateTime(paymentInfo.paidAt)}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "10px" }}>
+                      {ticket.channel === "OFFLINE" ? "Tại quầy" : "Online"}
+                    </td>
+                    <td style={{ padding: "10px" }}>
+                      <div>{formatDateTime(ticket.created_at || ticket.createdAt)}</div>
+                      {ticket.updated_at && (
+                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+                          Cập nhật: {formatDateTime(ticket.updated_at)}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "10px", textAlign: "center" }}>
+                      <button
+                        onClick={() => handleDelete(ticket.id)}
+                        style={{
+                          background: "#ef4444",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "6px 12px",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          fontSize: "14px",
+                          transition: "background 0.2s",
+                        }}
+                        onMouseEnter={(e) => (e.target.style.background = "#dc2626")}
+                        onMouseLeave={(e) => (e.target.style.background = "#ef4444")}
+                        title="Xóa vé"
+                      >
+                        <Trash2 size={16} />
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div
         style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          background: "#1a1f29",
-          color: "#fff",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: "16px",
+          flexWrap: "wrap",
+          gap: "10px",
         }}
       >
-        <thead style={{ background: "#242b36", textAlign: "left" }}>
-          <tr>
-            <th style={{ padding: "10px" }}>ID</th>
-            <th style={{ padding: "10px" }}>Mã người dùng</th>
-            <th style={{ padding: "10px" }}>Mã lịch chiếu</th>
-            <th style={{ padding: "10px", textAlign: "center" }}>Tổng ghế</th>
-            <th style={{ padding: "10px", textAlign: "center" }}>Tổng giá (VNĐ)</th>
-            <th style={{ padding: "10px", textAlign: "center" }}>Ngày tạo</th>
-            <th style={{ padding: "10px", textAlign: "center" }}>Ngày cập nhật</th>
-            <th style={{ padding: "10px", textAlign: "center" }}>Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((ticket) => (
-            <tr key={ticket.id} style={{ borderBottom: "1px solid #2a303d" }}>
-              <td style={{ padding: "10px" }}>{ticket.id}</td>
-              <td style={{ padding: "10px" }}>{ticket.user_id}</td>
-              <td style={{ padding: "10px" }}>{ticket.showtime_id}</td>
-              <td style={{ padding: "10px", textAlign: "center" }}>{ticket.total_seat}</td>
-              <td style={{ padding: "10px", textAlign: "center" }}>
-                {ticket.total_price_movie.toLocaleString("vi-VN")}
-              </td>
-              <td style={{ padding: "10px", textAlign: "center" }}>
-                {new Date(ticket.created_at).toLocaleDateString("vi-VN")}
-              </td>
-              <td style={{ padding: "10px", textAlign: "center" }}>
-                {ticket.updated_at
-                  ? new Date(ticket.updated_at).toLocaleDateString("vi-VN")
-                  : "—"}
-              </td>
-              <td style={{ padding: "10px", textAlign: "center" }}>
-                <button
-                  onClick={() => handleOpenModal(ticket)}
-                  style={{
-                    background: "#1976d2",
-                    border: "none",
-                    borderRadius: "5px",
-                    padding: "6px 10px",
-                    marginRight: "6px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <Settings size={16} color="#fff" />
-                </button>
-                <button
-                  onClick={() => handleDeleteTicket(ticket.id)}
-                  style={{
-                    background: "#d32f2f",
-                    border: "none",
-                    borderRadius: "5px",
-                    padding: "6px 10px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <Trash2 size={16} color="#fff" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Modal thêm/sửa vé */}
-      {isModalOpen && (
-        <MovieModal
-          title={selectedTicket ? "Sửa Vé" : "Thêm Vé"}
-          onClose={handleCloseModal}
-          onSave={handleSaveTicket}
-          initialData={selectedTicket}
-          fields={[
-            { name: "user_id", label: "User ID", type: "number" },
-            { name: "showtime_id", label: "ShowTime ID", type: "number" },
-            { name: "total_seat", label: "Tổng số ghế", type: "number" },
-            { name: "total_price_movie", label: "Tổng giá phim (VNĐ)", type: "number" },
-          ]}
-        />
-      )}
+        <div style={{ color: "#cbd5f5" }}>
+          {total > 0
+            ? `Hiển thị ${currentRangeStart}-${currentRangeEnd} trong ${total} vé`
+            : "Không có dữ liệu"}
+        </div>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={gotoPrev}
+            disabled={page === 1 || loading}
+            style={{
+              background: "#1f2937",
+              color: "#fff",
+              border: "1px solid #374151",
+              borderRadius: "6px",
+              padding: "6px 12px",
+              cursor: page === 1 || loading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <ChevronLeft size={16} /> Trước
+          </button>
+          <div style={{ display: "flex", alignItems: "center", color: "#cbd5f5" }}>
+            Trang {page}/{Math.max(totalPages, 1)}
+          </div>
+          <button
+            onClick={gotoNext}
+            disabled={page >= totalPages || loading}
+            style={{
+              background: "#1f2937",
+              color: "#fff",
+              border: "1px solid #374151",
+              borderRadius: "6px",
+              padding: "6px 12px",
+              cursor: page >= totalPages || loading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            Sau <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

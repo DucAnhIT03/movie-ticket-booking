@@ -11,7 +11,7 @@ import "./Register.css";
 export default function Register() {
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1); // 1: Nhập thông tin, 2: Nhập OTP
+  const [step, setStep] = useState(1); 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -24,7 +24,6 @@ export default function Register() {
 
   const redirectTo = () => navigate("/login");
 
-  // Bước 1: Gửi OTP
   const handleSendOtp = async (e) => {
     e.preventDefault();
 
@@ -45,8 +44,7 @@ export default function Register() {
     alert("Mã OTP đã được gửi đến email của bạn!");
     setStep(2);
     setIsLoading(false);
-    
-    // Bắt đầu đếm ngược 60 giây
+  
     setCountdown(60);
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -59,7 +57,6 @@ export default function Register() {
     }, 1000);
   };
 
-  // Gửi lại OTP
   const handleResendOtp = async () => {
     if (countdown > 0) {
       alert(`Vui lòng đợi ${countdown} giây trước khi gửi lại OTP`);
@@ -90,7 +87,7 @@ export default function Register() {
     }, 1000);
   };
 
-  // Bước 2: Xác thực OTP và đăng ký
+ 
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -101,7 +98,7 @@ export default function Register() {
 
     setIsLoading(true);
 
-    // Verify OTP trước
+   
     const verifyRes = await authService.verifyOtp(email, otpCode);
     if (verifyRes.status !== 200) {
       alert(verifyRes.data.message || "Mã OTP không hợp lệ hoặc đã hết hạn");
@@ -109,7 +106,7 @@ export default function Register() {
       return;
     }
 
-    // Đăng ký với OTP
+  
     const payload = {
       firstName,
       lastName,
@@ -133,7 +130,7 @@ export default function Register() {
       return;
     }
 
-    // Lưu token nếu có
+
     if (res.data.accessToken) {
       localStorage.setItem("accessToken", res.data.accessToken);
     }

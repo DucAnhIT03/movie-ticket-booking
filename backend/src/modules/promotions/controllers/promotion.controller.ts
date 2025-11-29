@@ -135,7 +135,7 @@ export class PromotionController {
   apply(@Request() req: any, @Body() dto: ApplyPromotionDto) {
     const userId = req.user?.sub;
     if (!userId) {
-      // Swagger chưa authorize hoặc token hết hạn → trả 401 rõ ràng
+      
       throw new (require('@nestjs/common').UnauthorizedException)(
         'Unauthorized: missing or invalid token',
       );

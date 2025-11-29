@@ -1,4 +1,4 @@
-/* ===== HEADER ===== */
+
 .button {
   padding: 6px 14px;
   border-radius: 20px;
@@ -24,7 +24,7 @@
   color: #000;
 }
 
-/* === HEADER CONTAINER === */
+
 .header {
   display: flex;
   align-items: center;
@@ -40,7 +40,7 @@
   z-index: 99;
 }
 
-/* === MENU === */
+
 .menu {
   display: flex;
   align-items: center;
@@ -54,28 +54,29 @@
   border-radius: 8px;
 }
 
-/* === NAVIGATION === */
+
 .nav {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 22px;
+  min-width: 780px;
 }
 
 .nav a {
   color: #fff;
   text-decoration: none;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
+  font-family: "Montserrat", "Roboto", "Arial", sans-serif;
   position: relative;
-  padding: 8px 12px;
+  padding: 8px 0;
   white-space: nowrap;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  min-width: fit-content;
+  min-height: 38px;
+  min-width: 110px;
   box-sizing: border-box;
-  flex-shrink: 0;
   transition: color 0.3s ease;
   line-height: 1.2;
 }
@@ -97,7 +98,6 @@
 
 .nav a.active {
   color: #ff3c00;
-  font-weight: 600;
 }
 
 .nav a.active::after {
@@ -108,7 +108,7 @@
   width: 100%;
 }
 
-/* === BUTTONS === */
+
 .btn {
   display: flex;
   align-items: center;
@@ -144,7 +144,7 @@
   background-color: #e63400;
 }
 
-/* User info when logged in */
+
 .btn.user-info {
   display: flex;
   align-items: center;
@@ -259,7 +259,7 @@
   color: #000;
 }
 
-/* === HAMBURGER ICON === */
+
 .hamburger {
   display: none;
   flex-direction: column;
@@ -278,7 +278,7 @@
   transition: all 0.3s ease;
 }
 
-/* Hiệu ứng khi active */
+
 .hamburger.active span:nth-child(1) {
   transform: translateY(7.5px) rotate(45deg);
 }
@@ -289,7 +289,7 @@
   transform: translateY(-7.5px) rotate(-45deg);
 }
 
-/* === LOGO + TEXT === */
+
 .logo-group {
   display: flex;
   align-items: center;
@@ -318,10 +318,7 @@
   color: #ccc;
 }
 
-/* =========================================================
-   RESPONSIVE: Áp dụng cho tất cả thiết bị <= 1024px
-   (bao gồm tablet và mobile)
-   ========================================================= */
+
 @media (max-width: 1024px) {
   .header {
     padding: 0 18px;
@@ -418,7 +415,7 @@
   }
 }
 
-/* === NOTIFICATION ICON === */
+
 .notification-icon-container {
   position: relative;
   cursor: pointer;

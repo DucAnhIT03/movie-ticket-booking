@@ -1,4 +1,3 @@
-/* Poster Management Section */
 .poster-management-section {
   margin-bottom: 40px;
   padding: 20px;
@@ -63,8 +62,8 @@
 }
 
 .poster-preview-img {
-  width: 720px; /* 50% của 1440px để preview */
-  height: 405px; /* 50% của 810px để preview */
+  width: 720px; 
+  height: 405px; 
   object-fit: contain;
   display: block;
   background: #0b0b0b;

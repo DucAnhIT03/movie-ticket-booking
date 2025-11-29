@@ -50,7 +50,12 @@ export class ScreensController {
   @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Số bản ghi mỗi trang' })
   @ApiQuery({ name: 'sortBy', required: false, example: 'created_at', description: 'Cột sắp xếp: name, seat_capacity, created_at, updated_at' })
   @ApiQuery({ name: 'sortOrder', required: false, example: 'desc', enum: ['asc', 'desc'], description: 'Thứ tự sắp xếp: asc hoặc desc' })
-  @ApiQuery({ name: 'search', required: false, example: 'imax', description: 'Tìm kiếm theo ID phòng chiếu hoặc tên phòng chiếu' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    example: 'phòng 1',
+    description: 'Tìm kiếm theo ID phòng chiếu, tên phòng hoặc tên rạp (không phân biệt hoa/thường)',
+  })
   @ApiQuery({ name: 'theater_id', required: false, example: 1, description: 'Lọc phòng chiếu theo ID rạp' })
   async findAll(
     @Query('page') page?: string,

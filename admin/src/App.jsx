@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 // import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
@@ -24,73 +24,103 @@ import PaymentManagement from "./pages/admin/PaymentManagement";
 import PromotionManagement from "./pages/admin/PromotionManagement";
 import EmailNotificationManagement from "./pages/admin/EmailNotificationManagement";
 import BannerManagement from "./pages/admin/BannerManagement";
+import EventManagement from "./pages/admin/EventManagement";
+import Profile from "./pages/admin/Profile";
 import "./App.css";
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  const getStoredUser = () => {
+    const raw = localStorage.getItem("adminUser");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      console.error("Failed to parse adminUser from storage:", error);
+      return null;
+    }
+  };
+
+  const hasBackofficeRole = (roles = []) =>
+    roles.includes("ROLE_ADMIN") || roles.includes("ROLE_EMPLOYEE");
 
   useEffect(() => {
     const loggedIn = localStorage.getItem("adminIsLoggedIn");
     const token = localStorage.getItem("adminAccessToken");
     if (loggedIn && token) {
-      setIsLoggedIn(true);
+      // no-op: just ensuring state persists after refresh
     }
   }, []);
 
-  const handleLoginSuccess = () => {
-    localStorage.setItem("adminIsLoggedIn", "true");
-    setIsLoggedIn(true);
-    toast.success("Đăng nhập thành công 🎉");
-    navigate("/admin/dashboard");
-  };
-
   const handleLogout = () => {
-    // Xóa tất cả dữ liệu localStorage của admin
+
     localStorage.removeItem("adminIsLoggedIn");
     localStorage.removeItem("adminAccessToken");
     localStorage.removeItem("adminUser");
     localStorage.removeItem("infoState");
     
-    // Xóa Redux state
+    
     dispatch(clearInfo());
-    
-    // Cập nhật state
-    setIsLoggedIn(false);
-    
-    // Thông báo và redirect
+   
     toast.info("Đã đăng xuất!");
     navigate("/login");
   };
 
-  // Component để kiểm tra và redirect
+  
   const ProtectedRoute = ({ children }) => {
     const token = localStorage.getItem("adminAccessToken");
     const loggedIn = localStorage.getItem("adminIsLoggedIn");
+    const storedUser = getStoredUser();
+    const roleList = Array.isArray(storedUser?.roles) ? storedUser.roles : [];
     
     if (!token || !loggedIn) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (!hasBackofficeRole(roleList)) {
+      localStorage.removeItem("adminIsLoggedIn");
+      localStorage.removeItem("adminAccessToken");
+      localStorage.removeItem("adminUser");
+      localStorage.removeItem("infoState");
       return <Navigate to="/login" replace />;
     }
     
     return children;
   };
 
-  // Component để redirect từ "/" 
+  
   const HomeRedirect = () => {
     const token = localStorage.getItem("adminAccessToken");
     const loggedIn = localStorage.getItem("adminIsLoggedIn");
+    const storedUser = getStoredUser();
+    const roleList = Array.isArray(storedUser?.roles) ? storedUser.roles : [];
     
     if (token && loggedIn) {
-      return <Navigate to="/admin/dashboard" replace />;
+      if (roleList.includes("ROLE_ADMIN")) {
+        return <Navigate to="/admin/dashboard" replace />;
+      }
+      if (roleList.includes("ROLE_EMPLOYEE")) {
+        return <Navigate to="/admin/seat_booking_view" replace />;
+      }
     }
     return <Navigate to="/login" replace />;
   };
 
+  const RoleRoute = ({ element, allowedRoles }) => {
+    const storedUser = getStoredUser();
+    const roleList = Array.isArray(storedUser?.roles) ? storedUser.roles : [];
+    const canAccess = allowedRoles.some((role) => roleList.includes(role));
+    if (!canAccess) {
+      const fallback = roleList.includes("ROLE_EMPLOYEE") ? "/admin/seat_booking_view" : "/login";
+      return <Navigate to={fallback} replace />;
+    }
+    return element;
+  };
+
   return (
     <div className="container">
-      {/* {isLoggedIn && <Sidebar onLogout={handleLogout} />} */}
-
       <div className="main-content">
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
@@ -103,24 +133,103 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Dashboard />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="movies" element={<MovieManagement />} />
-            <Route path="screens" element={<ScreenManagement />} />
-            <Route path="users" element={<UserManagement />} />
-            <Route path="threaters" element={<ThreaterManagement />} />
-            <Route path="genres" element={<GenreManagement />} />
-            <Route path="showtimes" element={<ShowtimeManagement />} />
-            <Route path="tickets" element={<TicketManagement />} />
-            <Route path="seats" element={<SeatManagement />} />
-            <Route path="seat_booking_view" element={<SeatBookingView />} />
-            <Route path="festivals" element={<FestivalManagement />} />
-            <Route path="news" element={<NewsManagement />} />
-            <Route path="ticket_price" element={<TicketPriceManagement />} />
-            <Route path="payment" element={<PaymentManagement />} />
-            <Route path="promotions" element={<PromotionManagement />} />
-            <Route path="banners" element={<BannerManagement />} />
-            <Route path="email-notifications" element={<EmailNotificationManagement />} />
+            <Route
+              index
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<Dashboard />} />}
+            />
+            <Route
+              path="dashboard"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<Dashboard />} />}
+            />
+            <Route
+              path="movies"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<MovieManagement />} />}
+            />
+            <Route
+              path="screens"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<ScreenManagement />} />}
+            />
+            <Route
+              path="users"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<UserManagement />} />}
+            />
+            <Route
+              path="threaters"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<ThreaterManagement />} />}
+            />
+            <Route
+              path="genres"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<GenreManagement />} />}
+            />
+            <Route
+              path="showtimes"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<ShowtimeManagement />} />}
+            />
+            <Route
+              path="tickets"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<TicketManagement />} />}
+            />
+            <Route
+              path="seats"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<SeatManagement />} />}
+            />
+            <Route
+              path="seat_booking_view"
+              element={
+                <RoleRoute
+                  allowedRoles={['ROLE_ADMIN', 'ROLE_EMPLOYEE']}
+                  element={<SeatBookingView />}
+                />
+              }
+            />
+            <Route
+              path="festivals"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<FestivalManagement />} />}
+            />
+            <Route
+              path="events"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<EventManagement />} />}
+            />
+            <Route
+              path="news"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<NewsManagement />} />}
+            />
+            <Route
+              path="ticket_price"
+              element={
+                <RoleRoute allowedRoles={['ROLE_ADMIN']} element={<TicketPriceManagement />} />
+              }
+            />
+            <Route
+              path="payment"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<PaymentManagement />} />}
+            />
+            <Route
+              path="promotions"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<PromotionManagement />} />}
+            />
+            <Route
+              path="banners"
+              element={<RoleRoute allowedRoles={['ROLE_ADMIN']} element={<BannerManagement />} />}
+            />
+            <Route
+              path="email-notifications"
+              element={
+                <RoleRoute
+                  allowedRoles={['ROLE_ADMIN']}
+                  element={<EmailNotificationManagement />}
+                />
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <RoleRoute
+                  allowedRoles={['ROLE_ADMIN', 'ROLE_EMPLOYEE']}
+                  element={<Profile />}
+                />
+              }
+            />
           </Route>
         </Routes>
       </div>

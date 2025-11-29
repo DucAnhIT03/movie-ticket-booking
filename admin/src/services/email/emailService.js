@@ -1,7 +1,7 @@
 import axiosClient from "../axiosClient";
 
 const emailService = {
-  // Gửi email từ admin đến user
+  
   sendEmail: async (data) => {
     try {
       const response = await axiosClient.post("/admin/emails/send", data, {
@@ -14,7 +14,7 @@ const emailService = {
     }
   },
 
-  // Lấy danh sách email logs
+
   getEmailLogs: async (params = {}) => {
     try {
       const response = await axiosClient.get("/email-logs", {
@@ -34,7 +34,7 @@ const emailService = {
     }
   },
 
-  // Lấy thống kê email logs
+
   getEmailStats: async () => {
     try {
       const response = await axiosClient.get("/email-logs/stats", {
@@ -47,7 +47,7 @@ const emailService = {
     }
   },
 
-  // Lấy chi tiết email log
+
   getEmailLogDetail: async (id) => {
     try {
       const response = await axiosClient.get(`/email-logs/${id}`, {

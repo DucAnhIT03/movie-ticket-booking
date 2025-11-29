@@ -1,177 +1,136 @@
 import React from "react";
-import { User, LogOut, Film, Monitor, Building, Ticket, Calendar, Armchair, PartyPopper, Tags, Newspaper, CreditCard, Grid, Gift, Mail, Image as ImageIcon} from "lucide-react";
+import {
+  User,
+  LogOut,
+  Film,
+  Monitor,
+  Building,
+  Ticket,
+  Calendar,
+  Armchair,
+  PartyPopper,
+  Tags,
+  Newspaper,
+  Grid,
+  Gift,
+  Mail,
+  Image as ImageIcon,
+  CalendarClock,
+} from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import "./AdminLayout.css";
 
+const NAV_ITEMS = [
+  { to: "/admin/dashboard", label: "Dashboard", icon: Monitor, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/movies", label: "Quản lý phim", icon: Film, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/screens", label: "Quản lý phòng chiếu", icon: Monitor, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/users", label: "Quản lý người dùng", icon: User, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/threaters", label: "Quản lý rạp phim", icon: Building, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/showtimes", label: "Quản lý lịch chiếu", icon: Calendar, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/tickets", label: "Quản lý thông tin vé đã đặt", icon: Ticket, roles: ["ROLE_ADMIN"] },
+  {
+    to: "/admin/seat_booking_view",
+    label: "Xem sơ đồ ghế đặt chỗ",
+    icon: Grid,
+    roles: ["ROLE_ADMIN", "ROLE_EMPLOYEE"],
+  },
+  { to: "/admin/seats", label: "Quản lý ghế ngồi", icon: Armchair, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/genres", label: "Quản lý thể loại phim", icon: Tags, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/festivals", label: "Quản lý lễ hội", icon: PartyPopper, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/events", label: "Quản lý sự kiện", icon: CalendarClock, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/news", label: "Quản lý tin tức", icon: Newspaper, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/banners", label: "Quản lý banner", icon: ImageIcon, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/ticket_price", label: "Quản lý giá vé", icon: Ticket, roles: ["ROLE_ADMIN"] },
+  { to: "/admin/promotions", label: "Quản lý khuyến mãi", icon: Gift, roles: ["ROLE_ADMIN"] },
+  {
+    to: "/admin/email-notifications",
+    label: "Quản lý Email & Thông báo",
+    icon: Mail,
+    roles: ["ROLE_ADMIN"],
+  },
+];
+
+const getStoredUser = () => {
+  const raw = localStorage.getItem("adminUser");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error("Failed to parse admin user:", error);
+    return null;
+  }
+};
+
 export default function AdminLayout({ onLogout }) {
-    const location = useLocation();
-    const activePage = location.pathname.split("/").pop();
+  const location = useLocation();
+  const currentUser = getStoredUser();
+  const roleList = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
+  const visibleNavItems = NAV_ITEMS.filter((item) =>
+    item.roles ? item.roles.some((role) => roleList.includes(role)) : true
+  );
 
-    return (
-        <>
-            <div className="admin-layout">
-                {/* Sidebar */}
-                <aside className="admin-sidebar">
-                    <h2 className="admin-logo">🎬 NCC Cinema</h2>
+  const getDisplayName = () => {
+    if (!currentUser) return "Tài khoản";
+    if (currentUser.firstName || currentUser.lastName) {
+      return `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim();
+    }
+    return currentUser.email || "Tài khoản";
+  };
 
-                    <nav className="admin-nav">
-                        <Link
-                            to="/admin/dashboard"
-                            className={activePage === "dashboard" ? "active" : ""}
-                        >
-                            <Monitor size={18} />
-                            <span>Dashboard</span>
-                        </Link>
+  const getDisplayRole = () => {
+    if (roleList.includes("ROLE_ADMIN")) return "Quản trị viên";
+    if (roleList.includes("ROLE_EMPLOYEE")) return "Nhân viên";
+    return "Người dùng";
+  };
 
-                        <Link
-                            to="/admin/movies"
-                            className={activePage === "movies" ? "active" : ""}
-                        >
-                            <Film size={18} />
-                            <span>Quản lý phim</span>
-                        </Link>
+  const isActive = (path) => {
+    if (location.pathname === path) return true;
+    return location.pathname.startsWith(`${path}/`);
+  };
 
-                        {/* ✅ Nút mới: Quản lý phòng chiếu */}
-                        <Link
-                            to="/admin/screens"
-                            className={activePage === "screens" ? "active" : ""}
-                        >
-                            <Monitor size={18} />
-                            <span>Quản lý phòng chiếu</span>
-                        </Link>
+  return (
+    <>
+      <div className="admin-layout">
+        <aside className="admin-sidebar">
+          <h2 className="admin-logo">🎬 NCC Cinema</h2>
 
-                        <Link
-                            to="/admin/users"
-                            className={activePage === "users" ? "active" : ""}
-                        >
-                            <User size={18} />
-                            <span>Quản lý người dùng</span>
-                        </Link>
+          <nav className="admin-nav">
+            {visibleNavItems.map(({ to, label, icon: Icon }) => (
+              <Link key={to} to={to} className={isActive(to) ? "active" : ""}>
+                <Icon size={18} />
+                <span>{label}</span>
+              </Link>
+            ))}
+          </nav>
 
-                        <Link
-                            to="/admin/threaters"
-                            className={activePage === "threaters" ? "active" : ""}
-                        >
-                            <Building size={18} />
-                            <span>Quản lý rạp phim</span>
-                        </Link>
+          <div className="admin-user">
+            <Link to="/admin/profile" className="user-info-link">
+              <div className="user-info">
+                {currentUser?.avatar ? (
+                  <img 
+                    src={currentUser.avatar} 
+                    alt="Avatar" 
+                    className="user-avatar-small"
+                  />
+                ) : (
+                  <User size={18} />
+                )}
+                <div>
+                  <p>{getDisplayName()}</p>
+                  <small>{getDisplayRole()}</small>
+                </div>
+              </div>
+            </Link>
+            <button className="logout-btn" onClick={onLogout}>
+              <LogOut size={16} /> <span>Đăng xuất</span>
+            </button>
+          </div>
+        </aside>
 
-                        <Link
-                            to="/admin/showtimes"
-                            className={activePage === "showtimes" ? "active" : ""}
-                        >
-                            <Calendar size={18} />
-                            <span>Quản lý lịch chiếu</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/tickets"
-                            className={activePage === "tickets" ? "active" : ""}
-                        >
-                            <Ticket size={18} />
-                            <span>Quản lý vé</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/seat_booking_view"
-                            className={activePage === "seat_booking_view" ? "active" : ""}
-                        >
-                            <Grid size={18} />
-                            <span>Xem sơ đồ ghế đặt chỗ</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/seats"
-                            className={activePage === "seats" ? "active" : ""}
-                        >
-                            <Armchair size={18} />
-                            <span>Quản lý ghế ngồi</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/genres"
-                            className={activePage === "genres" ? "active" : ""}
-                        >
-                            <Tags size={18} />
-                            <span>Quản lý thể loại phim</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/festivals"
-                            className={activePage === "festivals" ? "active" : ""}
-                        >
-                            <PartyPopper size={18} />
-                            <span>Quản lý lễ hội</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/news"
-                            className={activePage === "news" ? "active" : ""}
-                        >
-                            <Newspaper size={18} />
-                            <span>Quản lý tin tức</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/banners"
-                            className={activePage === "banners" ? "active" : ""}
-                        >
-                            <ImageIcon size={18} />
-                            <span>Quản lý banner</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/ticket_price"
-                            className={activePage === "ticket_price" ? "active" : ""}
-                        >
-                            <Ticket size={18} />
-                            <span>Quản lý giá vé</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/promotions"
-                            className={activePage === "promotions" ? "active" : ""}
-                        >
-                            <Gift size={18} />
-                            <span>Quản lý khuyến mãi</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/payment"
-                            className={activePage === "payment" ? "active" : ""}
-                        >
-                            <CreditCard size={18} />
-                            <span>Quản lý thanh toán</span>
-                        </Link>
-
-                        <Link
-                            to="/admin/email-notifications"
-                            className={activePage === "email-notifications" ? "active" : ""}
-                        >
-                            <Mail size={18} />
-                            <span>Quản lý Email & Thông báo</span>
-                        </Link>
-                    </nav>
-
-                    <div className="admin-user">
-                        <div className="user-info">
-                            <User size={18} />
-                            <div>
-                                <p>Admin</p>
-                                <small>ID: NCC-001</small>
-                            </div>
-                        </div>
-                        <button className="logout-btn" onClick={onLogout}>
-                            <LogOut size={16} /> <span>Đăng xuất</span>
-                        </button>
-                    </div>
-                </aside>
-
-                {/* Main Content */}
-                <main className="admin-main">
-                    <Outlet />
-                </main>
-            </div>
-        </>
-    );
+        <main className="admin-main">
+          <Outlet />
+        </main>
+      </div>
+    </>
+  );
 }

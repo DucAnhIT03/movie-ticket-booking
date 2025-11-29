@@ -21,7 +21,7 @@ export class MailProcessor extends WorkerHost {
     try {
       this.logger.log(`[Job ${jobId}] Processing email job [${jobName}] for ${emailTo}`);
       
-      // Validate job data
+  
       if (!job.data) {
         throw new Error('Job data is missing');
       }
@@ -48,7 +48,7 @@ export class MailProcessor extends WorkerHost {
       
       this.logger.warn(`[Job ${jobId}] Failed email type: ${emailType}, recipient: ${emailTo}, attempts: ${attemptsMade}`);
       
-      // Re-throw để BullMQ có thể retry
+      
       throw error;
     }
   }

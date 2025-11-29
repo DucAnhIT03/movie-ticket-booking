@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateEventRequestDto {
@@ -18,6 +18,11 @@ export class CreateEventRequestDto {
   @IsOptional()
   @MaxLength(255)
   image?: string | null;
+
+  @ApiPropertyOptional({ description: 'Bài viết chi tiết sự kiện (HTML hoặc text)', example: '<p>Thông tin chi tiết...</p>' })
+  @IsString()
+  @IsOptional()
+  content?: string | null;
 
   @ApiPropertyOptional({ example: 'Rạp CGV Vincom', maxLength: 255, nullable: true, description: 'Địa điểm tổ chức' })
   @IsString()
@@ -42,6 +47,15 @@ export class CreateEventRequestDto {
   @IsEnum(['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'])
   @IsOptional()
   status?: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Đánh dấu sự kiện đặc biệt',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  is_special?: boolean;
 }
 
 export class UpdateEventRequestDto {
@@ -61,6 +75,11 @@ export class UpdateEventRequestDto {
   @IsOptional()
   @MaxLength(255)
   image?: string | null;
+
+  @ApiPropertyOptional({ description: 'Bài viết chi tiết sự kiện (HTML hoặc text)' })
+  @IsString()
+  @IsOptional()
+  content?: string | null;
 
   @ApiPropertyOptional({ example: 'Rạp CGV Vincom Landmark', maxLength: 255, nullable: true, description: 'Địa điểm tổ chức' })
   @IsString()
@@ -86,6 +105,14 @@ export class UpdateEventRequestDto {
   @IsEnum(['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'])
   @IsOptional()
   status?: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Đánh dấu sự kiện đặc biệt',
+  })
+  @IsOptional()
+  @IsBoolean()
+  is_special?: boolean;
 }
 
 

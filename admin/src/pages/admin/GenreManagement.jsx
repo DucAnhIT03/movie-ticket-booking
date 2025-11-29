@@ -9,21 +9,33 @@ export default function GenreManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [genres, setGenres] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [limit] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedGenre, setSelectedGenre] = useState(null);
 
-    // ✅ Lấy dữ liệu từ API
+    // ✅ Lấy dữ liệu từ API (có phân trang + tìm kiếm)
     useEffect(() => {
-        loadGenres();
+        loadGenres({ page: 1 });
     }, []);
 
-    const loadGenres = async () => {
+    const loadGenres = async ({ page: targetPage = page, search: targetSearch } = {}) => {
         setIsLoading(true);
         try {
-            const res = await genreService.getAllGenres();
+            const res = await genreService.getAllGenres({
+                page: targetPage,
+                limit,
+                search: (targetSearch ?? searchTerm) || undefined,
+            });
             if (res.status === 200) {
-                // Backend trả về { items: [], total, page, limit, totalPages }
-                setGenres(sortByNewest(res.data.items || res.data || []));
+                const data = res.data || {};
+                const items = data.items || data.data || data || [];
+                setGenres(sortByNewest(items));
+                setPage(data.page || targetPage);
+                setTotalItems(data.total ?? items.length ?? 0);
+                setTotalPages(data.totalPages || Math.max(1, Math.ceil((data.total || items.length || 1) / limit)));
             } else if (res.status === 401) {
                 toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
             } else if (res.status === 403) {
@@ -38,6 +50,15 @@ export default function GenreManagement() {
             setIsLoading(false);
         }
     };
+
+    // ✅ Tự động reload khi gõ tìm kiếm (debounce nhẹ)
+    useEffect(() => {
+        const handle = setTimeout(() => {
+            loadGenres({ page: 1, search: searchTerm });
+        }, 400);
+        return () => clearTimeout(handle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTerm]);
 
     // ✅ Mở modal
     const handleOpenModal = (genre) => {
@@ -157,16 +178,6 @@ export default function GenreManagement() {
         }
     };
 
-    // ✅ Lọc (tìm kiếm client-side)
-    const filtered = genres.filter((g) => {
-        const genreName = g.genreName || g.genre_name || "";
-        const searchLower = searchTerm.toLowerCase();
-        return (
-            genreName.toLowerCase().includes(searchLower) ||
-            String(g.id).includes(searchLower)
-        );
-    });
-
     return (
         <div style={{ color: "#fff" }}>
             <h1
@@ -240,71 +251,122 @@ export default function GenreManagement() {
                 <div style={{ textAlign: "center", padding: "40px", color: "#fff" }}>
                     Đang tải dữ liệu...
                 </div>
-            ) : filtered.length === 0 ? (
+            ) : genres.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "40px", color: "#fff" }}>
                     {searchTerm ? "Không tìm thấy thể loại nào" : "Chưa có thể loại nào"}
                 </div>
             ) : (
                 /* Bảng danh sách */
-                <table
-                    style={{
-                        width: "100%",
-                        borderCollapse: "collapse",
-                        background: "#1a1f29",
-                        color: "#fff",
-                    }}
-                >
-                    <thead style={{ background: "#242b36" }}>
-                        <tr>
-                            <th style={{ padding: "10px", textAlign: "center" }}>ID</th>
-                            <th style={{ padding: "10px", textAlign: "center" }}>Tên thể loại</th>
-                            <th style={{ padding: "10px", textAlign: "center" }}>Hành động</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {filtered.map((g) => (
-                            <tr key={g.id} style={{ borderBottom: "1px solid #2a303d" }}>
-                                <td style={{ padding: "10px", textAlign: "center" }}>
-                                    {g.id}
-                                </td>
-                                <td style={{ padding: "10px", textAlign: "center" }}>
-                                    {g.genreName || g.genre_name || "—"}
-                                </td>
-                                <td style={{ padding: "10px", textAlign: "center" }}>
-                                    <button
-                                        onClick={() => handleOpenModal(g)}
-                                        style={{
-                                            background: "#1976d2",
-                                            border: "none",
-                                            borderRadius: "5px",
-                                            padding: "6px 10px",
-                                            marginRight: "6px",
-                                            cursor: "pointer",
-                                        }}
-                                        title="Sửa thể loại"
-                                    >
-                                        <Settings size={16} color="#fff" />
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleDeleteGenre(g.id)}
-                                        style={{
-                                            background: "#d32f2f",
-                                            border: "none",
-                                            borderRadius: "5px",
-                                            padding: "6px 10px",
-                                            cursor: "pointer",
-                                        }}
-                                        title="Xóa thể loại"
-                                    >
-                                        <Trash2 size={16} color="#fff" />
-                                    </button>
-                                </td>
+                <>
+                    <table
+                        style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                            background: "#1a1f29",
+                            color: "#fff",
+                        }}
+                    >
+                        <thead style={{ background: "#242b36" }}>
+                            <tr>
+                                <th style={{ padding: "10px", textAlign: "center" }}>Tên thể loại</th>
+                                <th style={{ padding: "10px", textAlign: "center" }}>Hành động</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+
+                        <tbody>
+                            {genres.map((g) => (
+                                <tr key={g.id} style={{ borderBottom: "1px solid #2a303d" }}>
+                                    <td style={{ padding: "10px", textAlign: "center" }}>
+                                        {g.genreName || g.genre_name || "—"}
+                                    </td>
+                                    <td style={{ padding: "10px", textAlign: "center" }}>
+                                        <button
+                                            onClick={() => handleOpenModal(g)}
+                                            style={{
+                                                background: "#1976d2",
+                                                border: "none",
+                                                borderRadius: "5px",
+                                                padding: "6px 10px",
+                                                marginRight: "6px",
+                                                cursor: "pointer",
+                                            }}
+                                            title="Sửa thể loại"
+                                        >
+                                            <Settings size={16} color="#fff" />
+                                        </button>
+
+                                        <button
+                                            onClick={() => handleDeleteGenre(g.id)}
+                                            style={{
+                                                background: "#d32f2f",
+                                                border: "none",
+                                                borderRadius: "5px",
+                                                padding: "6px 10px",
+                                                cursor: "pointer",
+                                            }}
+                                            title="Xóa thể loại"
+                                        >
+                                            <Trash2 size={16} color="#fff" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    {/* Phân trang */}
+                    <div
+                        style={{
+                            marginTop: "16px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            color: "#e5e7eb",
+                            fontSize: "14px",
+                        }}
+                    >
+                        <span>
+                            Trang {page} / {totalPages}{" "}
+                            {totalItems ? `(${totalItems} thể loại)` : ""}
+                        </span>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                                onClick={() => page > 1 && loadGenres({ page: page - 1 })}
+                                disabled={page <= 1 || isLoading}
+                                style={{
+                                    padding: "6px 12px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #374151",
+                                    background: page <= 1 ? "#111827" : "#1f2937",
+                                    color: "#e5e7eb",
+                                    cursor: page <= 1 || isLoading ? "not-allowed" : "pointer",
+                                }}
+                            >
+                                Trước
+                            </button>
+                            <button
+                                onClick={() =>
+                                    page < totalPages && loadGenres({ page: page + 1 })
+                                }
+                                disabled={page >= totalPages || isLoading}
+                                style={{
+                                    padding: "6px 12px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #374151",
+                                    background:
+                                        page >= totalPages ? "#111827" : "#1f2937",
+                                    color: "#e5e7eb",
+                                    cursor:
+                                        page >= totalPages || isLoading
+                                            ? "not-allowed"
+                                            : "pointer",
+                                }}
+                            >
+                                Sau
+                            </button>
+                        </div>
+                    </div>
+                </>
             )}
 
             {/* Modal thêm / sửa */}

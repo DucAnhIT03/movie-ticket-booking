@@ -100,6 +100,13 @@ export default function Header() {
             Khuyến mãi
           </NavLink>
           <NavLink
+            to="/events"
+            className={({ isActive }) => (isActive ? "active" : "")}
+            onClick={() => setIsOpen(false)}
+          >
+            Sự kiện
+          </NavLink>
+          <NavLink
             to="/ticket-price"
             className={({ isActive }) => (isActive ? "active" : "")}
             onClick={() => setIsOpen(false)}
@@ -177,6 +184,17 @@ export default function Header() {
                 }}
               >
                 Chỉnh sửa thông tin
+              </div>
+              <div 
+                className="dropdown-item"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigate("/profile?tab=history");
+                  setShowUserMenu(false);
+                }}
+              >
+                Lịch sử đặt vé
               </div>
               <div 
                 className="dropdown-item logout-item"

@@ -40,42 +40,48 @@ const mapToDomain = (row: Screen): ScreenEntity => ({
 export class ScreensRepository {
   constructor(@InjectRepository(Screen) private readonly repo: Repository<Screen>) {}
 
-  async findAndCount(params: { 
-    page: number; 
-    limit: number; 
-    search?: string; 
+  async findAndCount(params: {
+    page: number;
+    limit: number;
+    search?: string;
     theater_id?: number;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<{ items: ScreenEntity[]; total: number }> {
-    const query = this.repo.createQueryBuilder('screen');
-    
+    const query = this.repo
+      .createQueryBuilder('screen')
+      .leftJoin('screen.theater', 'theater');
+
     if (params.search) {
-      const searchId = Number(params.search);
+      const raw = params.search.trim();
+      const searchId = Number(raw);
       const isValidId = !isNaN(searchId) && searchId > 0;
-      
+      const searchLike = `%${raw.toLowerCase()}%`;
+
       query.where(
         new Brackets((qb) => {
           if (isValidId) {
             qb.where('screen.id = :searchId', { searchId })
-              .orWhere('screen.name LIKE :search', { search: `%${params.search}%` });
+              .orWhere('LOWER(screen.name) LIKE :search', { search: searchLike })
+              .orWhere('LOWER(theater.name) LIKE :search', { search: searchLike });
           } else {
-            qb.where('screen.name LIKE :search', { search: `%${params.search}%` });
+            qb.where('LOWER(screen.name) LIKE :search', { search: searchLike })
+              .orWhere('LOWER(theater.name) LIKE :search', { search: searchLike });
           }
         }),
       );
     }
 
     if (params.theater_id) {
-      query.andWhere('screen.theater_id = :theaterId', { theaterId: params.theater_id });
+      query.andWhere('screen.theaterId = :theaterId', { theaterId: params.theater_id });
     }
 
-    // Sort
-    const sortBy = params.sortBy || 'created_at';
+    // Sort – dùng tên thuộc tính entity để tránh lỗi metadata
+    const sortBy = params.sortBy || 'createdAt';
     const sortOrder = params.sortOrder?.toUpperCase() || 'DESC';
-    const validSortColumns = ['id', 'name', 'seat_capacity', 'theater_id', 'created_at', 'updated_at'];
-    const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
-    
+    const validSortColumns = ['id', 'name', 'seatCapacity', 'theaterId', 'createdAt', 'updatedAt'];
+    const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'createdAt';
+
     query.orderBy(`screen.${sortColumn}`, sortOrder as 'ASC' | 'DESC');
     
     // Pagination

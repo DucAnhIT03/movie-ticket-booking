@@ -11,15 +11,16 @@
   font-weight: 600;
 }
 
-.option h3:last-child {
+.option-link {
   color: #ccc;
   font-weight: 400;
   text-decoration: underline;
   cursor: pointer;
   transition: color 0.3s;
+  font-size: 15px;
 }
 
-.option h3:last-child:hover {
+.option-link:hover {
   color: #ffa080;
 }
 

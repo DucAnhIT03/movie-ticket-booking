@@ -1,4 +1,4 @@
-/* ===== FESTIVAL PAGE ===== */
+
 .festival-section {
   background-color: var(--background-color);
   color: #fff;
@@ -8,7 +8,7 @@
   min-height: 100vh;
 }
 
-/* Poster container - full width khít 2 bên lề */
+
 .festival-poster-container {
   width: 100%;
   margin-top: 80px;
@@ -63,7 +63,7 @@
   align-items: flex-start;
 }
 
-/* default image for each non-hero item (small) */
+
 .festival-item img {
   width: 200px;
   height: 200px;
@@ -77,15 +77,6 @@
 }
 
 
-/* hero (first) item: show only image and make it larger while preserving aspect ratio */
-/* .festival-item.hero{
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  background-color: #2640c1;
-  display: flex;
-  justify-content: center;
-} */
 
 .festival-hero .festival-hero-image {
   width: 100%;
@@ -99,12 +90,12 @@
   transform: rotate(0deg);
 }
 
-/* body content takes remaining space */
+
 .festival-item .festival-item-body {
   flex: 1 1 auto;
 }
 
-/* meta (time) aligned on the right */
+
 .festival-item-meta {
   margin-left: auto;
   display: flex;
@@ -113,7 +104,7 @@
   min-width: 140px;
 }
 
-/* ensure title/time/content flow inside body */
+
 .festival-item .festival-item-time {
   margin: 0;
   color: #fff;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Trash2, Edit2, Search, Calendar, Clock, Film, Tv, X } from "lucide-react";
+import { PlusCircle, Trash2, Edit2, Search, Calendar, Clock, Film, Tv, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-toastify";
 import showtimeService from "../../services/showtimes/showtimeService";
 import movieService from "../../services/movies/movieService";
@@ -17,8 +17,12 @@ export default function ShowtimeManagement() {
   const [filterMovieId, setFilterMovieId] = useState("");
   const [filterScreenId, setFilterScreenId] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // Edit state
+ 
   const [editingShowtime, setEditingShowtime] = useState(null);
   const [editMovieId, setEditMovieId] = useState("");
   const [editScreenId, setEditScreenId] = useState("");
@@ -45,15 +49,19 @@ export default function ShowtimeManagement() {
 
   const loadShowtimes = async () => {
     try {
-      const params = {};
+      const params = {
+        page,
+        limit,
+      };
       if (filterMovieId) params.movieId = parseInt(filterMovieId, 10);
       if (filterScreenId) params.screenId = parseInt(filterScreenId, 10);
       
       const res = await showtimeService.getAllShowtimes(params);
       if (res.status === 200) {
-        let items = res.data.items || res.data || [];
+        const data = res.data || {};
+        let items = data.items || [];
         
-        // Lọc theo ngày nếu có
+        
         if (filterDate) {
           const filterDateObj = new Date(filterDate);
           filterDateObj.setHours(0, 0, 0, 0);
@@ -67,6 +75,8 @@ export default function ShowtimeManagement() {
         }
         
         setShowtimes(sortByNewest(items));
+        setTotal(data.total || items.length);
+        setTotalPages(data.totalPages || 1);
       }
     } catch (error) {
       console.error("Error loading showtimes:", error);
@@ -109,7 +119,7 @@ export default function ShowtimeManagement() {
 
   useEffect(() => {
     loadShowtimes();
-  }, [filterMovieId, filterScreenId, filterDate]);
+  }, [filterMovieId, filterScreenId, filterDate, page, limit]);
 
   const handleEditShowtime = (showtime) => {
     setEditingShowtime(showtime);
@@ -141,7 +151,7 @@ export default function ShowtimeManagement() {
       return;
     }
 
-      // Chuẩn hóa format thời gian
+    
       let timeStr = editTime.trim();
       if (timeStr.split(':').length > 2) {
         const parts = timeStr.split(':');
@@ -150,11 +160,11 @@ export default function ShowtimeManagement() {
       const [hours, minutes] = timeStr.split(':');
       const normalizedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
       
-      // Tạo Date theo local timezone để đảm bảo thời gian hiển thị đúng
+      
       const [year, month, day] = editDate.split('-');
       const startDateTime = new Date(
         parseInt(year, 10),
-        parseInt(month, 10) - 1, // Month is 0-indexed
+        parseInt(month, 10) - 1, 
         parseInt(day, 10),
         parseInt(normalizedTime.split(':')[0], 10),
         parseInt(normalizedTime.split(':')[1], 10),
@@ -203,7 +213,12 @@ export default function ShowtimeManagement() {
       const res = await showtimeService.deleteShowtime(showtimeId);
       if (res.status === 200) {
         toast.success("Xóa lịch chiếu thành công!");
-        loadShowtimes();
+       
+        if (showtimes.length === 1 && page > 1) {
+          setPage(page - 1);
+        } else {
+          loadShowtimes();
+        }
     } else {
         toast.error(res.data?.message || "Không thể xóa lịch chiếu (có thể đã có booking)");
       }
@@ -211,6 +226,18 @@ export default function ShowtimeManagement() {
       console.error("Error deleting showtime:", error);
       toast.error(error.response?.data?.message || "Lỗi khi xóa lịch chiếu!");
     }
+  };
+
+  const gotoPrev = () => {
+    if (page > 1) setPage((prev) => prev - 1);
+  };
+
+  const gotoNext = () => {
+    if (page < totalPages) setPage((prev) => prev + 1);
+  };
+
+  const handleFilterChange = () => {
+    setPage(1); 
   };
 
   const getMovieName = (movieId) => {
@@ -241,17 +268,11 @@ export default function ShowtimeManagement() {
     }
   };
 
-  // Filter by search term
   const filtered = showtimes.filter((st) => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
     const movieName = getMovieName(st.movieId || st.movie?.id).toLowerCase();
-    const screenName = getScreenName(st.screenId || st.screen?.id).toLowerCase();
-    return (
-      movieName.includes(searchLower) ||
-      screenName.includes(searchLower) ||
-      String(st.id).includes(searchTerm)
-    );
+    return movieName.includes(searchLower);
   });
 
   return (
@@ -268,7 +289,6 @@ export default function ShowtimeManagement() {
         <Calendar /> Quản Lý Lịch Chiếu
       </h1>
 
-      {/* Thanh tìm kiếm và bộ lọc */}
       <div
         style={{
           display: "flex",
@@ -308,7 +328,10 @@ export default function ShowtimeManagement() {
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
           <select
             value={filterMovieId}
-            onChange={(e) => setFilterMovieId(e.target.value)}
+            onChange={(e) => {
+              setFilterMovieId(e.target.value);
+              handleFilterChange();
+            }}
             style={{
               background: "#1a1f29",
               color: "#fff",
@@ -327,7 +350,10 @@ export default function ShowtimeManagement() {
 
           <select
             value={filterScreenId}
-            onChange={(e) => setFilterScreenId(e.target.value)}
+            onChange={(e) => {
+              setFilterScreenId(e.target.value);
+              handleFilterChange();
+            }}
             style={{
               background: "#1a1f29",
               color: "#fff",
@@ -349,7 +375,10 @@ export default function ShowtimeManagement() {
           <input
             type="date"
             value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
+            onChange={(e) => {
+              setFilterDate(e.target.value);
+              handleFilterChange();
+            }}
             style={{
               background: "#1a1f29",
               color: "#fff",
@@ -362,7 +391,6 @@ export default function ShowtimeManagement() {
         </div>
       </div>
 
-      {/* Loading state */}
       {isLoading ? (
         <div style={{ textAlign: "center", padding: "40px", color: "#fff" }}>
           Đang tải dữ liệu...
@@ -374,7 +402,6 @@ export default function ShowtimeManagement() {
             : "Chưa có lịch chiếu nào"}
         </div>
       ) : (
-        /* Bảng danh sách lịch chiếu */
         <table
           style={{
             width: "100%",
@@ -385,7 +412,6 @@ export default function ShowtimeManagement() {
         >
           <thead style={{ background: "#242b36" }}>
             <tr>
-              <th style={{ padding: "10px", textAlign: "center" }}>ID</th>
               <th style={{ padding: "10px", textAlign: "center" }}>Phim</th>
               <th style={{ padding: "10px", textAlign: "center" }}>Phòng chiếu</th>
               <th style={{ padding: "10px", textAlign: "center" }}>Thời gian bắt đầu</th>
@@ -397,9 +423,8 @@ export default function ShowtimeManagement() {
           <tbody>
             {filtered.map((st) => (
               editingShowtime?.id === st.id ? (
-                // Edit mode
                 <tr key={st.id} style={{ borderBottom: "1px solid #2a303d", background: "#1e2832" }}>
-                  <td colSpan={6} style={{ padding: "20px" }}>
+                  <td colSpan={5} style={{ padding: "20px" }}>
                     <div style={{ 
                       display: "grid", 
                       gridTemplateColumns: "repeat(2, 1fr)", 
@@ -580,9 +605,7 @@ export default function ShowtimeManagement() {
                   </td>
                 </tr>
               ) : (
-                // View mode
                 <tr key={st.id} style={{ borderBottom: "1px solid #2a303d" }}>
-                  <td style={{ padding: "10px", textAlign: "center" }}>#{st.id}</td>
                   <td style={{ padding: "10px", textAlign: "center" }}>{getMovieName(st.movieId || st.movie?.id)}</td>
                   <td style={{ padding: "10px", textAlign: "center" }}>{getScreenName(st.screenId || st.screen?.id)}</td>
                   <td style={{ padding: "10px", textAlign: "center" }}>{formatDateTime(st.startTime)}</td>
@@ -621,6 +644,87 @@ export default function ShowtimeManagement() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {!isLoading && filtered.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "16px",
+            flexWrap: "wrap",
+            gap: "10px",
+          }}
+        >
+          <div style={{ color: "#cbd5f5" }}>
+            {total > 0
+              ? `Hiển thị ${(page - 1) * limit + 1}-${Math.min(total, page * limit)} trong ${total} lịch chiếu`
+              : "Không có dữ liệu"}
+          </div>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <select
+              value={limit}
+              onChange={(e) => {
+                setLimit(Number(e.target.value));
+                setPage(1);
+              }}
+              style={{
+                background: "#1a1f29",
+                color: "#fff",
+                border: "1px solid #333",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: "pointer",
+              }}
+            >
+              {[10, 20, 50].map((size) => (
+                <option key={size} value={size}>
+                  {size} / trang
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={gotoPrev}
+              disabled={page === 1 || isLoading}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: page === 1 || isLoading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                opacity: page === 1 || isLoading ? 0.5 : 1,
+              }}
+            >
+              <ChevronLeft size={16} /> Trước
+            </button>
+            <div style={{ display: "flex", alignItems: "center", color: "#cbd5f5" }}>
+              Trang {page}/{Math.max(totalPages, 1)}
+            </div>
+            <button
+              onClick={gotoNext}
+              disabled={page >= totalPages || isLoading}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: page >= totalPages || isLoading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                opacity: page >= totalPages || isLoading ? 0.5 : 1,
+              }}
+            >
+              Sau <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

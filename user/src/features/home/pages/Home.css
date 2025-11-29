@@ -15,3 +15,48 @@
   flex-direction: column;
   gap: 30px;
 }
+
+.home-filter-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 0;
+}
+
+.filter-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-button:hover {
+  background: #2563eb;
+}
+
+.filter-button:active {
+  transform: scale(0.98);
+}
+
+.filter-button.has-filter {
+  background: #10b981;
+}
+
+.filter-button.has-filter:hover {
+  background: #059669;
+}
+
+.filter-indicator {
+  font-size: 14px;
+  color: #10b981;
+  font-weight: 500;
+}

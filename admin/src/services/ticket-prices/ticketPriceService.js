@@ -1,7 +1,7 @@
 import axiosClient from "../axiosClient";
 
 const ticketPriceService = {
-  // Lấy giá vé dựa trên loại ghế, loại phim, ngày và giờ
+  
   getPrice(typeSeat, typeMovie, date, time = null) {
     const params = {
       typeSeat,
@@ -19,7 +19,7 @@ const ticketPriceService = {
     });
   },
 
-  // Lấy tất cả giá vé (có phân trang)
+  
   getAllTicketPrices(params = {}) {
     return axiosClient.get("/ticket-prices", {
       params: {
@@ -30,21 +30,21 @@ const ticketPriceService = {
     });
   },
 
-  // Lấy chi tiết một giá vé
+  
   getTicketPriceById(id) {
     return axiosClient.get(`/ticket-prices/${id}`, {
       validateStatus: () => true,
     });
   },
 
-  // Tạo giá vé mới (chỉ admin)
+  
   createTicketPrice(data) {
     return axiosClient.post("/ticket-prices", data, {
       validateStatus: () => true,
     });
   },
 
-  // Tạo nhiều giá vé cùng lúc (setup đồng loạt)
+
   createBatchTicketPrices(ticketPrices) {
     return axiosClient.post("/ticket-prices/batch", {
       ticketPrices
@@ -53,14 +53,14 @@ const ticketPriceService = {
     });
   },
 
-  // Cập nhật giá vé
+  
   updateTicketPrice(id, data) {
     return axiosClient.put(`/ticket-prices/${id}`, data, {
       validateStatus: () => true,
     });
   },
 
-  // Xóa giá vé
+  
   deleteTicketPrice(id) {
     return axiosClient.delete(`/ticket-prices/${id}`, {
       validateStatus: () => true,

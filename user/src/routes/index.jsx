@@ -12,6 +12,8 @@ import News from "../features/News/pages/News.jsx";
 import NewsDetail from "../features/News/pages/NewsDetail.jsx";
 import Festival from "../features/festival/pages/Festival.jsx";
 import Promotions from "../features/promotions/page/Promotions.jsx";
+import Events from "../features/events/pages/Events.jsx";
+import EventDetail from "../features/events/pages/EventDetail.jsx";
 import Login from "../features/auth/pages/Login/Login.jsx";
 import Register from "../features/auth/pages/Register/Register.jsx";
 import Profile from "../features/auth/pages/Profile/Profile.jsx";
@@ -36,6 +38,8 @@ function AppRouter() {
         <Route path="/news/:id" element={<NewsDetail />} />
         <Route path="/festival" element={<Festival />} />
         <Route path="/promotion" element={<Promotions />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/festival/:id" element={<FestivalDetail />} /> 
 
         {/* USER AUTH */}

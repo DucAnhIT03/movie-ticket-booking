@@ -86,8 +86,8 @@
   display: flex;
   gap: 15px;
   transition: all 0.3s ease;
-  overflow: hidden; /* Ngăn nội dung tràn ra ngoài */
-  min-width: 0; /* Cho phép flex item shrink */
+  overflow: hidden; 
+  min-width: 0; 
 }
 
 .notification-item:hover {
@@ -108,8 +108,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 0; /* Cho phép flex item shrink */
-  overflow: hidden; /* Ngăn nội dung tràn */
+  min-width: 0; 
+  overflow: hidden; 
 }
 
 .notification-title {

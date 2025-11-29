@@ -14,6 +14,9 @@ export class EventOrmEntity {
   @Column({ type: 'varchar', length: 255, nullable: true })
   image!: string | null;
 
+  @Column({ type: 'longtext', nullable: true })
+  content!: string | null;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   location!: string | null;
 
@@ -29,6 +32,9 @@ export class EventOrmEntity {
     default: 'UPCOMING',
   })
   status!: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
+
+  @Column({ type: 'tinyint', width: 1, default: false })
+  is_special!: boolean;
 
   @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   created_at!: Date;

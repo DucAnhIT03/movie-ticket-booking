@@ -1,4 +1,4 @@
-/* ========== FESTIVAL DETAIL PAGE ========== */
+
 .festival-detail {
   color: #fff;
   background: #0b0c0e;
@@ -22,7 +22,7 @@
   margin: 10px 0;
 }
 
-/* ===== CONTENT LAYOUT (FLEX VERSION) ===== */
+
 .content {
   display: flex;
   justify-content: space-between;
@@ -61,7 +61,7 @@
 }
 
 
-/* ===== RESPONSIVE ===== */
+
 @media (max-width: 900px) {
   .content {
     flex-direction: column;

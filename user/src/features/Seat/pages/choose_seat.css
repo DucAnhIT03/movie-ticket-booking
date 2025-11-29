@@ -1,4 +1,4 @@
-/* ===== PHẦN CHỌN GHẾ ===== */
+
 .seat-section {
   text-align: center;
   padding: 40px 0 60px;
@@ -33,7 +33,7 @@ background: var(--background-color);
     margin-bottom: 12px;
 }
 
-/* ===== BỐ CỤC GHẾ ===== */
+
 .seat-grid {
   display: flex;
   flex-direction: column;
@@ -46,17 +46,17 @@ background: var(--background-color);
   gap: 6px;
 }
 
-/* Ghế bị ẩn - giữ vị trí trống */
+
 .seat-hidden {
   visibility: hidden;
   pointer-events: none;
-  width: 30px; /* Giống kích thước ghế thông thường */
+  width: 30px; 
   height: 30px;
-  flex-shrink: 0; /* Không co lại */
-  margin: 0; /* Không có margin */
+  flex-shrink: 0; 
+  margin: 0; 
 }
 
-/* ===== THÔNG BÁO LỖI ===== */
+
 .seat-error-message {
   margin: 24px auto;
   max-width: 600px;
@@ -118,7 +118,7 @@ background: var(--background-color);
   }
 }
 
-/* ===== GHẾ ===== */
+
 .seat {
   width: 30px;
   height: 30px;
@@ -134,7 +134,7 @@ background: var(--background-color);
   transition: all 0.3s ease;
 }
 
-/* Trạng thái ghế */
+
 .seat.booked {
   background: #1f1f1f !important;
   color: #666; 
@@ -163,8 +163,7 @@ background: var(--background-color);
   transform: scale(1.05);
 }
 
-/* ===== CHÚ THÍCH GHẾ (LEGEND) ===== */
-/* ===== CHÚ THÍCH GHẾ ===== */
+
 .legend {
   display: flex;
   justify-content: center;
@@ -183,7 +182,7 @@ background: var(--background-color);
   font-weight: 400;
 }
 
-/* Ô ghế trong legend */
+
 .legend-item .seat {
   width: 28px;
   height: 28px;
@@ -193,7 +192,7 @@ background: var(--background-color);
   font-size: 0;
 }
 
-/* Màu ghế */
+
 .legend-item .seat.booked {
   color: #666;
   display: flex;
@@ -215,13 +214,13 @@ background: var(--background-color);
   background: #d32f2f;
 }
 
-/* Giúp chữ cân hàng với ô ghế */
+
 .legend-item span:last-child {
   color: #fff;
   font-size: 14px;
 }
 
-/* ===== NÚT HÀNH ĐỘNG ===== */
+
 .actions {
   display: flex;
   justify-content: flex-start;
@@ -238,7 +237,7 @@ background: var(--background-color);
   cursor: pointer;
 }
 
-/* Nút quay lại */
+
 .actions .btn-outline {
   border: 1px solid #fff;
   background: transparent;
@@ -249,7 +248,7 @@ background: var(--background-color);
   color: #000;
 }
 
-/* Nút thanh toán */
+
 .actions .btn-red {
   background: linear-gradient(to left, #fe6969, #e30713);
   border: none;
@@ -278,7 +277,7 @@ background: var(--background-color);
   color: #ccc;
 }
 
-/* --- TABLET (<=1024px) --- */
+
 @media (max-width: 1440px) {
   .seat-section {
     margin: 0 30px;
@@ -317,7 +316,7 @@ background: var(--background-color);
   }
 
   .actions {
-    /* justify-content: center; */
+  
     gap: 15px;
   }
 
@@ -339,7 +338,7 @@ background: var(--background-color);
   }
 }
 
-/* --- MOBILE (<=600px) --- */
+
 @media (max-width: 768px) {
   .seat-section {
     padding: 20px 0 40px;
@@ -418,7 +417,7 @@ background: var(--background-color);
   }
 }
 
-/* --- MOBILE NHỎ (<=390px) --- */
+
 @media (max-width: 390px) {
   .seat-header .seat-picker {
     width: 150px;

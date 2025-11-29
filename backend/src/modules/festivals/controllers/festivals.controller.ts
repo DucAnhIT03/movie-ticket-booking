@@ -100,7 +100,7 @@ export class FestivalsController {
   })
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
   async create(@Body() body: any, @UploadedFile() file?: Express.Multer.File) {
-    // Xử lý upload ảnh nếu có
+   
     if (file?.buffer) {
       validateImageFile(file);
       try {
@@ -154,7 +154,7 @@ export class FestivalsController {
   })
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
   async update(@Param('id', ParseIntPipe) id: number, @Body() body: any, @UploadedFile() file?: Express.Multer.File) {
-    // Xử lý upload ảnh nếu có
+   
     if (file?.buffer) {
       validateImageFile(file);
       try {

@@ -8,7 +8,7 @@ import { EventOrmEntity } from '../../../shared/schemas/event.orm-entity';
 export class EventsRepository {
   constructor(@InjectRepository(EventOrmEntity) private readonly repo: Repository<EventOrmEntity>) {}
 
-  async findAndCount(params: { page: number; limit: number; search?: string; status?: string }): Promise<{ items: EventEntity[]; total: number }>{
+  async findAndCount(params: { page: number; limit: number; search?: string; status?: string; is_special?: boolean }): Promise<{ items: EventEntity[]; total: number }>{
     const query = this.repo.createQueryBuilder('event');
     
     if (params.search) {
@@ -31,6 +31,10 @@ export class EventsRepository {
 
     if (params.status) {
       query.andWhere('event.status = :status', { status: params.status });
+    }
+
+    if (typeof params.is_special === 'boolean') {
+      query.andWhere('event.is_special = :isSpecial', { isSpecial: params.is_special });
     }
     
     query.orderBy('event.start_time', 'DESC');

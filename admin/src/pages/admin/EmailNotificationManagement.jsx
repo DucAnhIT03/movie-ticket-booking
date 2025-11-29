@@ -1,33 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Mail, Send, Search, Eye, Filter, X, Upload, Users, FileText } from "lucide-react";
 import { toast } from "react-toastify";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
+import TextAlign from "@tiptap/extension-text-align";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import emailService from "../../services/email/emailService";
 import userService from "../../services/users/userService";
+import uploadService from "../../services/uploads/uploadService";
 import "./EmailNotificationManagement.css";
 
 export default function EmailNotificationManagement() {
-  const [activeTab, setActiveTab] = useState("send"); // "send" hoặc "history"
+  const [activeTab, setActiveTab] = useState("send"); 
   const [isLoading, setIsLoading] = useState(false);
-  const [sendingProgress, setSendingProgress] = useState(null); // { total, sent, failed }
+  const [sendingProgress, setSendingProgress] = useState(null); 
   
-  // Form gửi email
+  
   const [formData, setFormData] = useState({
     to: "",
-    toType: "single", // "single", "multiple", "all", "file", "filter"
+    toType: "single",
     subject: "",
     message: "",
     notificationType: "GENERAL",
   });
 
-  // Danh sách users để chọn
+  
   const [users, setUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [fileEmails, setFileEmails] = useState([]); // Emails từ file upload
+  const [fileEmails, setFileEmails] = useState([]); 
   const [filterCriteria, setFilterCriteria] = useState({
-    status: "all", // "all", "active", "inactive"
+    status: "all", 
   });
 
-  // Email logs
+  
   const [emailLogs, setEmailLogs] = useState([]);
   const [emailStats, setEmailStats] = useState({
     total: 0,
@@ -47,21 +56,88 @@ export default function EmailNotificationManagement() {
     type: "",
   });
   const [selectedLog, setSelectedLog] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Load danh sách users
-  useEffect(() => {
-    if (activeTab === "send") {
-      loadUsers();
-    }
-  }, [activeTab]);
+  // TipTap Editor
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Placeholder.configure({
+        placeholder: "Nhập nội dung email...",
+      }),
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+      }),
+      TextStyle,
+      Color.configure({
+        types: ['textStyle'],
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: "tiptap-link",
+        },
+      }),
+      Image.configure({
+        inline: true,
+        allowBase64: true,
+      }),
+    ],
+    content: formData.message,
+    onUpdate: ({ editor }) => {
+      setFormData({ ...formData, message: editor.getHTML() });
+    },
+  });
 
-  // Load email logs
-  useEffect(() => {
-    if (activeTab === "history") {
-      loadEmailLogs();
-      loadEmailStats();
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh!");
+      return;
     }
-  }, [activeTab, pagination.page, filters]);
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kích thước ảnh không được vượt quá 5MB!");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const response = await uploadService.uploadSingle(file, "emails", "email", "content");
+      if (response.status === 200 || response.status === 201) {
+        const imageUrl = response.data?.url || response.data?.data?.url || response.data?.secure_url || response.data;
+        
+        if (imageUrl && editor) {
+          editor.chain().focus().setImage({ src: imageUrl }).run();
+          toast.success("Đã chèn ảnh thành công!");
+        } else {
+          toast.error("Không thể lấy URL ảnh!");
+        }
+      } else {
+        toast.error("Upload ảnh thất bại!");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Lỗi khi upload ảnh!");
+    } finally {
+      setUploadingImage(false);
+      // Reset input để có thể chọn cùng file lần nữa
+      event.target.value = "";
+    }
+  };
+
+  // Cập nhật editor khi formData.message thay đổi từ bên ngoài
+  useEffect(() => {
+    if (editor && formData.message !== editor.getHTML()) {
+      editor.commands.setContent(formData.message || "");
+    }
+  }, [formData.message, editor]);
 
   const loadUsers = async () => {
     try {
@@ -80,7 +156,9 @@ export default function EmailNotificationManagement() {
       const res = await emailService.getEmailLogs({
         page: pagination.page,
         limit: pagination.limit,
-        ...filters,
+        search: filters.search || undefined,
+        status: filters.status || undefined,
+        type: filters.type || undefined,
       });
       if (res.status === 200) {
         setEmailLogs(res.data.items || []);
@@ -110,6 +188,21 @@ export default function EmailNotificationManagement() {
     }
   };
 
+  useEffect(() => {
+    if (activeTab === "send") {
+      loadUsers();
+    }
+  }, [activeTab]);
+
+  
+  useEffect(() => {
+    if (activeTab === "history") {
+      loadEmailLogs();
+      loadEmailStats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, pagination.page, pagination.limit, filters.search, filters.status, filters.type]);
+
   // Xử lý upload file danh sách email
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -127,7 +220,7 @@ export default function EmailNotificationManagement() {
         .split(/\r?\n/)
         .map((line) => line.trim())
         .filter((line) => {
-          // Validate email format
+          
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           return line && emailRegex.test(line);
         });
@@ -142,10 +235,10 @@ export default function EmailNotificationManagement() {
     };
 
     reader.readAsText(file);
-    e.target.value = ""; // Reset input
+    e.target.value = ""; 
   };
 
-  // Lấy danh sách recipients dựa trên toType
+ 
   const getRecipients = () => {
     switch (formData.toType) {
       case "single":
@@ -234,7 +327,6 @@ export default function EmailNotificationManagement() {
 
         setSendingProgress({ total: recipients.length, sent, failed });
 
-        // Delay nhỏ giữa các batch để tránh quá tải
         if (i + batchSize < recipients.length) {
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
@@ -246,7 +338,6 @@ export default function EmailNotificationManagement() {
         toast.warning(`Đã gửi ${sent} email, ${failed} email thất bại!`);
       }
 
-      // Reset form
       setFormData({
         to: "",
         toType: "single",
@@ -254,6 +345,9 @@ export default function EmailNotificationManagement() {
         message: "",
         notificationType: "GENERAL",
       });
+      if (editor) {
+        editor.commands.setContent("");
+      }
       setSelectedUsers([]);
       setFileEmails([]);
     } catch (error) {
@@ -557,15 +651,142 @@ export default function EmailNotificationManagement() {
               <label>
                 Nội dung <span style={{ color: "#e53935" }}>*</span>
               </label>
-              <textarea
-                value={formData.message}
-                onChange={(e) =>
-                  setFormData({ ...formData, message: e.target.value })
-                }
-                placeholder="Nhập nội dung email..."
-                rows={10}
-                required
-              />
+              {editor && (
+                <div className="tiptap-editor-wrapper">
+                  <div className="tiptap-toolbar">
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleBold().run()}
+                      className={editor.isActive("bold") ? "is-active" : ""}
+                      title="Bold"
+                    >
+                      <strong>B</strong>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleItalic().run()}
+                      className={editor.isActive("italic") ? "is-active" : ""}
+                      title="Italic"
+                    >
+                      <em>I</em>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleStrike().run()}
+                      className={editor.isActive("strike") ? "is-active" : ""}
+                      title="Strike"
+                    >
+                      <s>S</s>
+                    </button>
+                    <div className="toolbar-divider"></div>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                      className={editor.isActive("heading", { level: 1 }) ? "is-active" : ""}
+                      title="Heading 1"
+                    >
+                      H1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                      className={editor.isActive("heading", { level: 2 }) ? "is-active" : ""}
+                      title="Heading 2"
+                    >
+                      H2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                      className={editor.isActive("heading", { level: 3 }) ? "is-active" : ""}
+                      title="Heading 3"
+                    >
+                      H3
+                    </button>
+                    <div className="toolbar-divider"></div>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleBulletList().run()}
+                      className={editor.isActive("bulletList") ? "is-active" : ""}
+                      title="Bullet List"
+                    >
+                      •
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                      className={editor.isActive("orderedList") ? "is-active" : ""}
+                      title="Numbered List"
+                    >
+                      1.
+                    </button>
+                    <div className="toolbar-divider"></div>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().setTextAlign("left").run()}
+                      className={editor.isActive({ textAlign: "left" }) ? "is-active" : ""}
+                      title="Align Left"
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().setTextAlign("center").run()}
+                      className={editor.isActive({ textAlign: "center" }) ? "is-active" : ""}
+                      title="Align Center"
+                    >
+                      ↔
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().setTextAlign("right").run()}
+                      className={editor.isActive({ textAlign: "right" }) ? "is-active" : ""}
+                      title="Align Right"
+                    >
+                      →
+                    </button>
+                    <div className="toolbar-divider"></div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = window.prompt("Nhập URL:");
+                        if (url) {
+                          editor.chain().focus().setLink({ href: url }).run();
+                        }
+                      }}
+                      className={editor.isActive("link") ? "is-active" : ""}
+                      title="Link"
+                    >
+                      🔗
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().unsetLink().run()}
+                      disabled={!editor.isActive("link")}
+                      title="Remove Link"
+                    >
+                      🔗✕
+                    </button>
+                    <div className="toolbar-divider"></div>
+                    <label
+                      className="toolbar-image-button"
+                      title="Chèn ảnh"
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                        style={{ display: "none" }}
+                      />
+                      {uploadingImage ? "⏳" : "🖼️"}
+                    </label>
+                  </div>
+                  <div className="tiptap-content">
+                    <EditorContent editor={editor} />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Progress bar khi đang gửi */}
@@ -690,10 +911,12 @@ export default function EmailNotificationManagement() {
                 <tbody>
                   {emailLogs.map((log) => (
                     <tr key={log.id}>
-                      <td>{log.id}</td>
-                      <td>{log.to}</td>
-                      <td>{log.subject}</td>
-                      <td>{log.type || "N/A"}</td>
+                      <td style={{ wordBreak: "normal" }}>{log.id}</td>
+                      <td style={{ wordBreak: "break-all" }}>{log.to || "—"}</td>
+                      <td style={{ wordBreak: "break-word", maxWidth: "300px" }} title={log.subject || ""}>
+                        {log.subject || "—"}
+                      </td>
+                      <td style={{ wordBreak: "break-word" }}>{log.type || "N/A"}</td>
                       <td>
                         <span
                           className={`status-badge ${
@@ -711,12 +934,12 @@ export default function EmailNotificationManagement() {
                             : "Đang chờ"}
                         </span>
                       </td>
-                      <td>
+                      <td style={{ whiteSpace: "nowrap" }}>
                         {log.sentAt
                           ? new Date(log.sentAt).toLocaleString("vi-VN")
                           : "N/A"}
                       </td>
-                      <td>
+                      <td style={{ whiteSpace: "nowrap" }}>
                         <button
                           onClick={() => handleViewLog(log.id)}
                           className="view-btn"

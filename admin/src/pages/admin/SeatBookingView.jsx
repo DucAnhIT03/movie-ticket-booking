@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Building, Tv, Calendar, RefreshCw, Grid } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Building, Tv, Calendar, RefreshCw, Grid, Check } from "lucide-react";
 import { toast } from "react-toastify";
 import theaterService from "../../services/theaters/theaterService";
 import screenService from "../../services/screens/screenService";
 import seatService from "../../services/seats/seatService";
 import showtimeService from "../../services/showtimes/showtimeService";
+import bookingService from "../../services/bookings/bookingService";
 
 export default function SeatBookingView() {
   const [theaters, setTheaters] = useState([]);
@@ -17,6 +18,40 @@ export default function SeatBookingView() {
   const [isLoading, setIsLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(null);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priceQuote, setPriceQuote] = useState(null);
+  const [isPricing, setIsPricing] = useState(false);
+
+  const currentUserRoles = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("adminUser");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed?.roles) ? parsed.roles : [];
+    } catch (error) {
+      console.error("Failed to parse adminUser", error);
+      return [];
+    }
+  }, []);
+
+  const canCreateOfflineBooking = currentUserRoles.includes("ROLE_ADMIN") || currentUserRoles.includes("ROLE_EMPLOYEE");
+  const paymentOptions = [
+    { value: "CASH", label: "Tiền mặt" },
+    { value: "POS", label: "Quẹt thẻ (POS)" },
+  ];
+
+  const buildErrorMessage = (data) => {
+    if (!data) return "Không thể xuất vé tại quầy";
+    if (typeof data === "string") return data;
+    if (typeof data === "object") {
+      return data.message || data.error || "Không thể xuất vé tại quầy";
+    }
+    return "Không thể xuất vé tại quầy";
+  };
 
   useEffect(() => {
     loadTheaters();
@@ -54,11 +89,57 @@ export default function SeatBookingView() {
     return () => stopAutoRefresh();
   }, [selectedShowtimeId, autoRefresh]);
 
+  useEffect(() => {
+    
+    setSelectedSeats([]);
+    setCustomerName("");
+    setCustomerPhone("");
+    setPriceQuote(null);
+  }, [selectedShowtimeId]);
+
+  useEffect(() => {
+    if (!selectedShowtimeId || selectedSeats.length === 0) {
+      setPriceQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setIsPricing(true);
+    bookingService
+      .previewOfflineBooking({
+        showtimeId: Number(selectedShowtimeId),
+        seatIds: selectedSeats.map((seat) => seat.id),
+      })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.status === 200) {
+          setPriceQuote(res.data);
+        } else {
+          setPriceQuote(null);
+          toast.error(res.data?.message || "Không thể tính giá vé, vui lòng kiểm tra cấu hình.");
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Quote error:", error);
+        setPriceQuote(null);
+        toast.error(error.response?.data?.message || "Không thể tính giá tự động.");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsPricing(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedShowtimeId, selectedSeats]);
+
   const startAutoRefresh = () => {
     stopAutoRefresh();
     const interval = setInterval(() => {
       loadSeats();
-    }, 5000); // Refresh mỗi 5 giây
+    }, 5000); 
     setRefreshInterval(interval);
   };
 
@@ -130,6 +211,12 @@ export default function SeatBookingView() {
         const seatsData = res.data || [];
         console.log("Loaded seats:", seatsData.length, seatsData);
         setSeats(seatsData);
+        setSelectedSeats((prev) =>
+          prev.filter((seat) => {
+            const freshSeat = seatsData.find((s) => s.id === seat.id);
+            return freshSeat && !freshSeat.isBooked && !freshSeat.isHidden;
+          })
+        );
         
         if (seatsData.length === 0) {
           toast.warning("Phòng này chưa có sơ đồ ghế. Vui lòng tạo sơ đồ ghế trước!");
@@ -177,20 +264,84 @@ export default function SeatBookingView() {
     String.fromCharCode(65 + i)
   );
 
+  const isSeatSelectable = (seat) => seat && !seat.isBooked && !seat.isHidden;
+
+  const isSeatSelected = (seatId) => selectedSeats.some((seat) => seat.id === seatId);
+
+  const handleSeatClick = (seat) => {
+    if (!isSeatSelectable(seat)) return;
+    setSelectedSeats((prev) => {
+      if (prev.some((item) => item.id === seat.id)) {
+        return prev.filter((item) => item.id !== seat.id);
+      }
+      return [...prev, seat];
+    });
+  };
+
   const getSeatColor = (seat) => {
-    if (!seat) return "#2b3448"; // Chưa có ghế
-    if (seat.isBooked) return "#d32f2f"; // Đã đặt - màu đỏ
-    if (seat.isHidden) return "#ffffff"; // Ghế bị ẩn - màu trắng
-    if (seat.type === "VIP") return "#ff9800"; // VIP
-    if (seat.type === "SWEETBOX") return "#e91e63"; // Ghế đôi
-    return "#2b3448"; // Thường
+    if (!seat) return "#2b3448";
+    if (seat.isBooked) return "#d32f2f";
+    if (isSeatSelected(seat.id)) return "#4caf50";
+    if (seat.isHidden) return "#ffffff";
+    if (seat.type === "VIP") return "#ff9800";
+    if (seat.type === "SWEETBOX") return "#e91e63";
+    return "#2b3448";
   };
 
   const getSeatTextColor = (seat) => {
     if (!seat) return "#888";
     if (seat.isBooked) return "#fff";
     if (seat?.isHidden) return "#333";
+    if (isSeatSelected(seat.id)) return "#0f1c2c";
     return "#fff";
+  };
+
+  const handleCreateOfflineBooking = async () => {
+    if (!selectedShowtimeId) {
+      toast.warning("Vui lòng chọn suất chiếu trước khi xuất vé!");
+      return;
+    }
+    if (selectedSeats.length === 0) {
+      toast.warning("Vui lòng chọn ít nhất một ghế!");
+      return;
+    }
+    if (!customerName.trim()) {
+      toast.warning("Vui lòng nhập tên khách hàng!");
+      return;
+    }
+    if (!priceQuote || !priceQuote.totalPrice) {
+      toast.warning("Không xác định được tổng tiền. Vui lòng thử lại!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        showtimeId: Number(selectedShowtimeId),
+        seatIds: selectedSeats.map((seat) => seat.id),
+        totalPriceMovie: priceQuote.totalPrice,
+        paymentMethod,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim() || undefined,
+      };
+
+      const res = await bookingService.createOfflineBooking(payload);
+      if (res.status >= 200 && res.status < 300) {
+        toast.success(res.data?.message || "Xuất vé thành công!");
+        setSelectedSeats([]);
+        setCustomerName("");
+        setCustomerPhone("");
+        setPriceQuote(null);
+        await loadSeats();
+      } else {
+        toast.error(buildErrorMessage(res.data));
+      }
+    } catch (error) {
+      console.error("Offline booking error:", error);
+      toast.error(error.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại!");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -453,11 +604,15 @@ export default function SeatBookingView() {
                       const key = `${row}-${col}`;
                       const seat = seatGrid[key];
                       const seatNumber = `${row}${col}`;
+                      const selectable = isSeatSelectable(seat);
+                      const selected = seat ? isSeatSelected(seat.id) : false;
 
                       return (
                         <div
                           key={col}
+                          onClick={() => handleSeatClick(seat)}
                           style={{
+                            position: "relative",
                             aspectRatio: "1",
                             minWidth: "40px",
                             background: getSeatColor(seat),
@@ -465,6 +620,8 @@ export default function SeatBookingView() {
                               ? "2px solid #d32f2f"
                               : seat
                               ? "1px solid rgba(255, 255, 255, 0.3)"
+                              : selected
+                              ? "2px solid #4caf50"
                               : "1px dashed rgba(255, 255, 255, 0.2)",
                             borderRadius: "6px",
                             display: "flex",
@@ -474,6 +631,9 @@ export default function SeatBookingView() {
                             fontWeight: "600",
                             color: getSeatTextColor(seat),
                             opacity: seat?.isHidden ? 0.5 : 1,
+                            cursor: selectable ? "pointer" : "default",
+                            transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                            boxShadow: selected ? "0 0 10px rgba(76, 175, 80, 0.6)" : "none",
                           }}
                           title={
                             seat
@@ -482,6 +642,17 @@ export default function SeatBookingView() {
                           }
                         >
                           {seat?.isBooked ? "X" : seatNumber}
+                          {selected && (
+                            <Check
+                              size={14}
+                              style={{
+                                position: "absolute",
+                                top: "4px",
+                                right: "4px",
+                                color: "#0f1c2c",
+                              }}
+                            />
+                          )}
                           {seat && seat.type === "VIP" && !seat.isBooked && (
                             <span
                               style={{
@@ -594,7 +765,223 @@ export default function SeatBookingView() {
                   ></div>
                   <span style={{ fontSize: "14px" }}>Ghế bị ẩn</span>
                 </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      background: "#4caf50",
+                      borderRadius: "6px",
+                      border: "1px solid rgba(255, 255, 255, 0.3)",
+                    }}
+                  ></div>
+                  <span style={{ fontSize: "14px" }}>Đang chọn</span>
+                </div>
               </div>
+
+              {canCreateOfflineBooking && (
+                <div
+                  style={{
+                    marginTop: "30px",
+                    padding: "24px",
+                    background: "rgba(15, 28, 44, 0.65)",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(25, 118, 210, 0.4)",
+                  }}
+                >
+                  <h3 style={{ marginBottom: "12px", fontSize: "20px" }}>Xuất vé cho khách tại quầy</h3>
+                  <p style={{ color: "#cfd8dc", marginBottom: "16px", fontSize: "14px" }}>
+                    Chọn ghế còn trống, nhập thông tin khách và xác nhận để giữ vé ngay.
+                  </p>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    {selectedSeats.length === 0 ? (
+                      <span style={{ color: "#90a4ae" }}>Chưa có ghế nào được chọn.</span>
+                    ) : (
+                      selectedSeats
+                        .sort((a, b) => a.seatNumber.localeCompare(b.seatNumber))
+                        .map((seat) => (
+                          <span
+                            key={seat.id}
+                            style={{
+                              padding: "6px 12px",
+                              background: "#1b5e20",
+                              borderRadius: "999px",
+                              fontSize: "13px",
+                              border: "1px solid rgba(255,255,255,0.2)",
+                            }}
+                          >
+                            {seat.seatNumber}
+                          </span>
+                        ))
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "24px",
+                      rowGap: "16px",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <div style={{ flex: "1 1 220px", minWidth: "220px" }}>
+                      <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
+                        Tên khách hàng *
+                      </label>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Nhập tên khách"
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          border: "1px solid #333",
+                          background: "#0f172a",
+                          color: "#fff",
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ flex: "1 1 220px", minWidth: "220px" }}>
+                      <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
+                        Số điện thoại
+                      </label>
+                      <input
+                        type="text"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="VD: 0912 345 678"
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          border: "1px solid #333",
+                          background: "#0f172a",
+                          color: "#fff",
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ flex: "1 1 220px", minWidth: "220px" }}>
+                      <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
+                        Tổng tiền (VNĐ)
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          priceQuote?.totalPrice
+                            ? priceQuote.totalPrice.toLocaleString("vi-VN")
+                            : ""
+                        }
+                        readOnly
+                        placeholder="Hệ thống tự tính theo ghế"
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          border: "1px solid #333",
+                          background: "#19253a",
+                          color: "#fff",
+                          opacity: priceQuote?.totalPrice ? 1 : 0.6,
+                        }}
+                      />
+                      {isPricing && (
+                        <small style={{ color: "#90caf9" }}>Đang tính giá dựa trên ghế đã chọn...</small>
+                      )}
+                    </div>
+
+                    <div style={{ flex: "1 1 220px", minWidth: "220px" }}>
+                      <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
+                        Phương thức thanh toán
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          border: "1px solid #333",
+                          background: "#0f172a",
+                          color: "#fff",
+                        }}
+                      >
+                        {paymentOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <button
+                      onClick={handleCreateOfflineBooking}
+                      disabled={isSubmitting || !priceQuote || !priceQuote.totalPrice}
+                      style={{
+                        padding: "12px 24px",
+                        background:
+                          isSubmitting || !priceQuote?.totalPrice
+                            ? "rgba(25,118,210,0.4)"
+                            : "#1976d2",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor:
+                          isSubmitting || !priceQuote?.totalPrice ? "not-allowed" : "pointer",
+                        fontWeight: "600",
+                        fontSize: "15px",
+                        boxShadow: "0 8px 24px rgba(25,118,210,0.35)",
+                      }}
+                    >
+                      {isSubmitting ? "Đang xử lý..." : "Xuất vé ngay"}
+                    </button>
+                  </div>
+                  {priceQuote?.seats?.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: "16px",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        background: "rgba(9, 19, 35, 0.75)",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      <p style={{ marginBottom: "8px", color: "#cfd8dc", fontWeight: 600 }}>
+                        Chi tiết giá:
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                        {priceQuote.seats.map((seat) => (
+                          <span
+                            key={seat.seatId}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: "6px",
+                              background: "rgba(76, 175, 80, 0.18)",
+                              border: "1px solid rgba(76, 175, 80, 0.3)",
+                              fontSize: "13px",
+                            }}
+                          >
+                            {seat.seatNumber}: {Number(seat.price || 0).toLocaleString("vi-VN")} đ
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

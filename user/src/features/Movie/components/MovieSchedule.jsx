@@ -11,7 +11,7 @@ export default function MovieSchedule({
   selectedTheaterId = "",
   onSelectTheater,
 }) {
-  // Format showtimes thành mảng time strings
+ 
   const getShowtimeTimes = () => {
     if (!showtimes || showtimes.length === 0) return [];
     

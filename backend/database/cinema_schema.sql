@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- 2) roles
 CREATE TABLE IF NOT EXISTS `roles` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `role_name` ENUM('ROLE_ADMIN','ROLE_USER') NOT NULL
+  `role_name` ENUM('ROLE_ADMIN','ROLE_USER','ROLE_EMPLOYEE') NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3) user_roles (composite PK)
@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS `Movies` (
   `release_date` DATETIME NOT NULL,
   `start_date` DATETIME NULL COMMENT 'Ngày bắt đầu công chiếu',
   `end_date` DATETIME NULL COMMENT 'Ngày kết thúc công chiếu',
+  `rating_warning` TEXT NULL COMMENT 'Cảnh báo yêu cầu của phim (ví dụ: PHIM ĐƯỢC PHỔ BIẾN ĐẾN NGƯỜI XEM TỪ ĐỦ 13 TUỔI TRỞ LÊN (13+))',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NULL,
   INDEX `idx_movies_type` (`type`),
@@ -127,13 +128,20 @@ CREATE TABLE IF NOT EXISTS `Bookings` (
   `showtime_id` INT NOT NULL,
   `total_seat` INT NOT NULL,
   `total_price_movie` DOUBLE NOT NULL,
+  `channel` ENUM('ONLINE','OFFLINE') NOT NULL DEFAULT 'ONLINE',
+  `customer_name` VARCHAR(255) NULL,
+  `customer_phone` VARCHAR(20) NULL,
+  `created_by_staff_id` INT NULL,
+  `invoice_code` VARCHAR(50) NULL UNIQUE,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NULL,
   CONSTRAINT `fk_bookings_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_bookings_showtime` FOREIGN KEY (`showtime_id`) REFERENCES `ShowTimes`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_bookings_staff` FOREIGN KEY (`created_by_staff_id`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   INDEX `idx_bookings_user_id` (`user_id`),
   INDEX `idx_bookings_showtime_id` (`showtime_id`),
-  INDEX `idx_bookings_created_at` (`created_at`)
+  INDEX `idx_bookings_created_at` (`created_at`),
+  INDEX `idx_bookings_invoice_code` (`invoice_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 11) Seats
@@ -219,17 +227,33 @@ CREATE TABLE IF NOT EXISTS `Events` (
   `title` VARCHAR(255) NOT NULL,
   `description` TEXT NULL,
   `image` VARCHAR(255) NULL,
+  `content` LONGTEXT NULL,
   `location` VARCHAR(255) NULL,
   `start_time` DATETIME NOT NULL,
   `end_time` DATETIME NOT NULL,
   `status` ENUM('UPCOMING','ONGOING','COMPLETED','CANCELLED') NOT NULL DEFAULT 'UPCOMING',
+  `is_special` TINYINT(1) NOT NULL DEFAULT 0,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NULL,
   INDEX `idx_events_status` (`status`),
+  INDEX `idx_events_is_special` (`is_special`),
   INDEX `idx_events_start_time` (`start_time`),
   INDEX `idx_events_end_time` (`end_time`),
   INDEX `idx_events_location` (`location`),
   FULLTEXT INDEX `ft_events_title` (`title`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `EventRegistrations` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `event_id` INT NOT NULL,
+  `full_name` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(255) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL,
+  `note` TEXT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_event_reg_event` FOREIGN KEY (`event_id`) REFERENCES `Events`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  INDEX `idx_event_reg_event_id` (`event_id`),
+  INDEX `idx_event_reg_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 15) News
@@ -303,7 +327,7 @@ CREATE TABLE IF NOT EXISTS `promotions` (
 CREATE TABLE IF NOT EXISTS `Payments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `booking_id` INT NOT NULL,
-  `payment_method` ENUM('VIETQR','VNPAY','VIETTEL_PAY','PAYPAL') NOT NULL,
+`payment_method` ENUM('VIETQR','VNPAY','VIETTEL_PAY','PAYPAL','CASH','POS') NOT NULL,
   `payment_status` ENUM('PENDING','COMPLETED','FAILED','CANCELLED') NOT NULL DEFAULT 'PENDING',
   `payment_time` DATETIME NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian tạo payment, dùng để track timeout cho seat locking',
@@ -372,7 +396,8 @@ CREATE TABLE IF NOT EXISTS `email_logs` (
 -- 1) Insert Roles
 INSERT INTO `roles` (`id`, `role_name`) VALUES
 (1, 'ROLE_ADMIN'),
-(2, 'ROLE_USER')
+(2, 'ROLE_USER'),
+(3, 'ROLE_EMPLOYEE')
 ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`);
 
 

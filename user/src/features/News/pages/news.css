@@ -1,4 +1,4 @@
-/* === NEWS SECTION === */
+
 .news-section {
   background: #0b0b0b;
   padding: 120px 40px 80px;
@@ -86,7 +86,7 @@
   text-overflow: ellipsis;
 }
 
-/* === PAGINATION === */
+
 .pagination {
   display: flex;
   justify-content: flex-end;

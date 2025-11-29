@@ -5,6 +5,7 @@ import {
   ShowtimeReminderEmailDto,
   PromotionNotificationEmailDto,
   FestivalNotificationEmailDto,
+  AdminNotificationEmailDto,
 } from '../dto/email.dto';
 
 export class EmailTemplates {
@@ -646,6 +647,62 @@ export class EmailTemplates {
               
               <p>Đừng bỏ lỡ cơ hội xem những bộ phim hay nhất trong lễ hội này!</p>
               <p>Trân trọng,<br>Đội ngũ hỗ trợ</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  static getAdminNotificationEmail(data: AdminNotificationEmailDto): string {
+    const readableTypeMap: Record<string, string> = {
+      GENERAL: 'Thông báo chung',
+      PROMOTION: 'Khuyến mãi',
+      EVENT: 'Sự kiện',
+      SYSTEM: 'Thông báo hệ thống',
+      NEWS: 'Tin tức',
+    };
+
+    const typeLabel = readableTypeMap[data.notificationType || 'GENERAL'] || 'Thông báo';
+    const sentAt = data.date ? new Date(data.date).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN');
+    const messageHtml = (data.message || '').replace(/\n/g, '<br />');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background: #f4f6f8; padding: 0; margin: 0; }
+            .container { max-width: 640px; margin: 0 auto; padding: 24px; }
+            .card { background: #ffffff; border-radius: 12px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); overflow: hidden; }
+            .header { background: linear-gradient(135deg, #ff6a00 0%, #ee0979 100%); color: white; padding: 32px; }
+            .header h1 { margin: 0 0 8px 0; font-size: 24px; }
+            .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; background: rgba(255,255,255,0.2); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+            .content { padding: 32px; }
+            .message { background: #f9fafb; border-left: 4px solid #ee0979; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .footer { padding: 24px 32px 32px; color: #64748b; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="card">
+              <div class="header">
+                <span class="badge">${typeLabel}</span>
+                <h1>${data.subject || 'Thông báo từ hệ thống'}</h1>
+                <div style="opacity: 0.8; font-size: 14px;">Gửi lúc ${sentAt}</div>
+              </div>
+              <div class="content">
+                <p>Xin chào,</p>
+                <div class="message">
+                  ${messageHtml || 'Không có nội dung thông báo.'}
+                </div>
+                <p style="margin-top: 24px;">Nếu bạn có bất kỳ thắc mắc nào, vui lòng phản hồi lại email này hoặc liên hệ đội ngũ hỗ trợ.</p>
+                <p>Trân trọng,<br/>Ban quản trị hệ thống đặt vé</p>
+              </div>
+              <div class="footer">
+                Đây là email tự động, vui lòng không trả lời trực tiếp email này.
+              </div>
             </div>
           </div>
         </body>

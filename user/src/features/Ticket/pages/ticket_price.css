@@ -25,7 +25,7 @@
   margin-bottom: 30px;
 }
 
-/* === BẢNG GIÁ === */
+
 .ticket-table {
   background: var(--background-color);
   border-radius: 8px;
@@ -72,7 +72,7 @@ th {
   font-size: 13px;
 }
 
-/* === QUY ĐỊNH, GHI CHÚ === */
+
 .rules,
 .priority {
   line-height: 1.7;
@@ -144,7 +144,7 @@ th {
   font-style: italic;
 }
 
-/* === TIN TỨC TRANG GIÁ VÉ === */
+
 .ticket-section .news-content {
   color: #666;
   line-height: 1.6;
@@ -192,7 +192,7 @@ th {
   text-align: left;
 }
 
-/* === NỘI DUNG TIN TỨC THAY THẾ BẢNG GIÁ === */
+
 .ticket-news-content {
   width: 100%;
   max-width: 1200px;
@@ -210,7 +210,7 @@ th {
   margin: 12px 0;
 }
 
-/* Text Align Support */
+
 .ticket-news-body p[style*="text-align: left"],
 .ticket-news-body h1[style*="text-align: left"],
 .ticket-news-body h2[style*="text-align: left"],
@@ -278,7 +278,7 @@ th {
   margin: 20px 0;
 }
 
-/* Table Styles - Support both regular table and TipTap table */
+
 .ticket-news-body table,
 .ticket-news-body .tiptap-table {
   width: 100%;

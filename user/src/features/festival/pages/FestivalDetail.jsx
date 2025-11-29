@@ -40,10 +40,10 @@ export default function FestivalDetail() {
 
   const loadRelatedNews = async () => {
     try {
-      // Lấy tin tức liên quan đến festival này
+      
       const response = await newsService.getAll("", 1, 5);
       if (response.status === 200) {
-        // Lọc tin tức có festivalId trùng với id hiện tại
+        
         const filtered = (response.data.items || []).filter(
           (news) => news.festivalId === Number(id)
         );

@@ -1,7 +1,7 @@
 import axiosClient from "../axiosClient";
 
 const showtimeService = {
-  // Lấy danh sách suất chiếu
+  
   getAllShowtimes(params = {}) {
     return axiosClient.get("/showtimes", {
       params: {
@@ -17,14 +17,13 @@ const showtimeService = {
     });
   },
 
-  // Lấy suất chiếu theo phim
   getShowtimesByMovie(movieId) {
     return axiosClient.get(`/showtimes/movie/${movieId}`, {
       validateStatus: () => true,
     });
   },
 
-  // Lấy suất chiếu theo ngày
+  
   getShowtimesByDate(date, timezoneOffset) {
     return axiosClient.get("/showtimes/date", {
       params: { 
@@ -35,28 +34,27 @@ const showtimeService = {
     });
   },
 
-  // Lấy chi tiết suất chiếu
+ 
   getShowtimeById(id) {
     return axiosClient.get(`/showtimes/${id}`, {
       validateStatus: () => true,
     });
   },
 
-  // Tạo suất chiếu mới
+  
   createShowtime(data) {
     return axiosClient.post("/showtimes", data, {
       validateStatus: () => true,
     });
   },
 
-  // Cập nhật suất chiếu
+
   updateShowtime(id, data) {
     return axiosClient.put(`/showtimes/${id}`, data, {
       validateStatus: () => true,
     });
   },
 
-  // Xóa suất chiếu
   deleteShowtime(id) {
     return axiosClient.delete(`/showtimes/${id}`, {
       validateStatus: () => true,

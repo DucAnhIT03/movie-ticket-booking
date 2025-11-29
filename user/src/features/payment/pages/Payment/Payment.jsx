@@ -22,13 +22,13 @@ export default function PaymentPage() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   
-  // State cho mã khuyến mãi
+  
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [promoError, setPromoError] = useState("");
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
 
-  // State để lưu thông tin booking
+  
   const [bookingData, setBookingData] = useState({
     movie: null,
     showtime: null,
@@ -41,10 +41,10 @@ export default function PaymentPage() {
     selectedTime: "",
   });
 
-  // Kiểm tra đăng nhập khi component mount
+
   useEffect(() => {
     if (!isAuthenticated()) {
-      // Lưu returnUrl để sau khi đăng nhập quay lại trang payment
+     
       localStorage.setItem("returnUrl", "/payment");
       alert("Vui lòng đăng nhập để tiếp tục đặt vé!");
       navigate("/login");
@@ -52,16 +52,16 @@ export default function PaymentPage() {
     }
   }, [navigate]);
 
-  // Load dữ liệu từ localStorage khi component mount
+  
   useEffect(() => {
     const loadBookingData = async () => {
-      // Kiểm tra lại authentication trước khi load data
+      
       if (!isAuthenticated()) {
         return;
       }
 
       try {
-        // Lấy dữ liệu từ localStorage
+       
         const selectedSeats = JSON.parse(localStorage.getItem("selectedSeats") || "[]");
         const totalPrice = parseFloat(localStorage.getItem("totalPrice") || "0");
         const showtimeId = parseInt(localStorage.getItem("selectedShowtimeId") || "0");
@@ -84,7 +84,7 @@ export default function PaymentPage() {
           return;
         }
 
-        // Parse selectedSeats để lấy seatIds và seatCodes
+       
         const seatIds = [];
         const seatCodes = [];
         selectedSeats.forEach((seatKey) => {
@@ -93,7 +93,7 @@ export default function PaymentPage() {
           seatCodes.push(seatCode);
         });
 
-        // Fetch thông tin movie
+        
         const movieRes = await movieService.getMovieById(movieId);
         if (movieRes.status !== 200 || !movieRes.data) {
           setError("Không tìm thấy thông tin phim.");
@@ -102,7 +102,7 @@ export default function PaymentPage() {
         const movie = movieRes.data;
         console.log("🎬 [Payment] Movie data:", movie);
 
-        // Fetch thông tin showtime theo ID
+        
         let showtime = null;
         try {
           console.log("🔍 [Payment] Fetching showtime by ID:", showtimeId);
@@ -121,7 +121,7 @@ export default function PaymentPage() {
           console.warn("⚠️ [Payment] Error fetching showtime by ID, trying getAll:", err);
         }
 
-        // Fallback: Nếu không tìm thấy theo ID, thử tìm trong danh sách
+       
         if (!showtime) {
           console.log("🔄 [Payment] Trying fallback: getAll showtimes");
           const showtimeRes = await showtimeService.getAll({ limit: 1000 });
@@ -136,7 +136,6 @@ export default function PaymentPage() {
           }
         }
 
-        // Nếu không tìm thấy showtime, vẫn cho phép hiển thị giao diện với dữ liệu có sẵn
         if (!showtime) {
           console.error("❌ [Payment] Showtime not found:", {
             showtimeId,
@@ -145,20 +144,18 @@ export default function PaymentPage() {
             selectedDate,
             selectedTime
           });
-          // Không set error để vẫn hiển thị giao diện thanh toán
-          // setError("Không tìm thấy suất chiếu. Vui lòng chọn ghế lại.");
-          // return;
+          
         }
 
-        // Fetch thông tin theater
+        
         let theater = null;
         
-        // Ưu tiên dùng theater từ showtime nếu đã có
+      
         if (showtime?.screen?.theater) {
           theater = showtime.screen.theater;
           console.log("✅ [Payment] Using theater from showtime:", theater);
         } else {
-          // Nếu không có, fetch từ API
+      
           const theaterId = showtime?.screen?.theaterId;
           console.log("🏢 [Payment] Theater ID:", theaterId, "Screen:", showtime?.screen);
           
@@ -200,7 +197,7 @@ export default function PaymentPage() {
     loadBookingData();
   }, []);
 
-  // Tính tổng tiền sau khi áp dụng khuyến mãi
+ 
   const calculateTotalWithPromotion = () => {
     let total = bookingData.totalPrice;
     
@@ -208,15 +205,15 @@ export default function PaymentPage() {
       const { discountType, discountValue } = appliedPromotion;
       
       if (discountType === 'PERCENT') {
-        // Giảm theo phần trăm
+       
         const discount = (total * discountValue) / 100;
         total = total - discount;
       } else if (discountType === 'AMOUNT') {
-        // Giảm theo số tiền cố định
+    
         total = total - discountValue;
       }
       
-      // Đảm bảo tổng tiền không âm
+      
       if (total < 0) total = 0;
     }
     
@@ -233,7 +230,7 @@ export default function PaymentPage() {
     { id: "VIETTEL_PAY", name: "Viettel Money", img: "/viettelmoney.png" },
   ];
 
-  // Tạo mã QR giả cho demo
+  
   const generateQRCode = (method) => {
     const movieName = bookingData.movie?.name || "Phim";
     const qrData = {
@@ -254,7 +251,7 @@ export default function PaymentPage() {
     setError("");
 
     try {
-      // Bước 1: Tạo booking
+      
       const bookingResponse = await bookingService.createBooking({
         showtimeId: bookingData.showtimeId,
         seatIds: bookingData.seatIds,
@@ -268,14 +265,14 @@ export default function PaymentPage() {
       const booking = bookingResponse.data;
       const bookingId = booking.id;
 
-      // Bước 2: Tạo payment (với promotion nếu có)
+      
       const paymentData = {
         bookingId: bookingId,
         method: selected,
         amount: total,
       };
       
-      // Thêm promotionId nếu có mã khuyến mãi đã áp dụng
+      
       if (appliedPromotion && appliedPromotion.id) {
         paymentData.promotionId = appliedPromotion.id;
       }
@@ -288,22 +285,21 @@ export default function PaymentPage() {
 
       const payment = paymentResponse.data;
 
-      // Lưu bookingId và paymentId vào localStorage để sử dụng sau
+   
       localStorage.setItem("currentBookingId", bookingId.toString());
       localStorage.setItem("currentPaymentId", payment.id.toString());
 
-      // Nếu là VNPAY, redirect đến VNPAY payment URL
+
       if (selected === "VNPAY") {
         try {
-          // Tạo return URL - phải trỏ đến backend API endpoint
-          // Lấy API base URL từ axiosClient
+          
           const apiBaseUrl = axiosClient.defaults.baseURL || 'http://localhost:3000';
           const returnUrl = `${apiBaseUrl}/api/payments/vnpay/return`;
           
           console.log("🔗 [Payment] Creating VNPAY URL with returnUrl:", returnUrl);
           console.log("💳 [Payment] Payment ID:", payment.id);
           
-          // Tạo VNPAY payment URL
+          
           const vnpayUrlResponse = await paymentService.createVnpayUrl(
             payment.id,
             returnUrl
@@ -314,12 +310,11 @@ export default function PaymentPage() {
           console.log("📥 [Payment] Response data:", vnpayUrlResponse.data);
           console.log("📥 [Payment] Response data type:", typeof vnpayUrlResponse.data);
 
-          // Lấy paymentUrl từ response
-          // Axios wrap response trong .data, nhưng có thể structure khác
+          
           let paymentUrl = null;
           
           if (vnpayUrlResponse.data) {
-            // Thử các cách truy cập khác nhau
+            
             paymentUrl = vnpayUrlResponse.data.paymentUrl || 
                         vnpayUrlResponse.data?.data?.paymentUrl ||
                         (typeof vnpayUrlResponse.data === 'string' ? vnpayUrlResponse.data : null);
@@ -327,12 +322,12 @@ export default function PaymentPage() {
 
           console.log("🔗 [Payment] Extracted paymentUrl:", paymentUrl);
 
-          // Kiểm tra status 200 hoặc 201 (Created) và có paymentUrl
+          
           if ((vnpayUrlResponse.status === 200 || vnpayUrlResponse.status === 201) && paymentUrl) {
             console.log("✅ [Payment] Redirecting to VNPAY:", paymentUrl);
-            // Redirect đến VNPAY
+            
             window.location.href = paymentUrl;
-            return; // Không cần set loading false vì đang redirect
+            return; 
           } else {
             console.error("❌ [Payment] Invalid VNPAY URL response:", {
               status: vnpayUrlResponse.status,
@@ -344,7 +339,6 @@ export default function PaymentPage() {
         } catch (vnpayError) {
           console.error("❌ [Payment] Error creating VNPAY URL:", vnpayError);
           
-          // Hiển thị lỗi chi tiết hơn
           let vnpayErrorMessage = "Không thể tạo liên kết thanh toán VNPAY. Vui lòng thử lại.";
           
           if (vnpayError.response) {
@@ -354,11 +348,11 @@ export default function PaymentPage() {
             console.error("❌ [Payment] VNPAY Error Data:", data);
             
             if (status === 400) {
-              // Lấy message từ response
+              
               if (data?.message) {
                 vnpayErrorMessage = data.message;
               } else if (Array.isArray(data?.message)) {
-                // Nếu là array của validation errors
+                
                 vnpayErrorMessage = data.message.join(', ');
               } else if (typeof data === 'string') {
                 vnpayErrorMessage = data;
@@ -381,7 +375,6 @@ export default function PaymentPage() {
         }
       }
 
-      // Hiển thị modal QR cho các phương thức khác
       setShowQRModal(true);
     } catch (err) {
       console.error("Error processing payment:", err);
@@ -393,16 +386,16 @@ export default function PaymentPage() {
         const data = err.response.data;
         
         if (status === 409) {
-          // Conflict - thường là ghế đã được đặt
+          
           errorMessage = data?.message || "Một hoặc nhiều ghế đã được đặt bởi người khác. Vui lòng chọn ghế khác.";
         } else if (status === 400) {
-          // Bad Request
+          
           errorMessage = data?.message || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.";
         } else if (status === 404) {
-          // Not Found
+          
           errorMessage = data?.message || "Không tìm thấy suất chiếu hoặc ghế. Vui lòng chọn lại.";
         } else if (status === 401) {
-          // Unauthorized
+          
           errorMessage = "Bạn cần đăng nhập để đặt vé. Vui lòng đăng nhập lại.";
         } else {
           errorMessage = data?.message || errorMessage;
@@ -426,7 +419,7 @@ export default function PaymentPage() {
     try {
       const paymentId = localStorage.getItem("currentPaymentId");
       if (paymentId) {
-        // Hoàn thành payment
+        
         await paymentService.completePayment(
           parseInt(paymentId),
           `TXN_${Date.now()}`,
@@ -434,7 +427,6 @@ export default function PaymentPage() {
         );
       }
 
-      // Xóa dữ liệu tạm
       localStorage.removeItem("selectedSeats");
       localStorage.removeItem("totalPrice");
       localStorage.removeItem("currentBookingId");
@@ -456,7 +448,7 @@ export default function PaymentPage() {
       const bookingId = localStorage.getItem("currentBookingId");
 
       if (paymentId) {
-        // Đánh dấu payment là failed
+        
         await paymentService.completePayment(
           parseInt(paymentId),
           `TXN_${Date.now()}`,
@@ -465,11 +457,11 @@ export default function PaymentPage() {
       }
 
       if (bookingId) {
-        // Hủy booking
+    
         await bookingService.cancelBooking(parseInt(bookingId));
       }
 
-      // Xóa dữ liệu tạm
+      
       localStorage.removeItem("selectedSeats");
       localStorage.removeItem("totalPrice");
       localStorage.removeItem("currentBookingId");
@@ -484,14 +476,14 @@ export default function PaymentPage() {
     }
   };
 
-  // Format date và time
+  
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
-    // Format từ DD-MM-YYYY sang DD/MM/YYYY
+    
     return dateStr.replace(/-/g, "/");
   };
 
-  // Hàm áp dụng mã khuyến mãi
+  
   const handleApplyPromoCode = async () => {
     const codeToApply = promoCode.trim();
     if (!codeToApply) {
@@ -505,8 +497,7 @@ export default function PaymentPage() {
     console.log("🔍 [Payment] Applying promotion code:", codeToApply);
 
     try {
-      // Gửi mã code như user nhập (không tự động uppercase)
-      // Backend sẽ xử lý case-insensitive nếu cần
+    
       const response = await promotionService.applyCode(codeToApply);
       
       console.log("📥 [Payment] Promotion API response (full):", response);
@@ -518,11 +509,9 @@ export default function PaymentPage() {
         responseType: typeof response
       });
       
-      // Axios trả về response với data trong response.data
-      // Nếu status là 200-299, axios tự động coi là success
-      // Nếu có lỗi, axios sẽ throw error
+      
       if (response && response.data) {
-        // Backend đã trả về đầy đủ thông tin promotion (id, code, title, discountType, discountValue)
+     
         setAppliedPromotion(response.data);
         setPromoError("");
         console.log("✅ [Payment] Promotion applied successfully:", response.data);
@@ -549,7 +538,7 @@ export default function PaymentPage() {
       let errorMessage = "Mã khuyến mãi không hợp lệ hoặc đã hết hạn";
       
       if (error.response) {
-        // Có response từ server
+      
         const status = error.response.status;
         const data = error.response.data;
         
@@ -573,14 +562,14 @@ export default function PaymentPage() {
     }
   };
 
-  // Hàm xóa mã khuyến mãi
+  
   const handleRemovePromoCode = () => {
     setPromoCode("");
     setAppliedPromotion(null);
     setPromoError("");
   };
 
-  // Chỉ hiển thị loading khi chưa có dữ liệu và không có lỗi nghiêm trọng
+  
   if (!bookingData.movie && !error) {
     return (
       <div className="payment-wrapper">
@@ -593,7 +582,7 @@ export default function PaymentPage() {
     );
   }
 
-  // Nếu có lỗi nghiêm trọng và không có dữ liệu, hiển thị lỗi
+
   if (error && !bookingData.movie && !bookingData.seats.length) {
     return (
       <div className="payment-wrapper">

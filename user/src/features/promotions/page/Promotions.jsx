@@ -20,7 +20,7 @@ const Promotions = () => {
       if (response.status === 200) {
         const data = response.data;
         const items = Array.isArray(data) ? data : (data.items || data.data || []);
-        // Lọc chỉ lấy các khuyến mãi đang hoạt động và có ảnh
+
         const activePromotions = items.filter(
           (promo) => promo.active && promo.status === 'ACTIVE' && promo.image
         );

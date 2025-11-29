@@ -7,6 +7,8 @@ import { AdminGuard } from '../../../common/guards/admin.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CloudinaryService } from '../../../providers/cloudinary/cloudinary.service';
+import { CreateEventRegistrationRequestDto } from '../dtos/request/create-event-registration.request.dto';
+import { EventRegistrationResponseDto } from '../dtos/response/event-registration.response.dto';
 
 function validateImageFile(file: Express.Multer.File): void {
   const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -19,6 +21,28 @@ function validateImageFile(file: Express.Multer.File): void {
   if (file.size > maxSize) {
     throw new BadRequestException(`File size exceeds maximum limit of ${maxSize / 1024 / 1024}MB`);
   }
+}
+
+function parseBoolean(value: unknown): boolean | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return value === 1;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
+      return false;
+    }
+  }
+  return undefined;
 }
 
 @ApiTags('Sự kiện')
@@ -60,17 +84,20 @@ export class EventsController {
   @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Số bản ghi mỗi trang (<=100)' })
   @ApiQuery({ name: 'search', required: false, example: 'ra mắt', description: 'Tìm kiếm theo ID, tiêu đề hoặc địa điểm' })
   @ApiQuery({ name: 'status', required: false, example: 'UPCOMING', enum: ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'], description: 'Lọc theo trạng thái' })
+  @ApiQuery({ name: 'is_special', required: false, example: true, schema: { type: 'boolean' }, description: 'Lọc theo sự kiện đặc biệt' })
   async list(
     @Query('page') page?: string, 
     @Query('limit') limit?: string, 
     @Query('search') search?: string,
-    @Query('status') status?: string
+    @Query('status') status?: string,
+    @Query('is_special') isSpecial?: string
   ) {
     const result = await this.service.findAll({ 
       page: Number(page ?? 1), 
       limit: Number(limit ?? 10), 
       search: search ?? '',
-      status: status
+      status: status,
+      is_special: parseBoolean(isSpecial),
     });
     return {
       ...result,
@@ -112,6 +139,7 @@ export class EventsController {
         start_time: { type: 'string', example: '2030-01-01T09:00:00.000Z' },
         end_time: { type: 'string', example: '2030-01-05T17:00:00.000Z' },
         status: { type: 'string', example: 'UPCOMING', enum: ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'] },
+        is_special: { type: 'boolean', example: true, description: 'Đánh dấu sự kiện đặc biệt' },
       },
       required: ['title', 'start_time', 'end_time'],
     },
@@ -135,11 +163,13 @@ export class EventsController {
     const dto: CreateEventRequestDto = {
       title: body.title,
       description: body.description || null,
+      content: body.content || null,
       image: body.image || null,
       location: body.location || null,
       start_time: body.start_time,
       end_time: body.end_time,
       status: body.status,
+      is_special: parseBoolean(body.is_special) ?? false,
     };
     const ent = await this.service.create(dto);
     return EventResponseDto.fromEntity(ent);
@@ -171,6 +201,7 @@ export class EventsController {
         start_time: { type: 'string', example: '2030-01-02T09:00:00.000Z' },
         end_time: { type: 'string', example: '2030-01-06T17:00:00.000Z' },
         status: { type: 'string', example: 'ONGOING', enum: ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'] },
+        is_special: { type: 'boolean', example: false, description: 'Đánh dấu sự kiện đặc biệt' },
       },
     },
   })
@@ -193,11 +224,13 @@ export class EventsController {
     const dto: UpdateEventRequestDto = {
       title: body.title,
       description: body.description !== undefined ? body.description : undefined,
+      content: body.content !== undefined ? body.content : undefined,
       image: body.image !== undefined ? body.image : undefined,
       location: body.location !== undefined ? body.location : undefined,
       start_time: body.start_time,
       end_time: body.end_time,
       status: body.status,
+      is_special: parseBoolean(body.is_special),
     };
     const ent = await this.service.update(id, dto);
     return EventResponseDto.fromEntity(ent);
@@ -213,6 +246,28 @@ export class EventsController {
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.service.remove(id);
     return { success: true };
+  }
+
+  @Post(':id/registrations')
+  @ApiOperation({ summary: 'Người dùng đăng ký tham dự sự kiện' })
+  @ApiCreatedResponse({ description: 'Đăng ký thành công', type: EventRegistrationResponseDto })
+  @ApiBadRequestResponse({ description: 'Thông tin đăng ký không hợp lệ' })
+  async register(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: CreateEventRegistrationRequestDto,
+  ) {
+    const ent = await this.service.createRegistration(id, body);
+    return EventRegistrationResponseDto.fromEntity(ent);
+  }
+
+  @Get(':id/registrations')
+  @UseGuards(AdminGuard)
+  @ApiBearerAuth('jwt')
+  @ApiOperation({ summary: 'Danh sách người đăng ký sự kiện - Chỉ admin' })
+  @ApiOkResponse({ description: 'Danh sách đăng ký', type: EventRegistrationResponseDto, isArray: true })
+  async listRegistrations(@Param('id', ParseIntPipe) id: number) {
+    const items = await this.service.listRegistrations(id);
+    return items.map(EventRegistrationResponseDto.fromEntity);
   }
 }
 

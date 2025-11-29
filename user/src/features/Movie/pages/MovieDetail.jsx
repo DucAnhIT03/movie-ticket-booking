@@ -21,7 +21,7 @@ export default function MovieDetail() {
   const [showtimesLoading, setShowtimesLoading] = useState(false);
   const timezoneOffset = useMemo(() => new Date().getTimezoneOffset(), []);
 
-  // Fetch thông tin phim
+
   useEffect(() => {
     if (!id) return;
 
@@ -45,7 +45,7 @@ export default function MovieDetail() {
     fetchMovie();
   }, [id]);
 
-  // Tạo danh sách 5 ngày kể từ hôm nay
+ 
   const getAvailableDates = () => {
     const dates = [];
     const today = new Date();
@@ -76,21 +76,21 @@ export default function MovieDetail() {
 
   const dates = getAvailableDates();
   
-  // Set ngày mặc định
+ 
   useEffect(() => {
     if (dates.length > 0 && !selectedDate) {
       setSelectedDate(dates[0].dateStr);
     }
   }, []);
 
-  // Convert date từ DD-MM-YYYY sang YYYY-MM-DD
+ 
   const convertDateToAPIFormat = (dateStr) => {
     if (!dateStr) return "";
     const [day, month, year] = dateStr.split("-");
     return `${year}-${month}-${day}`;
   };
 
-  // Fetch showtimes theo ngày đã chọn
+
   useEffect(() => {
     if (!selectedDate || !id) return;
 

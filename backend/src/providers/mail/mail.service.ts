@@ -19,6 +19,7 @@ import {
   PromotionNotificationEmailDto,
   FestivalNotificationEmailDto,
   BaseEmailDto,
+  AdminNotificationEmailDto,
 } from './dto/email.dto';
 
 export type SendMailPayload = {
@@ -69,22 +70,24 @@ export class MailService {
       throw new Error(`Invalid email address: ${payload.to}`);
     }
 
-    if (!payload.subject || payload.subject.trim().length === 0) {
-      throw new Error('Email subject is required');
-    }
-
     let emailLog: EmailLog | null = null;
     
     try {
       const from = this.config.get<string>('MAIL_FROM', 'no-reply@example.com');
       
       let html = payload.html;
-      let subject = payload.subject.trim();
+      let subject = payload.subject?.trim();
 
       if (payload.type && payload.data) {
         html = this.generateEmailContent(payload.type, payload.data);
         const templateConfig = EMAIL_TEMPLATES[payload.type];
-        subject = templateConfig ? templateConfig.subject : subject;
+        if ((!subject || subject.length === 0) && templateConfig) {
+          subject = templateConfig.subject;
+        }
+      }
+
+      if (!subject || subject.length === 0) {
+        throw new Error('Email subject is required');
       }
 
       // Validate HTML content
@@ -183,6 +186,9 @@ export class MailService {
       
       case EmailType.FESTIVAL_NOTIFICATION:
         return EmailTemplates.getFestivalNotificationEmail(data as FestivalNotificationEmailDto);
+
+      case EmailType.ADMIN_NOTIFICATION:
+        return EmailTemplates.getAdminNotificationEmail(data as AdminNotificationEmailDto);
       
       default:
         this.logger.warn(`Unknown email type: ${type}`);

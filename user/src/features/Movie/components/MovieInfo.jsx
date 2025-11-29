@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import "./movie_info.css";
 import { formatGenres, getGenresData } from "../../../shared/utils/formatGenres";
 import MovieDetailModal from "./MovieDetailModal";
@@ -8,7 +8,6 @@ export default function MovieInfo({ movie }) {
 
   if (!movie) return null;
 
-  // Format ngày phát hành
   const formatDate = (movie) => {
     let dateString = movie.startDate || movie.start_date || movie.releaseDate || movie.release_date;
     if (!dateString) return "";
@@ -25,21 +24,31 @@ export default function MovieInfo({ movie }) {
   const releaseDate = formatDate(movie);
   const posterUrl = movie.image || movie.poster || "/logo.png";
   const movieType = movie.type || "2D";
-  // Rating có thể là type hoặc một field riêng, tạm thời dùng type
+  
   const movieRating = movie.rating || movie.type || "T13";
   const duration = movie.duration ? `${movie.duration} phút` : "";
   const country = movie.country || "";
   const author = movie.author || "";
   const descriptions = movie.descriptions || movie.description || "";
+  const ratingWarning = movie.ratingWarning || movie.rating_warning || "PHIM ĐƯỢC PHỔ BIẾN ĐẾN NGƯỜI XEM TỪ ĐỦ 13 TUỔI TRỞ LÊN (13+)";
 
-  // Tạo chuỗi meta: Genre | Country | Duration
+
   const metaParts = [];
   if (genre) metaParts.push(genre);
   if (country) metaParts.push(country);
   if (duration) metaParts.push(duration);
-  const metaString = metaParts.join(" &nbsp; | &nbsp; ");
+  
+  const metaContent = metaParts.length > 0 ? (
+    <>
+      {metaParts.map((part, index) => (
+        <React.Fragment key={index}>
+          {part}
+          {index < metaParts.length - 1 && <> &nbsp; | &nbsp; </>}
+        </React.Fragment>
+      ))}
+    </>
+  ) : null;
 
-  // Lấy ảnh phim để làm background
   const backgroundImage = movie.image || movie.poster || "/logo.png";
 
   return (
@@ -67,7 +76,7 @@ export default function MovieInfo({ movie }) {
               <h1>
                 {movie.title || "Chưa có tên"} - {movieRating} <span className="tag">{movieType}</span>
               </h1>
-              <p>{metaString}</p>
+              <p>{metaContent}</p>
             </div>
           </div>
         </div>
@@ -77,7 +86,7 @@ export default function MovieInfo({ movie }) {
             {movie.title || "Chưa có tên"} - {movieRating} <span className="tag">{movieType}</span>
           </h1>
           <p className="meta">
-            {metaString}
+            {metaContent}
             {author && <> &nbsp;&nbsp;&nbsp; Đạo diễn: <strong>{author}</strong></>}
           </p>
           {descriptions && (
@@ -86,7 +95,7 @@ export default function MovieInfo({ movie }) {
           {releaseDate && <p>Khởi chiếu: {releaseDate}</p>}
           <p className="rating">
             <span className="highlight">
-              Kiểm duyệt: {movieRating} - PHIM ĐƯỢC PHỔ BIẾN ĐẾN NGƯỜI XEM TỪ ĐỦ 13 TUỔI TRỞ LÊN (13+)
+              Kiểm duyệt: {movieRating} - {ratingWarning}
             </span>
           </p>
           <div className="actions">

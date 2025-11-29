@@ -6,12 +6,12 @@ export class Role {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ 
-    name: 'role_name', 
-    type: 'enum', 
-    enum: ['ROLE_ADMIN', 'ROLE_USER'] 
+  @Column({
+    name: 'role_name',
+    type: 'enum',
+    enum: ['ROLE_ADMIN', 'ROLE_USER', 'ROLE_EMPLOYEE'],
   })
-  roleName: 'ROLE_ADMIN' | 'ROLE_USER';
+  roleName: 'ROLE_ADMIN' | 'ROLE_USER' | 'ROLE_EMPLOYEE';
 
   @OneToMany(() => UserRole, (ur) => ur.role)
   userRoles: UserRole[];

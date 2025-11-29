@@ -1,6 +1,7 @@
 export enum Roles {
   ROLE_ADMIN = 'ROLE_ADMIN',
   ROLE_USER = 'ROLE_USER',
+  ROLE_EMPLOYEE = 'ROLE_EMPLOYEE',
 }
 
 export enum Status {
@@ -35,4 +36,9 @@ export enum Position {
 export enum PromotionDiscountType {
   PERCENT = 'PERCENT',
   AMOUNT = 'AMOUNT',
+}
+
+export enum BookingChannel {
+  ONLINE = 'ONLINE',
+  OFFLINE = 'OFFLINE',
 }

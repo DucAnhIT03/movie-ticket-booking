@@ -8,12 +8,12 @@ export default function BookingSeatManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState(null);
 
-  // ✅ Lưu dữ liệu vào localStorage
+ 
   useEffect(() => {
     const stored = localStorage.getItem("bookingSeats");
     if (stored) setBookingSeats(JSON.parse(stored));
     else {
-      // Dữ liệu mẫu
+    
       setBookingSeats([
         {
           id: 1,
@@ -43,14 +43,14 @@ export default function BookingSeatManagement() {
 
   const handleSaveSeat = (seatData) => {
     if (seatData.id) {
-      // Cập nhật
+      
       setBookingSeats((prev) =>
         prev.map((s) =>
           s.id === seatData.id ? { ...seatData, updated_at: new Date() } : s
         )
       );
     } else {
-      // Thêm mới
+   
       const newSeat = {
         ...seatData,
         id: Date.now(),

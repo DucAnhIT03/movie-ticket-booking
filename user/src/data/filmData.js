@@ -63,12 +63,66 @@ export const promos = [
 ];
 
 export const events = [
-  { id: 1, img: event1 },
-  { id: 2, img: event2 },
-  { id: 3, img: event },
-  { id: 4, img: event3 },
-  { id: 5, img: event4 },
-  { id: 6, img: event },
+  { 
+    id: 1, 
+    img: event1,
+    title: "Tuần lễ phim Việt 2024",
+    date: "12 - 18/12/2024",
+    time: "19:00 - 21:30",
+    location: "Trung tâm Chiếu phim Quốc gia",
+    tag: "Sự kiện đặc biệt",
+    description: "Chuỗi suất chiếu quy tụ 12 tác phẩm điện ảnh Việt cùng tọa đàm với đạo diễn trẻ."
+  },
+  { 
+    id: 2, 
+    img: event2,
+    title: "Đêm nhạc phim quốc tế",
+    date: "05/01/2025",
+    time: "20:00",
+    location: "Phòng hòa nhạc NCC",
+    tag: "Âm nhạc",
+    description: "Trải nghiệm lại những bản soundtrack kinh điển được trình diễn trực tiếp bởi dàn nhạc giao hưởng."
+  },
+  { 
+    id: 3, 
+    img: event,
+    title: "Workshop làm phim ngắn",
+    date: "20/12/2024",
+    time: "08:30 - 17:00",
+    location: "Studio S2 - NCC",
+    tag: "Workshop",
+    description: "Khóa học thực hành dành cho bạn trẻ yêu thích điện ảnh với sự hướng dẫn của các nhà làm phim độc lập."
+  },
+  { 
+    id: 4, 
+    img: event3,
+    title: "Phiên chợ đạo cụ điện ảnh",
+    date: "24/12/2024",
+    time: "09:00 - 18:00",
+    location: "Sảnh A - NCC",
+    tag: "Trải nghiệm",
+    description: "Không gian trưng bày và trao đổi đạo cụ, phục trang độc đáo từ các đoàn phim nổi tiếng."
+  },
+  { 
+    id: 5, 
+    img: event4,
+    title: "Marathon Phim Marvel",
+    date: "31/12/2024",
+    time: "18:00 - 06:00",
+    location: "Rạp 1 - NCC",
+    tag: "Suất chiếu đặc biệt",
+    description: "12 tiếng đồng hồ sống cùng các siêu anh hùng với combo vé và quà tặng độc quyền."
+  },
+  { 
+    id: 6, 
+    img: event,
+    title: "Ngày hội cosplay điện ảnh",
+    date: "10/01/2025",
+    time: "15:00",
+    location: "Quảng trường NCC",
+    tag: "Cộng đồng",
+    description: "Sân chơi hóa thân thành nhân vật yêu thích cùng mini game và giải thưởng giá trị."
+  },
 ];
 
 export const movies = [

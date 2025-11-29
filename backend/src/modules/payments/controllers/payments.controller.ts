@@ -145,15 +145,14 @@ export class PaymentsController {
         paymentId: Number(id),
       };
     } catch (error) {
-      // Log error để debug
+     
       console.error('Error creating VNPAY URL:', error);
-      
-      // Nếu là BadRequestException, trả về message rõ ràng hơn
+     
       if (error instanceof BadRequestException) {
         throw new BadRequestException(error.message || 'Không thể tạo VNPAY payment URL. Vui lòng kiểm tra cấu hình.');
       }
       
-      // Re-throw các lỗi khác
+    
       throw error;
     }
   }
@@ -186,7 +185,7 @@ export class PaymentsController {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     
     try {
-      // Verify signature
+      
       const verifyResult = this.vnpayService.verifyReturnUrl(query);
       
       if (!verifyResult.isValid) {
@@ -194,7 +193,7 @@ export class PaymentsController {
         return res.redirect(`${frontendUrl}/payment-failure?error=invalid_signature`);
       }
 
-      // Parse order ID từ vnp_TxnRef (format: PAY{paymentId}_{timestamp})
+      
       const txnRef = query.vnp_TxnRef || '';
       const paymentIdMatch = txnRef.match(/^PAY(\d+)_/);
       
@@ -207,11 +206,11 @@ export class PaymentsController {
       const responseCode = verifyResult.responseCode;
       const transactionId = verifyResult.transactionId || query.vnp_TransactionNo;
 
-      // Lấy payment để verify amount
+      
       try {
         const payment = await this.svc.getPayment(paymentId);
         
-        // Verify amount nếu có (tolerance 1 VND để tránh lỗi làm tròn)
+        
         if (verifyResult.amount !== undefined && Math.abs(verifyResult.amount - Number(payment.amount)) > 1) {
           console.error('VNPAY return: Amount mismatch', { 
             expected: payment.amount, 
@@ -224,17 +223,17 @@ export class PaymentsController {
         return res.redirect(`${frontendUrl}/payment-failure?error=payment_not_found`);
       }
 
-      // Response code: 00 = thành công, các mã khác = thất bại
+      
       const isSuccess = responseCode === '00';
 
-      // Cập nhật payment status
+      
       await this.svc.completePayment(
         paymentId,
         transactionId || `VNPAY_${Date.now()}`,
         isSuccess,
       );
 
-      // Redirect đến frontend
+      
       if (isSuccess) {
         return res.redirect(`${frontendUrl}/payment-success?paymentId=${paymentId}`);
       } else {
@@ -278,7 +277,7 @@ export class PaymentsController {
   })
   async handleVnpayWebhook(@Body() body: any, @Req() req: any) {
     try {
-      // Verify signature
+      
       const verifyResult = this.vnpayService.verifyReturnUrl(body);
       
       if (!verifyResult.isValid) {
@@ -286,7 +285,7 @@ export class PaymentsController {
         return { RspCode: '97', Message: 'Checksum failed' };
       }
 
-      // Parse payment ID từ vnp_TxnRef
+      
       const txnRef = body.vnp_TxnRef || '';
       const paymentIdMatch = txnRef.match(/^PAY(\d+)_/);
       
@@ -299,11 +298,11 @@ export class PaymentsController {
       const responseCode = verifyResult.responseCode;
       const transactionId = verifyResult.transactionId || body.vnp_TransactionNo;
 
-      // Lấy payment để verify amount
+     
       try {
         const payment = await this.svc.getPayment(paymentId);
         
-        // Verify amount nếu có (tolerance 1 VND để tránh lỗi làm tròn)
+      
         if (verifyResult.amount !== undefined && Math.abs(verifyResult.amount - Number(payment.amount)) > 1) {
           console.error('VNPAY webhook: Amount mismatch', { 
             paymentId,
@@ -317,10 +316,10 @@ export class PaymentsController {
         return { RspCode: '01', Message: 'Order not found' };
       }
 
-      // Response code: 00 = thành công
+      
       const isSuccess = responseCode === '00';
 
-      // Cập nhật payment status
+      
       await this.svc.completePayment(
         paymentId,
         transactionId || `VNPAY_${Date.now()}`,

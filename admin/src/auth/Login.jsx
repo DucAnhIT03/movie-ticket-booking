@@ -39,6 +39,15 @@ export default function Login() {
       }
 
       const { user, accessToken } = res.data;
+      const roleList = Array.isArray(user?.roles) ? user.roles : [];
+      const isAdmin = roleList.includes("ROLE_ADMIN");
+      const isEmployee = roleList.includes("ROLE_EMPLOYEE");
+
+      if (!isAdmin && !isEmployee) {
+        alert("Tài khoản của bạn không có quyền truy cập trang quản trị.");
+        setIsLoading(false);
+        return;
+      }
 
       if (!accessToken) {
         alert("Không nhận được token từ server!");
@@ -46,9 +55,7 @@ export default function Login() {
         return;
       }
 
-      // Backend đã kiểm tra role ADMIN, không cần kiểm tra lại ở đây
 
-      // Lưu thông tin vào Redux và localStorage
       dispatch(updateInfo({
         token: accessToken,
         profile: user
@@ -59,7 +66,9 @@ export default function Login() {
       localStorage.setItem("adminIsLoggedIn", "true");
 
       alert(`Đăng nhập thành công! Chào ${user.firstName || user.email}!`);
-      navigate("/admin/dashboard");
+
+      const targetPath = isEmployee && !isAdmin ? "/admin/seat_booking_view" : "/admin/dashboard";
+      navigate(targetPath);
     } catch (error) {
       console.error("Login error:", error);
       alert("Có lỗi xảy ra, vui lòng thử lại!");

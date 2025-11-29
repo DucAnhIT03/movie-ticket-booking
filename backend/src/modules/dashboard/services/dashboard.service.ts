@@ -12,6 +12,7 @@ import { QueueService } from '../../../providers/queue/queue.service';
 import { DashboardStatsResponseDto } from '../dtos/response/dashboard-stats.response.dto';
 import { Status as UserStatus } from '../../../common/constants/enums';
 import { PaymentStatus } from '../../../common/constrants/enums';
+import { Movie } from '../../../shared/schemas/movie.entity';
 
 @Injectable()
 export class DashboardService {
@@ -20,6 +21,7 @@ export class DashboardService {
     @InjectRepository(TheaterOrmEntity) private readonly theatersRepo: Repository<TheaterOrmEntity>,
     @InjectRepository(Screen) private readonly screensRepo: Repository<Screen>,
     @InjectRepository(Showtime) private readonly showtimeRepo: Repository<Showtime>,
+    @InjectRepository(Movie) private readonly movieRepo: Repository<Movie>,
     @InjectRepository(Booking) private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(EmailLog) private readonly emailLogRepo: Repository<EmailLog>,
@@ -71,12 +73,11 @@ export class DashboardService {
       this.theatersRepo.count(),
       this.screensRepo.count(),
       
-      this.showtimeRepo
-        .createQueryBuilder('showtime')
-        .select('COUNT(DISTINCT showtime.movie_id)', 'cnt')
-        .where('showtime.start_time <= :now', { now })
-        .andWhere('showtime.end_time >= :now', { now })
-        .getRawOne(),
+      this.movieRepo
+        .createQueryBuilder('movie')
+        .where('COALESCE(movie.start_date, movie.release_date) <= :now', { now })
+        .andWhere('(movie.end_date IS NULL OR movie.end_date >= :now)', { now })
+        .getCount(),
       this.showtimeRepo.createQueryBuilder('showtime').where('showtime.start_time >= :now', { now }).getCount(),
       this.bookingRepo.count(),
       this.bookingRepo
@@ -230,7 +231,7 @@ export class DashboardService {
     const ticketsSoldToday = Number(ticketsTodayRaw?.sum ?? 0);
     const ticketsSoldThisMonth = Number(ticketsThisMonthRaw?.sum ?? 0);
 
-    const nowShowingCount = Number(nowShowingMovies?.cnt ?? 0);
+    const nowShowingCount = Number(nowShowingMovies ?? 0);
 
     return {
       totals: {

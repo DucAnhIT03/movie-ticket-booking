@@ -1,7 +1,8 @@
 .banner-management {
-  color: #f4f4f5;
+  color: #fff;
   padding: 24px;
   min-height: 100vh;
+  background: #0b1120;
 }
 
 .banner-management__header {
@@ -15,11 +16,12 @@
 .banner-management__header h1 {
   margin: 0;
   font-size: 26px;
+  font-weight: 600;
 }
 
 .banner-management__header p {
   margin: 4px 0 0;
-  color: #9ca3af;
+  color: #b0b8c5;
   font-size: 14px;
 }
 
@@ -29,11 +31,15 @@
   gap: 8px;
   border: none;
   padding: 10px 18px;
-  background: linear-gradient(135deg, #6d5dfc, #8f6fff);
+  background: #e53935;
   color: #fff;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
+}
+
+.primary-btn:hover {
+  background: #c62828;
 }
 
 .primary-btn:disabled {
@@ -45,28 +51,29 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  color: #fefefe;
+  padding: 6px 12px;
+  border-radius: 5px;
+  border: none;
+  background: #1976d2;
+  color: #fff;
   cursor: pointer;
   font-size: 14px;
 }
 
 .ghost-btn.danger {
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #f87171;
+  background: #d32f2f;
 }
 
 .banner-management__search {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.08);
+  background: #1a1f29;
   padding: 10px 16px;
-  border-radius: 10px;
+  border-radius: 6px;
   gap: 10px;
   margin-bottom: 20px;
+  border: 1px solid #333;
+  color: #aaa;
 }
 
 .banner-management__search input {
@@ -74,14 +81,14 @@
   background: transparent;
   border: none;
   outline: none;
-  color: #f4f4f5;
+  color: #fff;
   font-size: 14px;
 }
 
 .banner-management__table {
-  background: rgba(17, 24, 39, 0.9);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1a1f29;
+  border-radius: 8px;
+  border: 1px solid #2a303d;
   overflow: hidden;
 }
 
@@ -92,27 +99,27 @@
 
 .banner-management__table th,
 .banner-management__table td {
-  padding: 14px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 12px 18px;
+  border-bottom: 1px solid #2a303d;
   text-align: left;
   font-size: 14px;
 }
 
 .banner-management__table th {
-  background: rgba(255, 255, 255, 0.04);
+  background: #242b36;
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.08em;
-  color: #9ca3af;
+  color: #c5c9d4;
 }
 
 .thumbnail {
-  width: 120px;
+  width: 110px;
   height: 60px;
-  border-radius: 10px;
+  border-radius: 6px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #2d3543;
+  background: #111;
 }
 
 .thumbnail img {
@@ -134,8 +141,8 @@
   display: inline-flex;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.2);
-  color: #a5b4fc;
+  background: #333;
+  color: #fff;
   font-size: 12px;
 }
 
@@ -143,7 +150,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #e5e7eb;
+  color: #d1d5db;
 }
 
 .actions {
@@ -155,13 +162,13 @@
 .table-placeholder {
   text-align: center;
   padding: 30px;
-  color: #9ca3af;
+  color: #ccc;
 }
 
 .banner-modal__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,9 +177,9 @@
 
 .banner-modal {
   width: min(720px, 92vw);
-  background: #111827;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1a1f29;
+  border-radius: 10px;
+  border: 1px solid #2a303d;
   padding: 24px;
   max-height: 92vh;
   overflow: auto;
@@ -209,11 +216,11 @@
 .form-group select,
 .form-group textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  background: #111822;
+  border: 1px solid #2a303d;
+  border-radius: 6px;
   padding: 10px 12px;
-  color: #f4f4f5;
+  color: #fff;
   font-size: 14px;
 }
 
@@ -224,13 +231,28 @@
 }
 
 .form-group small {
-  color: #9ca3af;
+  color: #9aa3b6;
 }
 
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
+}
+
+/* Hàng nhập kích thước: làm 2 ô ngắn lại và tách nhau ra rõ hơn */
+.form-row--dimensions {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.form-row--dimensions .form-group {
+  flex: 1;
+}
+
+.form-row--dimensions .form-group input {
+  max-width: 260px;
 }
 
 .upload-area {
@@ -245,17 +267,18 @@
   align-items: center;
   gap: 6px;
   padding: 10px 16px;
-  background: rgba(99, 102, 241, 0.2);
-  border-radius: 10px;
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  background: #1a1f29;
+  border-radius: 6px;
+  border: 1px dashed #444;
   cursor: pointer;
+  color: #fff;
 }
 
 .preview {
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border: 1px dashed #444;
   padding: 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  background: #111;
 }
 
 .preview img {
@@ -267,11 +290,11 @@
 
 .icon-btn {
   border: none;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  background: transparent;
+  border-radius: 6px;
   padding: 6px;
   cursor: pointer;
-  color: #f4f4f5;
+  color: #ccc;
 }
 
 @media (max-width: 768px) {

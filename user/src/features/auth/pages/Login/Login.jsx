@@ -43,7 +43,7 @@ export default function LoginPage() {
       return;
     }
 
-    // Lưu token và thông tin user
+   
     if (res.data.accessToken) {
       localStorage.setItem("accessToken", res.data.accessToken);
       if (check) {
@@ -57,19 +57,19 @@ export default function LoginPage() {
         user: res.data.user
       };
       dispatch(updateInfo(userData));
-      // Lưu vào localStorage để Header có thể đọc
+      
       localStorage.setItem("infoState", JSON.stringify(userData));
     }
 
     alert(`Chào mừng, ${res.data.user?.firstName || email}!`);
     navigate("/");
-    window.location.reload(); // Reload để cập nhật Header
+    window.location.reload(); 
   };
 
-  // Xử lý đăng nhập Google
+  
   const handleGoogleLogin = async () => {
     try {
-      // Kiểm tra xem Google Sign-In đã được load chưa
+      
       if (typeof window.google === 'undefined' || !window.google.accounts) {
         alert('Google Sign-In chưa được tải. Vui lòng thử lại sau.');
         return;
@@ -81,12 +81,12 @@ export default function LoginPage() {
         return;
       }
 
-      // Sử dụng Google One Tap để lấy ID token
+      
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: async (response) => {
           try {
-            // response.credential chính là ID token
+            
             const res = await authService.loginWithGoogle(response.credential);
             
             if (res.status === 401) {
@@ -100,7 +100,7 @@ export default function LoginPage() {
               return;
             }
 
-            // Lưu token và thông tin user
+           
             if (res.data.accessToken) {
               localStorage.setItem("accessToken", res.data.accessToken);
             }
@@ -124,16 +124,16 @@ export default function LoginPage() {
         }
       });
 
-      // Hiển thị One Tap prompt
+     
       window.google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Nếu One Tap không hiển thị, sử dụng popup
+       
           window.google.accounts.oauth2.initTokenClient({
             client_id: clientId,
             scope: 'openid email profile',
             callback: async (tokenResponse) => {
               try {
-                // Lấy user info để tạo ID token giả (hoặc backend sẽ verify access token)
+             
                 const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
                   headers: {
                     'Authorization': `Bearer ${tokenResponse.access_token}`
@@ -141,7 +141,6 @@ export default function LoginPage() {
                 });
                 const userInfo = await userInfoResponse.json();
                 
-                // Gọi API với access token (backend cần xử lý verify access token)
                 const res = await authService.loginWithGoogle(tokenResponse.access_token);
                 
                 if (res.status === 401) {
@@ -185,10 +184,9 @@ export default function LoginPage() {
     }
   };
 
-  // Xử lý đăng nhập Apple
   const handleAppleLogin = async () => {
     try {
-      // Kiểm tra xem Apple Sign-In đã được load chưa
+      
       if (typeof window.AppleID === 'undefined') {
         alert('Apple Sign-In chưa được tải. Vui lòng thử lại sau.');
         return;
@@ -230,7 +228,7 @@ export default function LoginPage() {
             return;
           }
 
-          // Lưu token và thông tin user
+         
           if (res.data.accessToken) {
             localStorage.setItem("accessToken", res.data.accessToken);
           }
@@ -258,9 +256,9 @@ export default function LoginPage() {
     }
   };
 
-  // Load Google và Apple Sign-In scripts
+
   useEffect(() => {
-    // Load Google Sign-In
+    
     const googleScript = document.createElement('script');
     googleScript.src = 'https://accounts.google.com/gsi/client';
     googleScript.async = true;

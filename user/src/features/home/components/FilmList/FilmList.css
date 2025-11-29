@@ -1,4 +1,4 @@
-/* FILM SECTION */
+
 .film-section {
   margin-bottom: 40px;
 }
@@ -50,7 +50,7 @@
   color: #fff;
 }
 
-/* FILM LIST - Grid Layout 4 cột */
+
 .film-list {
   display: flex;
   flex-direction: row;
@@ -65,9 +65,9 @@
   justify-content: flex-start;
 }
 
-/* Movie Card - 4 phim mỗi dòng, mỗi phim 229px */
+
 .film-list .movie-card {
-  /* Width: Fixed 229px theo Figma - Override width từ MovieCard.css */
+
   width: 229px !important;
   min-width: 229px !important;
   max-width: 229px !important;
@@ -76,7 +76,7 @@
   box-sizing: border-box;
 }
 
-/* CSS cũ .card đã được thay thế bởi .movie-card trong MovieCard.css */
+
 
 .film-list-loading,
 .film-list-error,

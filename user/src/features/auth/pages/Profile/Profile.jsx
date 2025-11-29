@@ -1,19 +1,21 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { updateInfo } from "../../../../redux/counterSlice/userSlice";
 import axiosClient from "../../../../services/axiosClient";
+import bookingService from "../../../../services/bookings/bookingService";
 import Header from "../../../../shared/layout/Header/Header.jsx";
 import Footer from "../../../../shared/layout/Footer/Footer.jsx";
 import "./Profile.css";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const fileInputRef = useRef(null);
   
-  const [activeTab, setActiveTab] = useState("profile"); // "profile" hoặc "password"
+  const [activeTab, setActiveTab] = useState("profile"); 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -22,7 +24,7 @@ export default function Profile() {
   const [avatar, setAvatar] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
   
-  // Password change
+  
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,18 +36,42 @@ export default function Profile() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+  const [ticketError, setTicketError] = useState("");
+  const [ticketFilters, setTicketFilters] = useState({
+    status: "ALL",
+    page: 1,
+    limit: 5,
+  });
+  const [ticketData, setTicketData] = useState({
+    items: [],
+    total: 0,
+    totalPages: 0,
+    page: 1,
+  });
 
   useEffect(() => {
-    // Kiểm tra đăng nhập
     const token = localStorage.getItem("accessToken");
     if (!token) {
       navigate("/login");
       return;
     }
 
-    // Load thông tin user
     loadUserInfo();
   }, [navigate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab && ["profile", "password", "history"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (activeTab !== "history") return;
+    fetchTicketHistory(ticketFilters.page, ticketFilters.status);
+  }, [activeTab, ticketFilters.page, ticketFilters.status]);
 
   const loadUserInfo = async () => {
     try {
@@ -72,22 +98,34 @@ export default function Profile() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
+      // Kiểm tra loại file
       if (!file.type.startsWith('image/')) {
-        alert("Vui lòng chọn file ảnh");
+        alert("Vui lòng chọn file ảnh (JPG, PNG, GIF, etc.)");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         return;
       }
       
-      // Validate file size (max 5MB)
+      // Kiểm tra kích thước file (tối đa 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert("Kích thước ảnh không được vượt quá 5MB");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         return;
       }
 
-      // Preview
+      // Hiển thị preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result);
+      };
+      reader.onerror = () => {
+        alert("Lỗi khi đọc file ảnh");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -101,17 +139,19 @@ export default function Profile() {
       const formData = new FormData();
       formData.append("firstName", firstName);
       formData.append("lastName", lastName);
-      // Email không được thay đổi, không gửi lên server
+     
       if (phone) formData.append("phone", phone);
       if (address) formData.append("address", address);
-      
-      // Nếu có file mới được chọn
+ 
+      // Upload file ảnh mới nếu có
       const fileInput = fileInputRef.current;
-      if (fileInput && fileInput.files[0]) {
+      if (fileInput && fileInput.files && fileInput.files[0]) {
         formData.append("file", fileInput.files[0]);
       } else if (avatarPreview && avatarPreview.startsWith('data:')) {
-        // Nếu là base64 từ preview, không gửi (giữ nguyên avatar cũ)
-      } else if (avatarPreview) {
+        // Nếu là base64 từ preview, không gửi (chờ user chọn file mới)
+        // Hoặc có thể convert base64 thành file nếu cần
+      } else if (avatarPreview && !avatarPreview.startsWith('data:')) {
+        // Nếu là URL từ server, giữ nguyên
         formData.append("avatar", avatarPreview);
       }
 
@@ -123,7 +163,7 @@ export default function Profile() {
       });
 
       if (res.status === 200 || res.status === 201) {
-        // Cập nhật thông tin trong localStorage
+        // Cập nhật thông tin user trong localStorage
         const savedUser = localStorage.getItem("infoState");
         if (savedUser) {
           const userData = JSON.parse(savedUser);
@@ -138,9 +178,14 @@ export default function Profile() {
           }
         }
 
+        // Reset file input sau khi upload thành công
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+
         alert("Cập nhật thông tin thành công!");
       } else {
-        alert(res.data.message || "Cập nhật thông tin thất bại");
+        alert(res.data?.message || "Cập nhật thông tin thất bại");
       }
     } catch (error) {
       alert("Server lỗi, vui lòng thử lại!");
@@ -177,7 +222,7 @@ export default function Profile() {
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        setActiveTab("profile");
+        handleTabChange("profile");
       } else {
         alert(res.data.message || "Đổi mật khẩu thất bại");
       }
@@ -186,6 +231,112 @@ export default function Profile() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(location.search);
+    params.set("tab", tab);
+    navigate(`/profile?${params.toString()}`, { replace: true });
+  };
+
+  const fetchTicketHistory = async (page = 1, status = "ALL") => {
+    setIsLoadingTickets(true);
+    setTicketError("");
+    try {
+      const params = {
+        page,
+        limit: ticketFilters.limit,
+      };
+      if (status && status !== "ALL") {
+        params.status = status;
+      }
+      const res = await bookingService.getMyTickets(params);
+      if (res.status === 200) {
+        const data = res.data || {};
+        setTicketData({
+          items: data.items || [],
+          total: data.total || 0,
+          totalPages: data.totalPages || 0,
+          page: data.page || page,
+        });
+      } else {
+        setTicketError(res.data?.message || "Không thể tải lịch sử đặt vé");
+        setTicketData((prev) => ({ ...prev, items: [] }));
+      }
+    } catch (error) {
+      setTicketError("Không thể tải lịch sử đặt vé. Vui lòng thử lại sau.");
+      setTicketData((prev) => ({ ...prev, items: [] }));
+    } finally {
+      setIsLoadingTickets(false);
+    }
+  };
+
+  const handleChangeTicketStatus = (value) => {
+    setTicketFilters((prev) => ({
+      ...prev,
+      status: value,
+      page: 1,
+    }));
+  };
+
+  const handleChangeTicketPage = (nextPage) => {
+    setTicketFilters((prev) => ({
+      ...prev,
+      page: nextPage,
+    }));
+  };
+
+  const renderTicketStatus = (status) => {
+    const labelMap = {
+      BOOKED: "Đã thanh toán",
+      PENDING: "Chờ thanh toán",
+      CANCELLED: "Đã hủy",
+      FAILED: "Thanh toán thất bại",
+    };
+    const label = labelMap[status] || status || "Không xác định";
+    return <span className={`ticket-status-badge ${status?.toLowerCase()}`}>{label}</span>;
+  };
+
+  const formatCurrency = (value) => {
+    if (typeof value !== "number") return "—";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const renderTicketCard = (ticket) => {
+    const showtime = ticket.showtime || {};
+    const movie = showtime.movie || {};
+    const seats = (ticket.bookingSeats || []).map((item) => item?.seat?.seatNumber || item?.seat?.seat_number).filter(Boolean);
+    const startTime = showtime.startTime ? new Date(showtime.startTime).toLocaleString("vi-VN") : "—";
+    return (
+      <div key={ticket.id} className="ticket-card">
+        <div className="ticket-card__header">
+          <div>
+            <p className="ticket-code">Mã vé: BK-{String(ticket.id).padStart(6, "0")}</p>
+            <h4>{movie.title || "Tên phim chưa cập nhật"}</h4>
+          </div>
+          {renderTicketStatus(ticket.status)}
+        </div>
+        <div className="ticket-card__body">
+          <div>
+            <span className="label">Suất chiếu</span>
+            <p>{startTime}</p>
+          </div>
+          <div>
+            <span className="label">Ghế</span>
+            <p>{seats.length > 0 ? seats.join(", ") : "Chưa cập nhật"}</p>
+          </div>
+          <div>
+            <span className="label">Tổng tiền</span>
+            <p>{formatCurrency(ticket.totalPriceMovie)}</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (isLoadingData) {
@@ -214,15 +365,21 @@ export default function Profile() {
           <div className="profile-tabs">
             <button
               className={`tab-button ${activeTab === "profile" ? "active" : ""}`}
-              onClick={() => setActiveTab("profile")}
+              onClick={() => handleTabChange("profile")}
             >
               Thông tin cá nhân
             </button>
             <button
               className={`tab-button ${activeTab === "password" ? "active" : ""}`}
-              onClick={() => setActiveTab("password")}
+              onClick={() => handleTabChange("password")}
             >
               Đổi mật khẩu
+            </button>
+            <button
+              className={`tab-button ${activeTab === "history" ? "active" : ""}`}
+              onClick={() => handleTabChange("history")}
+            >
+              Lịch sử đặt vé
             </button>
           </div>
 
@@ -248,7 +405,7 @@ export default function Profile() {
                       className="upload-button"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      Chọn ảnh
+                      📷 Cập nhật ảnh đại diện
                     </button>
                     {avatarPreview && (
                       <button
@@ -262,10 +419,13 @@ export default function Profile() {
                           }
                         }}
                       >
-                        Xóa ảnh
+                        🗑️ Xóa ảnh
                       </button>
                     )}
                   </div>
+                  <p className="form-hint" style={{ marginTop: "8px", textAlign: "center" }}>
+                    Chọn ảnh JPG, PNG hoặc GIF (tối đa 5MB)
+                  </p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -407,11 +567,71 @@ export default function Profile() {
                 <button type="submit" className="submit-button" disabled={isLoading}>
                   {isLoading ? "Đang đổi mật khẩu..." : "Đổi mật khẩu"}
                 </button>
-                <button type="button" className="cancel-button" onClick={() => setActiveTab("profile")}>
+                <button type="button" className="cancel-button" onClick={() => handleTabChange("profile")}>
                   Hủy
                 </button>
               </div>
             </form>
+          )}
+
+          {/* History Tab */}
+          {activeTab === "history" && (
+            <div className="ticket-history">
+              <div className="history-filters">
+                <div className="history-filter">
+                  <label>Trạng thái</label>
+                  <select
+                    value={ticketFilters.status}
+                    onChange={(e) => handleChangeTicketStatus(e.target.value)}
+                  >
+                    <option value="ALL">Tất cả</option>
+                    <option value="BOOKED">Đã thanh toán</option>
+                    <option value="PENDING">Chờ thanh toán</option>
+                    <option value="FAILED">Thanh toán thất bại</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                  </select>
+                </div>
+                <div className="history-summary">
+                  Đã tìm thấy {ticketData.total} vé
+                </div>
+              </div>
+
+              {isLoadingTickets ? (
+                <div className="history-loading">Đang tải lịch sử đặt vé...</div>
+              ) : ticketError ? (
+                <div className="history-error">{ticketError}</div>
+              ) : ticketData.items.length === 0 ? (
+                <div className="history-empty">
+                  Bạn chưa có vé nào. Hãy đặt vé để trải nghiệm những bộ phim mới nhất!
+                </div>
+              ) : (
+                <div className="ticket-list">
+                  {ticketData.items.map((ticket) => renderTicketCard(ticket))}
+                </div>
+              )}
+
+              {ticketData.totalPages > 1 && (
+                <div className="history-pagination">
+                  <button
+                    onClick={() => handleChangeTicketPage(ticketData.page - 1)}
+                    disabled={ticketData.page <= 1 || isLoadingTickets}
+                  >
+                    Trước
+                  </button>
+                  <span>
+                    Trang {ticketData.page} / {ticketData.totalPages}
+                  </span>
+                  <button
+                    onClick={() => handleChangeTicketPage(ticketData.page + 1)}
+                    disabled={
+                      ticketData.page >= ticketData.totalPages || isLoadingTickets
+                    }
+                  >
+                    Sau
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

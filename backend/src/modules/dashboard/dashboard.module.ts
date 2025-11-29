@@ -10,6 +10,7 @@ import { Booking } from '../../shared/schemas/booking.entity';
 import { Payment } from '../../shared/schemas/payment.entity';
 import { EmailLog } from '../../shared/schemas/email-log.entity';
 import { QueueModule } from '../../providers/queue/queue.module';
+import { Movie } from '../../shared/schemas/movie.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { QueueModule } from '../../providers/queue/queue.module';
       TheaterOrmEntity,
       Screen,
       Showtime,
+      Movie,
       Booking,
       Payment,
       EmailLog,

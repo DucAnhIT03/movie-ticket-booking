@@ -13,9 +13,9 @@ import { formatGenres as formatGenresUtil, getGenresData as getGenresDataUtil } 
  * @param {Array} movie.genres - Danh sách thể loại (nếu có)
  */
 export default function MovieCard({ movie }) {
-  // Format ngày phát hành - ưu tiên startDate, sau đó releaseDate
+ 
   const formatDate = (movie) => {
-    // Ưu tiên startDate (ngày bắt đầu công chiếu)
+  
     let dateString = movie.startDate || movie.start_date || movie.releaseDate || movie.release_date;
     
     if (!dateString) return "";
@@ -29,30 +29,26 @@ export default function MovieCard({ movie }) {
     return `${day}/${month}/${year}`;
   };
 
-  // Format thể loại - xử lý nhiều trường hợp
+  
   const formatGenres = (genres) => {
-    // Nếu genres là null, undefined, hoặc empty
+    
     if (!genres) {
       return "";
     }
-    
-    // Nếu genres là một object đơn (không phải array)
+  
     if (typeof genres === "object" && !Array.isArray(genres)) {
       return genres.name || genres.genreName || genres.title || "";
     }
-    
-    // Nếu genres là array
+  
     if (Array.isArray(genres)) {
       if (genres.length === 0) {
         return "";
       }
-      
-      // Lấy phần tử đầu tiên
+    
       const firstGenre = genres[0];
       
-      // Nếu phần tử đầu tiên là object
       if (firstGenre && typeof firstGenre === "object") {
-        // Xử lý các trường hợp: { name: "..." }, { genre: { name: "..." } }, { genre: "..." }
+     
         const genreName = firstGenre.name || 
                          firstGenre.genreName || 
                          firstGenre.title ||
@@ -63,8 +59,7 @@ export default function MovieCard({ movie }) {
         if (genreName) {
           return genreName;
         }
-        
-        // Nếu không tìm thấy, thử map tất cả và lấy cái đầu tiên
+       
         const genreNames = genres
           .map((g) => {
             if (typeof g === 'string') return g;
@@ -79,13 +74,11 @@ export default function MovieCard({ movie }) {
         return genreNames.length > 0 ? genreNames[0] : "";
       }
       
-      // Nếu phần tử đầu tiên là string
       if (typeof firstGenre === "string") {
         return firstGenre || "";
       }
     }
-    
-    // Nếu genres là string
+  
     if (typeof genres === "string") {
       return genres;
     }
@@ -93,18 +86,15 @@ export default function MovieCard({ movie }) {
     return "";
   };
 
-  // Lấy URL ảnh - có thể là image hoặc poster
   const posterUrl = movie.image || movie.poster || "/logo.png";
   const releaseDate = formatDate(movie);
-  
-  // Kiểm tra genres từ nhiều nguồn có thể
-  // Ưu tiên: genres (array string), movieGenres (array object với genre), genre (object đơn)
+
   let genresData = null;
   
   if (movie.genres && Array.isArray(movie.genres)) {
     genresData = movie.genres;
   } else if (movie.movieGenres && Array.isArray(movie.movieGenres) && movie.movieGenres.length > 0) {
-    // Xử lý movieGenres: [{ genre: { name: "..." } }] hoặc [{ genre: "..." }]
+    
     genresData = movie.movieGenres.map(mg => {
       if (mg.genre) {
         return typeof mg.genre === 'object' ? mg.genre : { name: mg.genre };
@@ -119,7 +109,6 @@ export default function MovieCard({ movie }) {
   
   const genres = formatGenres(genresData);
   
-  // Debug: log để kiểm tra genres (chỉ log một vài lần đầu)
   if (movie.id && !genres && Math.random() < 0.1) {
     console.log("Movie genres debug (sample):", {
       id: movie.id,

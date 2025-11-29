@@ -27,8 +27,7 @@ export class EmailReminderScheduler {
     this.logger.log('Checking for showtime reminders...');
 
     const now = new Date();
-    // Chỉ lấy các booking có showtime trong khoảng từ 2 giờ 55 phút đến 3 giờ 5 phút
-    // Khoảng 10 phút này đảm bảo chỉ gửi một lần vì scheduler chạy mỗi 30 phút
+    
     const threeHoursMinus5Min = new Date(now.getTime() + (3 * 60 - 5) * 60 * 1000);
     const threeHoursPlus5Min = new Date(now.getTime() + (3 * 60 + 5) * 60 * 1000);
 
@@ -50,8 +49,6 @@ export class EmailReminderScheduler {
           const timeUntilShowMs = booking.showtime.startTime.getTime() - now.getTime();
           const timeUntilShowHours = timeUntilShowMs / (60 * 60 * 1000);
           
-          // Chỉ gửi email nếu còn đúng khoảng 3 giờ (từ 2 giờ 55 phút đến 3 giờ 5 phút)
-          // Khoảng 10 phút này đảm bảo chỉ gửi một lần vì scheduler chạy mỗi 30 phút
           if (timeUntilShowHours >= 2.916 && timeUntilShowHours <= 3.083) {
             await this.sendReminderEmail(booking, '3 giờ');
             sentCount++;
@@ -101,8 +98,6 @@ export class EmailReminderScheduler {
         reminderTime: reminderTime,
       };
 
-      // Gửi email ngay lập tức (không delay) để tránh tạo job trùng lặp
-      // Scheduler đã kiểm tra thời gian chính xác trước khi gọi hàm này
       await this.queueService.enqueueShowtimeReminderEmail(emailData);
 
       this.logger.log(`Reminder email queued for booking ${booking.id} (${reminderTime} before showtime)`);

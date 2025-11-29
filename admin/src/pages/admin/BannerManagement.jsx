@@ -346,24 +346,7 @@ const BannerManagement = () => {
                 <small>Hỗ trợ JPG, PNG, WEBP ≤ 10MB. Hoặc nhập URL trực tiếp.</small>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Vị trí</label>
-                  <select value={FIXED_POSITION} disabled>
-                    <option value={FIXED_POSITION}>{FIXED_POSITION_LABEL}</option>
-                  </select>
-                  <small>Vị trí cố định: slider sát header trang chủ.</small>
-                </div>
-                <div className="form-group">
-                  <label>Loại</label>
-                  <select value={FIXED_TYPE} disabled>
-                    <option value={FIXED_TYPE}>{FIXED_TYPE_LABEL}</option>
-                  </select>
-                  <small>Chỉ hỗ trợ upload ảnh trực tiếp.</small>
-                </div>
-              </div>
-
-              <div className="form-row">
+              <div className="form-row form-row--dimensions">
                 <div className="form-group">
                   <label>Chiều ngang (px)</label>
                   <input

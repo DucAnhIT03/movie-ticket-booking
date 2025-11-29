@@ -17,13 +17,11 @@ export function useMovies() {
         setLoading(true);
         setError(null);
 
-        // Fetch cả hai danh sách song song
         const [nowShowingResponse, comingSoonResponse] = await Promise.all([
           movieService.getNowShowing(),
           movieService.getComingSoon(),
         ]);
 
-        // Xử lý phim đang chiếu
         if (nowShowingResponse.status === 200) {
           const movies = nowShowingResponse.data || [];
           console.log("Now showing movies:", movies);
@@ -33,7 +31,6 @@ export function useMovies() {
           setNowShowing([]);
         }
 
-        // Xử lý phim sắp chiếu
         if (comingSoonResponse.status === 200) {
           const movies = comingSoonResponse.data || [];
           console.log("Coming soon movies:", movies);

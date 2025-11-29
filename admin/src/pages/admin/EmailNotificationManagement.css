@@ -71,24 +71,208 @@
 .form-group textarea {
   width: 100%;
   padding: 10px;
-  background: #242b36;
-  border: 1px solid #2a303d;
+  background: #1f2633;
+  border: 1px solid #343d4e;
   border-radius: 5px;
   color: #fff;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: #e53935;
+  box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.2);
+}
+
+.form-group select option {
+  background: #1f2633;
+  color: #f5f5f5;
 }
 
 .form-group textarea {
   resize: vertical;
   font-family: inherit;
+}
+
+/* TipTap Editor Styles */
+.tiptap-editor-wrapper {
+  background: #1f2937;
+  border: 1px solid #2a303d;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tiptap-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #242b36;
+  border-bottom: 1px solid #2a303d;
+  flex-wrap: wrap;
+}
+
+.tiptap-toolbar button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #cbd5f5;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.tiptap-toolbar button:hover {
+  background: #2a303d;
+  border-color: #374151;
+  color: #fff;
+}
+
+.tiptap-toolbar button.is-active {
+  background: #e53935;
+  border-color: #e53935;
+  color: #fff;
+}
+
+.tiptap-toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar-image-button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #cbd5f5;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.toolbar-image-button:hover {
+  background: #2a303d;
+  border-color: #374151;
+  color: #fff;
+}
+
+.toolbar-image-button:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: #2a303d;
+  margin: 0 4px;
+}
+
+.tiptap-content {
+  background: #1f2937;
+  min-height: 300px;
+  padding: 16px;
+}
+
+.tiptap-content .ProseMirror {
+  outline: none;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 300px;
+}
+
+.tiptap-content .ProseMirror p {
+  margin: 0 0 12px 0;
+}
+
+.tiptap-content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #6b7280;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap-content .ProseMirror h1,
+.tiptap-content .ProseMirror h2,
+.tiptap-content .ProseMirror h3 {
+  color: #fff;
+  font-weight: 600;
+  margin: 16px 0 8px 0;
+}
+
+.tiptap-content .ProseMirror h1 {
+  font-size: 24px;
+}
+
+.tiptap-content .ProseMirror h2 {
+  font-size: 20px;
+}
+
+.tiptap-content .ProseMirror h3 {
+  font-size: 18px;
+}
+
+.tiptap-content .ProseMirror ul,
+.tiptap-content .ProseMirror ol {
+  padding-left: 24px;
+  margin: 12px 0;
+  color: #fff;
+}
+
+.tiptap-content .ProseMirror li {
+  margin: 4px 0;
+  color: #fff;
+}
+
+.tiptap-content .ProseMirror a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.tiptap-content .ProseMirror a:hover {
+  color: #2563eb;
+}
+
+.tiptap-content .ProseMirror strong {
+  font-weight: 600;
+  color: #fff;
+}
+
+.tiptap-content .ProseMirror em {
+  font-style: italic;
+}
+
+.tiptap-content .ProseMirror s {
+  text-decoration: line-through;
+}
+
+.tiptap-content .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 12px 0;
+  display: block;
+}
+
+.tiptap-content .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid #e53935;
+  outline-offset: 2px;
 }
 
 .radio-group {
@@ -403,6 +587,22 @@
   outline: none;
 }
 
+.search-btn {
+  background: #2563eb;
+  border: 1px solid #2563eb;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.search-btn:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
 .clear-filters-btn {
   background: #242b36;
   border: 1px solid #2a303d;
@@ -428,6 +628,7 @@
 .email-logs-table table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .email-logs-table thead {
@@ -440,12 +641,44 @@
   font-weight: 600;
   color: #fff;
   border-bottom: 2px solid #2a303d;
+  word-wrap: break-word;
+}
+
+.email-logs-table th:nth-child(1) {
+  width: 5%;
+}
+
+.email-logs-table th:nth-child(2) {
+  width: 20%;
+}
+
+.email-logs-table th:nth-child(3) {
+  width: 25%;
+}
+
+.email-logs-table th:nth-child(4) {
+  width: 15%;
+}
+
+.email-logs-table th:nth-child(5) {
+  width: 10%;
+}
+
+.email-logs-table th:nth-child(6) {
+  width: 15%;
+}
+
+.email-logs-table th:nth-child(7) {
+  width: 10%;
 }
 
 .email-logs-table td {
   padding: 12px;
   border-bottom: 1px solid #2a303d;
   color: #ccc;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .email-logs-table tbody tr:hover {
