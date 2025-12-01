@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, User, Lock, Unlock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, User, Lock, Unlock, ChevronLeft, ChevronRight, Building, Settings } from "lucide-react";
 import { toast } from "react-toastify";
 import userService from "../../services/users/userService";
+import theaterService from "../../services/theaters/theaterService";
 
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,11 +20,26 @@ export default function UserManagement() {
     accountType: "employee",
   });
   const [isCreatingEmployee, setIsCreatingEmployee] = useState(false);
+  const [theaters, setTheaters] = useState([]);
+  const [assigningTheater, setAssigningTheater] = useState(null);
+  const [selectedTheaterForUser, setSelectedTheaterForUser] = useState({});
 
   
   useEffect(() => {
     loadUsers();
+    loadTheaters();
   }, []);
+
+  const loadTheaters = async () => {
+    try {
+      const res = await theaterService.getAllTheaters();
+      if (res.status === 200) {
+        setTheaters(res.data.items || res.data || []);
+      }
+    } catch (error) {
+      console.error("Error loading theaters:", error);
+    }
+  };
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -167,6 +183,35 @@ export default function UserManagement() {
       console.error("Error unblocking user:", error);
       toast.error("Lỗi kết nối đến server!");
     }
+  };
+
+  const handleAssignTheater = async (userId, theaterId) => {
+    setAssigningTheater(userId);
+    try {
+      const res = await userService.assignTheater(userId, theaterId || null);
+      if (res.status === 200) {
+        toast.success(res.data?.message || "Gán rạp thành công!");
+        loadUsers();
+        setSelectedTheaterForUser({ ...selectedTheaterForUser, [userId]: null });
+      } else if (res.status === 400) {
+        toast.error(res.data?.message || "Chỉ có thể gán rạp cho nhân viên");
+      } else if (res.status === 404) {
+        toast.error("Không tìm thấy người dùng");
+      } else {
+        toast.error(res.data?.message || "Lỗi khi gán rạp");
+      }
+    } catch (error) {
+      console.error("Error assigning theater:", error);
+      toast.error("Lỗi kết nối đến server!");
+    } finally {
+      setAssigningTheater(null);
+    }
+  };
+
+  const getTheaterName = (theaterId) => {
+    if (!theaterId) return "—";
+    const theater = theaters.find(t => t.id === theaterId);
+    return theater ? theater.name : "—";
   };
 
   
@@ -444,14 +489,15 @@ export default function UserManagement() {
         >
           <thead style={{ background: "#242b36" }}>
             <tr>
-              <th style={{ padding: "10px", textAlign: "center", width: "10%" }}>Họ</th>
-              <th style={{ padding: "10px", textAlign: "center", width: "10%" }}>Tên</th>
-              <th style={{ padding: "10px", textAlign: "center", width: "25%" }}>Email</th>
-              <th style={{ padding: "10px", textAlign: "center", width: "10%" }}>Phone</th>
-              <th style={{ padding: "10px", textAlign: "center", width: "8%" }}>Avatar</th>
-              <th style={{ padding: "10px", textAlign: "center", width: "8%" }}>Vai trò</th>
-              <th style={{ padding: "10px", textAlign: "center", width: "8%" }}>Status</th>
-              <th style={{ padding: "10px", textAlign: "center", width: "11%" }}>Hành động</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "7%" }}>Họ</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "7%" }}>Tên</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "18%" }}>Email</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "7%" }}>Phone</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "6%" }}>Avatar</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "6%" }}>Vai trò</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "15%" }}>Rạp được gán</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "6%" }}>Status</th>
+              <th style={{ padding: "10px", textAlign: "center", width: "18%" }}>Hành động</th>
             </tr>
           </thead>
 
@@ -500,6 +546,45 @@ export default function UserManagement() {
                   )}
                 </td>
                 <td style={{ padding: "10px", textAlign: "center" }}>
+                  {u.roles && u.roles.includes("ROLE_EMPLOYEE") ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "center" }}>
+                      <span style={{ fontSize: "12px", color: "#cbd5f5", marginBottom: "2px" }}>
+                        {getTheaterName(u.theaterId)}
+                      </span>
+                      <select
+                        value={selectedTheaterForUser[u.id] !== undefined ? selectedTheaterForUser[u.id] : (u.theaterId || "")}
+                        onChange={(e) => {
+                          const newTheaterId = e.target.value ? parseInt(e.target.value, 10) : null;
+                          setSelectedTheaterForUser({ ...selectedTheaterForUser, [u.id]: newTheaterId });
+                          handleAssignTheater(u.id, newTheaterId);
+                        }}
+                        disabled={assigningTheater === u.id}
+                        style={{
+                          background: "#1a1f29",
+                          color: "#fff",
+                          border: "1px solid #333",
+                          borderRadius: "4px",
+                          padding: "6px 8px",
+                          fontSize: "12px",
+                          cursor: assigningTheater === u.id ? "not-allowed" : "pointer",
+                          minWidth: "160px",
+                          width: "100%",
+                          maxWidth: "200px",
+                        }}
+                      >
+                        <option value="">-- Chọn rạp --</option>
+                        {theaters.map((theater) => (
+                          <option key={theater.id} value={theater.id}>
+                            {theater.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td style={{ padding: "10px", textAlign: "center" }}>
                   <span style={{
                     background: u.status === "ACTIVE" ? "#4caf50" : "#d32f2f",
                     padding: "4px 8px",
@@ -512,41 +597,43 @@ export default function UserManagement() {
                 </td>
 
                 <td style={{ padding: "10px", textAlign: "center" }}>
-                  {u.status === "ACTIVE" ? (
-                    <button
-                      onClick={() => handleBlockUser(u.id)}
-                      style={{
-                        background: "#d32f2f",
-                        border: "none",
-                        borderRadius: "5px",
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                      title="Khóa tài khoản"
-                    >
-                      <Lock size={16} color="#fff" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleUnblockUser(u.id)}
-                      style={{
-                        background: "#4caf50",
-                        border: "none",
-                        borderRadius: "5px",
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                      title="Mở khóa tài khoản"
-                    >
-                      <Unlock size={16} color="#fff" />
-                    </button>
-                  )}
+                  <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+                    {u.status === "ACTIVE" ? (
+                      <button
+                        onClick={() => handleBlockUser(u.id)}
+                        style={{
+                          background: "#d32f2f",
+                          border: "none",
+                          borderRadius: "5px",
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                        title="Khóa tài khoản"
+                      >
+                        <Lock size={16} color="#fff" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleUnblockUser(u.id)}
+                        style={{
+                          background: "#4caf50",
+                          border: "none",
+                          borderRadius: "5px",
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                        title="Mở khóa tài khoản"
+                      >
+                        <Unlock size={16} color="#fff" />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
               );

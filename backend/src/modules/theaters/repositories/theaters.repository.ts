@@ -89,6 +89,20 @@ export class TheatersRepository {
   async remove(id: number): Promise<void> {
     await this.repo.delete({ id });
   }
+
+  async findByNameAndLocation(name: string, location: string, excludeId?: number): Promise<TheaterEntity | null> {
+    const query = this.repo
+      .createQueryBuilder('theater')
+      .where('LOWER(theater.name) = LOWER(:name)', { name })
+      .andWhere('LOWER(theater.location) = LOWER(:location)', { location });
+
+    if (excludeId) {
+      query.andWhere('theater.id != :excludeId', { excludeId });
+    }
+
+    const row = await query.getOne();
+    return (row as unknown as TheaterEntity) ?? null;
+  }
 }
 
 

@@ -190,4 +190,30 @@ export class UserService {
       user: await this.findById(userId)
     };
   }
+
+  async assignTheater(userId: number, theaterId: number | null) {
+    const user = await this.usersRepo.findOne({ 
+      where: { id: userId },
+      relations: ['roles', 'roles.role'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+    
+    // Chỉ cho phép gán rạp cho nhân viên
+    const roleNames = (user.roles || [])
+      .map((ur) => ur.role?.roleName)
+      .filter(Boolean);
+    
+    if (!roleNames.includes(Roles.ROLE_EMPLOYEE)) {
+      throw new BadRequestException('Chỉ có thể gán rạp cho nhân viên');
+    }
+    
+    user.theaterId = theaterId || undefined;
+    await this.usersRepo.save(user);
+    
+    return { 
+      success: true, 
+      message: theaterId ? 'Đã gán rạp thành công' : 'Đã gỡ rạp thành công',
+      user: await this.findById(userId)
+    };
+  }
 }

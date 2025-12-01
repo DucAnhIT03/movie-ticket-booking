@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Building, Tv, PlusCircle, Trash2, Edit2, Save, X, Grid, DollarSign, Eye, EyeOff, CheckSquare, Trash } from "lucide-react";
 import { toast } from "react-toastify";
 import theaterService from "../../services/theaters/theaterService";
@@ -15,8 +15,9 @@ export default function SeatManagement() {
   const [isLoading, setIsLoading] = useState(false);
   
   
-  const [rows, setRows] = useState(10); 
-  const [cols, setCols] = useState(15); 
+  const [rows, setRows] = useState(""); 
+  const [cols, setCols] = useState("");
+  const [isLoadingLayout, setIsLoadingLayout] = useState(false); 
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingSeat, setEditingSeat] = useState(null);
   const [selectedSeats, setSelectedSeats] = useState([]); 
@@ -62,22 +63,76 @@ export default function SeatManagement() {
 
   useEffect(() => {
     if (selectedScreenId) {
-      
+      setIsLoadingLayout(true);
       const screen = screens.find(s => s.id === parseInt(selectedScreenId, 10));
       if (screen) {
         setSelectedScreen(screen);
         
-        const layout = calculateLayout(screen.seat_capacity);
-        setRows(layout.rows);
-        setCols(layout.cols);
+ 
+        const savedLayout = localStorage.getItem(`seat_layout_${selectedScreenId}`);
+        if (savedLayout) {
+          try {
+            const layout = JSON.parse(savedLayout);
+            console.log(`[DEBUG] Loading saved layout for screen ${selectedScreenId}:`, layout);
+        
+            if (layout.rows && layout.cols && layout.rows > 0 && layout.cols > 0) {
+              setRows(layout.rows.toString());
+              setCols(layout.cols.toString());
+            } else {
+              console.log(`[DEBUG] Saved layout has invalid values, clearing`);
+              setRows("");
+              setCols("");
+              
+              localStorage.removeItem(`seat_layout_${selectedScreenId}`);
+            }
+            setIsLoadingLayout(false);
+          } catch (e) {
+            console.error("Error parsing saved layout:", e);
+         
+            setRows("");
+            setCols("");
+          
+            localStorage.removeItem(`seat_layout_${selectedScreenId}`);
+            setIsLoadingLayout(false);
+          }
+        } else {
+        
+          console.log(`[DEBUG] No saved layout for screen ${selectedScreenId}, leaving empty`);
+          setRows("");
+          setCols("");
+          setIsLoadingLayout(false);
+        }
       }
       loadSeats();
     } else {
       setSeats([]);
       setSelectedScreen(null);
+      setRows("");
+      setCols("");
+      setIsLoadingLayout(false);
     }
     
   }, [selectedScreenId, screens]);
+
+  
+  const isInitialMount = useRef(true);
+  const previousScreenId = useRef(null);
+  
+  
+  useEffect(() => {
+    const rowsNum = parseInt(rows, 10);
+    const colsNum = parseInt(cols, 10);
+    if (selectedScreenId && rowsNum > 0 && colsNum > 0 && !isLoadingLayout) {
+     
+      if (isInitialMount.current || previousScreenId.current !== selectedScreenId) {
+        isInitialMount.current = false;
+        previousScreenId.current = selectedScreenId;
+        return;
+      }
+      console.log(`Saving layout for screen ${selectedScreenId}:`, { rows: rowsNum, cols: colsNum });
+      localStorage.setItem(`seat_layout_${selectedScreenId}`, JSON.stringify({ rows: rowsNum, cols: colsNum }));
+    }
+  }, [rows, cols, selectedScreenId, isLoadingLayout]);
 
   const loadTheaters = async () => {
     try {
@@ -112,7 +167,10 @@ export default function SeatManagement() {
     try {
       const res = await seatService.getSeatsByScreen(selectedScreenId);
       if (res.status === 200) {
-        setSeats(res.data || []);
+        const loadedSeats = res.data || [];
+        setSeats(loadedSeats);
+      
+        console.log(`Loaded ${loadedSeats.length} seats for screen ${selectedScreenId}`);
       }
     } catch (error) {
       console.error("Error loading seats:", error);
@@ -126,6 +184,14 @@ export default function SeatManagement() {
   const generateSeats = async () => {
     if (!selectedScreenId || !selectedScreen) {
       toast.error("Vui lòng chọn phòng chiếu trước!");
+      return;
+    }
+
+    const rowsNum = parseInt(rows, 10);
+    const colsNum = parseInt(cols, 10);
+
+    if (!rowsNum || !colsNum || rowsNum <= 0 || colsNum <= 0) {
+      toast.error("Vui lòng nhập số hàng và số cột!");
       return;
     }
 
@@ -144,7 +210,7 @@ export default function SeatManagement() {
       return;
     }
 
-    const totalSeats = rows * cols;
+    const totalSeats = rowsNum * colsNum;
     
     
     const actualSeats = Math.min(totalSeats, availableSlots, capacity);
@@ -165,18 +231,18 @@ export default function SeatManagement() {
       `Đã có: ${currentSeatCount} ghế\n` +
       `Có thể tạo thêm: ${availableSlots} ghế\n\n` +
       `Bạn có chắc muốn tạo ${actualSeats} ghế?\n` +
-      `(Layout: ${rows} hàng x ${cols} cột)`
+      `(Layout: ${rowsNum} hàng x ${colsNum} cột)`
     )) {
       return;
     }
 
     setIsLoading(true);
     const seatsToCreate = [];
-    const rowsArray = Array.from({ length: rows }, (_, i) => String.fromCharCode(65 + i)); // A, B, C, ...
+    const rowsArray = Array.from({ length: rowsNum }, (_, i) => String.fromCharCode(65 + i)); // A, B, C, ...
     
     let seatCount = 0;
     rowsArray.forEach(row => {
-      for (let col = 1; col <= cols && seatCount < actualSeats; col++) {
+      for (let col = 1; col <= colsNum && seatCount < actualSeats; col++) {
         seatsToCreate.push({
           screenId: parseInt(selectedScreenId, 10),
           seatNumber: `${row}${col}`,
@@ -572,7 +638,6 @@ export default function SeatManagement() {
     }
   };
 
-  // Xóa toàn bộ sơ đồ ghế của phòng
   const handleDeleteAllSeats = async () => {
     if (!selectedScreenId || !selectedScreen) {
       toast.error("Vui lòng chọn phòng chiếu trước!");
@@ -584,12 +649,12 @@ export default function SeatManagement() {
       return;
     }
 
-    // Kiểm tra ghế đã được đặt
+    
     const bookedSeats = seats.filter(seat => seat.bookingSeats && seat.bookingSeats.length > 0);
     const availableSeats = seats.filter(seat => !seat.bookingSeats || seat.bookingSeats.length === 0);
 
     if (bookedSeats.length > 0 && availableSeats.length > 0) {
-      // Có cả ghế đã đặt và chưa đặt
+    
       const choice = window.confirm(
         `Phòng có ${seats.length} ghế:\n` +
         `- ${bookedSeats.length} ghế đã được đặt (không thể xóa)\n` +
@@ -724,17 +789,17 @@ export default function SeatManagement() {
 
  
   const getSeatColor = (seat) => {
-    if (!seat) return "#2b3448"; // Chưa có ghế
-    if (seat.isHidden) return "#ffffff"; // Ghế bị ẩn - màu trắng
-    if (isSeatBooked(seat)) return "#d32f2f"; // Đã đặt
-    if (seat.type === "VIP") return "#ff9800"; // VIP
-    if (seat.type === "SWEETBOX") return "#e91e63"; // Ghế đôi
-    return "#2b3448"; // Thường
+    if (!seat) return "#2b3448"; 
+    if (seat.isHidden) return "#ffffff"; 
+    if (isSeatBooked(seat)) return "#d32f2f"; 
+    if (seat.type === "VIP") return "#ff9800"; 
+    if (seat.type === "SWEETBOX") return "#e91e63"; 
+    return "#2b3448"; 
   };
 
   const getSeatTextColor = (seat) => {
     if (!seat) return "#888";
-    if (seat?.isHidden) return "#333"; // Màu chữ tối trên nền trắng
+    if (seat?.isHidden) return "#333"; 
     if (isSeatBooked(seat)) return "#fff";
     return "#fff";
   };
@@ -837,8 +902,18 @@ export default function SeatManagement() {
                     placeholder="Số hàng"
                     value={rows}
                     onChange={(e) => {
-                      const newRows = Math.max(1, Math.min(26, parseInt(e.target.value, 10) || 1));
-                      setRows(newRows);
+                      const value = e.target.value;
+                      if (value === "" || value === null || value === undefined) {
+                        setRows("");
+                        return;
+                      }
+                      const numValue = parseInt(value, 10);
+                      if (!isNaN(numValue) && numValue > 0) {
+                        const newRows = Math.max(1, Math.min(26, numValue));
+                        setRows(newRows.toString());
+                      } else {
+                        setRows("");
+                      }
                     }}
                     min="1"
                     max="26"
@@ -858,8 +933,18 @@ export default function SeatManagement() {
                     placeholder="Số cột"
                     value={cols}
                     onChange={(e) => {
-                      const newCols = Math.max(1, Math.min(50, parseInt(e.target.value, 10) || 1));
-                      setCols(newCols);
+                      const value = e.target.value;
+                      if (value === "" || value === null || value === undefined) {
+                        setCols("");
+                        return;
+                      }
+                      const numValue = parseInt(value, 10);
+                      if (!isNaN(numValue) && numValue > 0) {
+                        const newCols = Math.max(1, Math.min(50, numValue));
+                        setCols(newCols.toString());
+                      } else {
+                        setCols("");
+                      }
                     }}
                     min="1"
                     max="50"
@@ -881,9 +966,9 @@ export default function SeatManagement() {
                   border: "1px solid #333",
                   borderRadius: "5px",
                   fontSize: "12px",
-                  color: rows * cols > (selectedScreen.seat_capacity - seats.length) ? "#ff9800" : "#fff"
+                  color: (parseInt(rows, 10) || 0) * (parseInt(cols, 10) || 0) > (selectedScreen.seat_capacity - seats.length) ? "#ff9800" : "#fff"
                 }}>
-                  Tổng: {rows * cols} vị trí | Còn lại: {Math.max(0, selectedScreen.seat_capacity - seats.length)} ghế
+                  Tổng: {(parseInt(rows, 10) || 0) * (parseInt(cols, 10) || 0)} vị trí | Còn lại: {Math.max(0, selectedScreen.seat_capacity - seats.length)} ghế
                 </div>
               </div>
               <div style={{ flex: "1", minWidth: "200px" }}>
@@ -939,7 +1024,7 @@ export default function SeatManagement() {
               <PlusCircle size={18} /> 
               {selectedScreen && seats.length >= selectedScreen.seat_capacity 
                 ? `Đã đủ ${selectedScreen.seat_capacity} ghế` 
-                : `Tạo sơ đồ ghế (${rows}×${cols})`}
+                : (rows && cols ? `Tạo sơ đồ ghế (${rows}×${cols})` : "Tạo sơ đồ ghế")}
             </button>
             {seats.length > 0 && (
               <button

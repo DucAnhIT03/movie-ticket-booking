@@ -34,6 +34,12 @@ const userService = {
       validateStatus: () => true,
     });
   },
+
+  assignTheater(userId, theaterId) {
+    return axiosClient.patch(`/users/${userId}/theater`, { theaterId }, {
+      validateStatus: () => true,
+    });
+  },
 };
 
 export default userService;

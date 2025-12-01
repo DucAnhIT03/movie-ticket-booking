@@ -5,10 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Status } from '../../common/constants/enums';
 import { UserRole } from './user-role.entity';
 import { Booking } from './booking.entity';
+import { TheaterOrmEntity } from './theater.orm-entity';
 
 @Entity({ name: 'users' })
 export class Users {
@@ -53,4 +56,11 @@ export class Users {
 
   @OneToMany(() => Booking, (booking) => booking.createdByStaff)
   issuedBookings?: Booking[];
+
+  @Column({ name: 'theater_id', nullable: true })
+  theaterId?: number;
+
+  @ManyToOne(() => TheaterOrmEntity, { nullable: true })
+  @JoinColumn({ name: 'theater_id' })
+  theater?: TheaterOrmEntity;
 }

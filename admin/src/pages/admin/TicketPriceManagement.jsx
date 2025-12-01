@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { PlusCircle, Trash2, Settings, Search, Ticket, Download, Upload } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { PlusCircle, Trash2, Settings, Search, Ticket, Download, Upload, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-toastify";
 import MovieModal from "./MovieModal";
 import ticketPriceService from "../../services/ticket-prices/ticketPriceService";
@@ -16,13 +16,21 @@ export default function TicketPriceManagement() {
   const [loading, setLoading] = useState(false);
   const [theaters, setTheaters] = useState([]);
   const [movies, setMovies] = useState([]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   
   useEffect(() => {
     loadTicketPrices();
     loadTheaters();
     loadMovies();
-  }, []);
+  }, [page, limit]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
   const loadMovies = async () => {
     try {
@@ -53,7 +61,7 @@ export default function TicketPriceManagement() {
   const loadTicketPrices = async () => {
     setLoading(true);
     try {
-      const response = await ticketPriceService.getAllTicketPrices({ page: 1, limit: 1000 });
+      const response = await ticketPriceService.getAllTicketPrices({ page, limit });
       if (response.status === 200) {
         const data = response.data;
         const items = data.items || data || [];
@@ -74,6 +82,8 @@ export default function TicketPriceManagement() {
           updated_at: item.updated_at || item.updatedAt,
         }));
         setTicketPrices(sortByNewest(convertedItems));
+        setTotal(data.total || convertedItems.length);
+        setTotalPages(data.totalPages || Math.ceil((data.total || convertedItems.length) / limit));
       } else {
         toast.error("Lỗi khi tải danh sách giá vé");
       }
@@ -265,11 +275,16 @@ export default function TicketPriceManagement() {
   };
 
 
-  const filtered = ticketPrices.filter(
-    (t) =>
-      t.type_seat.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.type_movie.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    return ticketPrices.filter(
+      (t) =>
+        t.type_seat.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.type_movie.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [ticketPrices, searchTerm]);
+
+  const currentRangeStart = (page - 1) * limit + 1;
+  const currentRangeEnd = Math.min(total, page * limit);
 
   return (
     <div style={{ color: "#fff" }}>
@@ -439,6 +454,74 @@ export default function TicketPriceManagement() {
           )}
         </tbody>
       </table>
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "20px",
+            padding: "15px",
+            background: "#1a1f29",
+            borderRadius: "8px",
+          }}
+        >
+          <div style={{ color: "#cbd5f5", fontSize: "14px" }}>
+            {total > 0
+              ? `Hiển thị ${currentRangeStart}-${currentRangeEnd} trong ${total} giá vé`
+              : "Không có dữ liệu"}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <button
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              disabled={page === 1 || loading}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: page === 1 || loading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                opacity: page === 1 || loading ? 0.5 : 1,
+              }}
+            >
+              <ChevronLeft size={16} /> Trước
+            </button>
+            <div style={{ display: "flex", alignItems: "center", color: "#cbd5f5" }}>
+              Trang {page}/{Math.max(totalPages, 1)}
+            </div>
+            <button
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={page >= totalPages || loading}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: page >= totalPages || loading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                opacity: page >= totalPages || loading ? 0.5 : 1,
+              }}
+            >
+              Sau <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {isModalOpen && (

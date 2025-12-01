@@ -13,6 +13,7 @@ export default function TheaterManagement() {
   const [selectedTheater, setSelectedTheater] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [isSaving, setIsSaving] = useState(false);
 
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function TheaterManagement() {
   const handleCloseModal = () => {
     setSelectedTheater(null);
     setIsModalOpen(false);
+    setIsSaving(false);
   };
 
  
@@ -81,6 +83,7 @@ export default function TheaterManagement() {
       phone: data.phone.trim(),
     };
 
+    setIsSaving(true);
     try {
       if (data.id) {
        
@@ -113,6 +116,8 @@ export default function TheaterManagement() {
       console.error("Error saving theater:", error);
       const errorMessage = error.response?.data?.message || error.message || "Lỗi kết nối đến server!";
       toast.error(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -397,6 +402,7 @@ export default function TheaterManagement() {
           onClose={handleCloseModal}
           onSave={handleSaveTheater}
           initialData={selectedTheater}
+          isSaving={isSaving}
           fields={[
             { name: "name", label: "Tên rạp", type: "text" },
             { name: "location", label: "Địa chỉ", type: "text" },

@@ -6,6 +6,7 @@ import screenService from "../../services/screens/screenService";
 import seatService from "../../services/seats/seatService";
 import showtimeService from "../../services/showtimes/showtimeService";
 import bookingService from "../../services/bookings/bookingService";
+import promotionService from "../../services/promotions/promotionService";
 
 export default function SeatBookingView() {
   const [theaters, setTheaters] = useState([]);
@@ -25,6 +26,10 @@ export default function SeatBookingView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [priceQuote, setPriceQuote] = useState(null);
   const [isPricing, setIsPricing] = useState(false);
+  const [promotionCode, setPromotionCode] = useState("");
+  const [promotionInfo, setPromotionInfo] = useState(null);
+  const [isValidatingPromotion, setIsValidatingPromotion] = useState(false);
+  const [promotionError, setPromotionError] = useState("");
 
   const currentUserRoles = useMemo(() => {
     try {
@@ -38,6 +43,27 @@ export default function SeatBookingView() {
     }
   }, []);
 
+  const currentUserTheaterId = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("adminUser");
+      if (!raw) {
+        console.log("SeatBookingView: No adminUser in localStorage");
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      const theaterId = parsed?.theaterId || parsed?.theater_id || null;
+      console.log("SeatBookingView: Current user data:", parsed);
+      console.log("SeatBookingView: TheaterId from localStorage:", theaterId);
+      return theaterId;
+    } catch (error) {
+      console.error("Failed to parse adminUser", error);
+      return null;
+    }
+  }, []);
+
+  const isEmployee = currentUserRoles.includes("ROLE_EMPLOYEE") && !currentUserRoles.includes("ROLE_ADMIN");
+  
+  console.log("SeatBookingView: isEmployee:", isEmployee, "currentUserTheaterId:", currentUserTheaterId);
   const canCreateOfflineBooking = currentUserRoles.includes("ROLE_ADMIN") || currentUserRoles.includes("ROLE_EMPLOYEE");
   const paymentOptions = [
     { value: "CASH", label: "Tiền mặt" },
@@ -95,6 +121,9 @@ export default function SeatBookingView() {
     setCustomerName("");
     setCustomerPhone("");
     setPriceQuote(null);
+    setPromotionCode("");
+    setPromotionInfo(null);
+    setPromotionError("");
   }, [selectedShowtimeId]);
 
   useEffect(() => {
@@ -102,17 +131,36 @@ export default function SeatBookingView() {
       setPriceQuote(null);
       return;
     }
+    // Chỉ tính giá khi đã có promotionInfo hoặc không có promotionCode
+    // Tránh tính giá khi đang validate mã
+    if (promotionCode.trim() && !promotionInfo) {
+      return;
+    }
+    
     let cancelled = false;
     setIsPricing(true);
-    bookingService
-      .previewOfflineBooking({
+    const payload = {
         showtimeId: Number(selectedShowtimeId),
         seatIds: selectedSeats.map((seat) => seat.id),
-      })
+    };
+    
+    // Chỉ gửi promotionCode nếu đã validate thành công
+    if (promotionCode.trim() && promotionInfo) {
+      payload.promotionCode = promotionCode.trim();
+      // Admin và nhân viên có thể dùng mã nhiều lần (bỏ qua giới hạn "mỗi user 1 lần")
+      // Nhưng vẫn phải tuân theo giới hạn tổng số lượt sử dụng của mã
+      payload.bypassUserLimit = canCreateOfflineBooking;
+    }
+    
+    console.log("Preview booking with payload:", payload);
+    bookingService
+      .previewOfflineBooking(payload)
       .then((res) => {
         if (cancelled) return;
+        console.log("Preview booking response:", res);
         if (res.status === 200) {
           setPriceQuote(res.data);
+          console.log("Price quote:", res.data);
         } else {
           setPriceQuote(null);
           toast.error(res.data?.message || "Không thể tính giá vé, vui lòng kiểm tra cấu hình.");
@@ -133,7 +181,7 @@ export default function SeatBookingView() {
     return () => {
       cancelled = true;
     };
-  }, [selectedShowtimeId, selectedSeats]);
+  }, [selectedShowtimeId, selectedSeats, promotionCode, promotionInfo]);
 
   const startAutoRefresh = () => {
     stopAutoRefresh();
@@ -154,7 +202,28 @@ export default function SeatBookingView() {
     try {
       const res = await theaterService.getAllTheaters();
       if (res.status === 200) {
-        setTheaters(res.data.items || res.data || []);
+        let theatersData = res.data.items || res.data || [];
+        console.log("SeatBookingView: All theaters loaded:", theatersData);
+        console.log("SeatBookingView: Filtering - isEmployee:", isEmployee, "currentUserTheaterId:", currentUserTheaterId);
+        
+        // Nếu là nhân viên, chỉ hiển thị rạp được gán
+        if (isEmployee && currentUserTheaterId) {
+          const theaterIdNum = typeof currentUserTheaterId === 'string' ? parseInt(currentUserTheaterId, 10) : currentUserTheaterId;
+          theatersData = theatersData.filter(t => t.id === theaterIdNum);
+          console.log("SeatBookingView: Filtered theaters for employee:", theatersData);
+          // Tự động chọn rạp được gán
+          if (theatersData.length > 0) {
+            setSelectedTheaterId(theatersData[0].id.toString());
+            console.log("SeatBookingView: Auto-selected theater:", theatersData[0].id);
+          } else {
+            console.warn("SeatBookingView: Employee has theaterId but no matching theater found!");
+          }
+        } else if (isEmployee && !currentUserTheaterId) {
+          console.warn("SeatBookingView: Employee but no theaterId assigned!");
+          toast.warning("Bạn chưa được gán rạp. Vui lòng liên hệ quản trị viên.");
+        }
+        
+        setTheaters(theatersData);
       }
     } catch (error) {
       console.error("Error loading theaters:", error);
@@ -167,9 +236,17 @@ export default function SeatBookingView() {
       const res = await screenService.getAllScreens();
       if (res.status === 200) {
         const allScreens = res.data.items || res.data || [];
-        const filteredScreens = allScreens.filter(
+        let filteredScreens = allScreens.filter(
           (s) => s.theater_id === parseInt(selectedTheaterId, 10)
         );
+        
+        // Nếu là nhân viên, đảm bảo chỉ hiển thị phòng chiếu của rạp được gán
+        if (isEmployee && currentUserTheaterId) {
+          filteredScreens = filteredScreens.filter(
+            (s) => s.theater_id === currentUserTheaterId
+          );
+        }
+        
         setScreens(filteredScreens);
       }
     } catch (error) {
@@ -296,6 +373,69 @@ export default function SeatBookingView() {
     return "#fff";
   };
 
+  const handleValidatePromotion = async () => {
+    if (!promotionCode.trim()) {
+      setPromotionError("Vui lòng nhập mã giảm giá");
+      setPromotionInfo(null);
+      return;
+    }
+
+    setIsValidatingPromotion(true);
+    setPromotionError("");
+    try {
+      // Admin và nhân viên có thể dùng mã giảm giá nhiều lần (bỏ qua giới hạn "mỗi user 1 lần")
+      // Nhưng vẫn phải tuân theo giới hạn tổng số lượt sử dụng của mã
+      const isAdminOrEmployee = canCreateOfflineBooking;
+      const res = await promotionService.applyCode(promotionCode.trim(), isAdminOrEmployee);
+      console.log("Promotion validation response:", res);
+      if (res.status === 200 && res.data) {
+        setPromotionInfo(res.data);
+        toast.success("Áp dụng mã giảm giá thành công!");
+       
+      } else {
+        setPromotionInfo(null);
+        const errorMsg = res.data?.message || "Mã giảm giá không hợp lệ hoặc đã hết hạn";
+        setPromotionError(errorMsg);
+        toast.error(errorMsg);
+      }
+    } catch (error) {
+      console.error("Promotion validation error:", error);
+      setPromotionInfo(null);
+      const errorMsg = error.response?.data?.message || "Lỗi khi kiểm tra mã giảm giá";
+      setPromotionError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setIsValidatingPromotion(false);
+    }
+  };
+
+  const handleRemovePromotion = () => {
+    setPromotionCode("");
+    setPromotionInfo(null);
+    setPromotionError("");
+  };
+
+  const calculateFinalPrice = () => {
+   
+    if (priceQuote?.finalPrice !== undefined) {
+      return priceQuote.finalPrice;
+    }
+   
+    if (!priceQuote?.totalPrice) return 0;
+    let finalPrice = priceQuote.totalPrice;
+    
+    if (promotionInfo) {
+      if (promotionInfo.discountType === "PERCENTAGE") {
+        const discount = (finalPrice * promotionInfo.discountValue) / 100;
+        finalPrice = Math.max(0, finalPrice - discount);
+      } else if (promotionInfo.discountType === "FIXED") {
+        finalPrice = Math.max(0, finalPrice - promotionInfo.discountValue);
+      }
+    }
+    
+    return Math.round(finalPrice);
+  };
+
   const handleCreateOfflineBooking = async () => {
     if (!selectedShowtimeId) {
       toast.warning("Vui lòng chọn suất chiếu trước khi xuất vé!");
@@ -314,24 +454,48 @@ export default function SeatBookingView() {
       return;
     }
 
+    if (promotionCode.trim() && !promotionInfo) {
+      toast.warning("Vui lòng áp dụng mã giảm giá trước khi xuất vé!");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      // Gửi promotionCode để backend tính giá cuối cùng
+      // Nếu backend không tính, dùng giá đã tính ở frontend
+      const finalPrice = priceQuote?.finalPrice !== undefined 
+        ? priceQuote.finalPrice 
+        : calculateFinalPrice();
+      
       const payload = {
         showtimeId: Number(selectedShowtimeId),
         seatIds: selectedSeats.map((seat) => seat.id),
-        totalPriceMovie: priceQuote.totalPrice,
+        totalPriceMovie: finalPrice,
         paymentMethod,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim() || undefined,
       };
 
+      // Gửi promotionCode và bypassUserLimit nếu có mã giảm giá
+      if (promotionCode.trim() && promotionInfo) {
+        payload.promotionCode = promotionCode.trim();
+        // Admin và nhân viên có thể dùng mã nhiều lần (bỏ qua giới hạn "mỗi user 1 lần")
+        // Nhưng vẫn phải tuân theo giới hạn tổng số lượt sử dụng của mã
+        payload.bypassUserLimit = canCreateOfflineBooking;
+      }
+
+      console.log("Creating offline booking with payload:", payload);
       const res = await bookingService.createOfflineBooking(payload);
+      console.log("Booking response:", res);
       if (res.status >= 200 && res.status < 300) {
         toast.success(res.data?.message || "Xuất vé thành công!");
         setSelectedSeats([]);
         setCustomerName("");
         setCustomerPhone("");
         setPriceQuote(null);
+        setPromotionCode("");
+        setPromotionInfo(null);
+        setPromotionError("");
         await loadSeats();
       } else {
         toast.error(buildErrorMessage(res.data));
@@ -368,11 +532,11 @@ export default function SeatBookingView() {
           display: "flex",
           gap: "15px",
           flexWrap: "wrap",
-          alignItems: "flex-end",
+          alignItems: "flex-start",
         }}
       >
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          <label style={{ display: "block", marginBottom: "8px", color: "#aaa" }}>
+        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column" }}>
+          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", minHeight: "20px" }}>
             Chọn rạp
           </label>
           <select
@@ -382,13 +546,17 @@ export default function SeatBookingView() {
               setSelectedScreenId("");
               setSelectedShowtimeId("");
             }}
+            disabled={isEmployee}
             style={{
               width: "100%",
               padding: "10px",
-              background: "#1a1f29",
-              color: "#fff",
+              background: isEmployee ? "#1a1f29" : "#1a1f29",
+              color: isEmployee ? "#888" : "#fff",
               border: "1px solid #333",
               borderRadius: "6px",
+              cursor: isEmployee ? "not-allowed" : "pointer",
+              opacity: isEmployee ? 0.6 : 1,
+              height: "42px",
             }}
           >
             <option value="">-- Chọn rạp --</option>
@@ -398,10 +566,15 @@ export default function SeatBookingView() {
               </option>
             ))}
           </select>
+          {isEmployee && currentUserTheaterId && (
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "4px", minHeight: "16px" }}>
+              Bạn chỉ có thể chọn phòng chiếu của rạp được gán
+            </div>
+          )}
         </div>
 
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          <label style={{ display: "block", marginBottom: "8px", color: "#aaa" }}>
+        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column" }}>
+          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", minHeight: "20px" }}>
             Chọn phòng chiếu
           </label>
           <select
@@ -419,6 +592,7 @@ export default function SeatBookingView() {
               border: "1px solid #333",
               borderRadius: "6px",
               opacity: selectedTheaterId ? 1 : 0.5,
+              height: "42px",
             }}
           >
             <option value="">-- Chọn phòng --</option>
@@ -430,8 +604,8 @@ export default function SeatBookingView() {
           </select>
         </div>
 
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          <label style={{ display: "block", marginBottom: "8px", color: "#aaa" }}>
+        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column" }}>
+          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", minHeight: "20px" }}>
             Chọn suất chiếu
           </label>
           <select
@@ -446,6 +620,7 @@ export default function SeatBookingView() {
               border: "1px solid #333",
               borderRadius: "6px",
               opacity: selectedScreenId ? 1 : 0.5,
+              height: "42px",
             }}
           >
             <option value="">-- Chọn suất chiếu --</option>
@@ -826,14 +1001,13 @@ export default function SeatBookingView() {
 
                   <div
                     style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "24px",
-                      rowGap: "16px",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                      gap: "20px",
                       marginBottom: "16px",
                     }}
                   >
-                    <div style={{ flex: "1 1 220px", minWidth: "220px" }}>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
                       <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
                         Tên khách hàng *
                       </label>
@@ -849,11 +1023,12 @@ export default function SeatBookingView() {
                           border: "1px solid #333",
                           background: "#0f172a",
                           color: "#fff",
+                          boxSizing: "border-box",
                         }}
                       />
                     </div>
 
-                    <div style={{ flex: "1 1 220px", minWidth: "220px" }}>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
                       <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
                         Số điện thoại
                       </label>
@@ -869,11 +1044,91 @@ export default function SeatBookingView() {
                           border: "1px solid #333",
                           background: "#0f172a",
                           color: "#fff",
+                          boxSizing: "border-box",
                         }}
                       />
                     </div>
 
-                    <div style={{ flex: "1 1 220px", minWidth: "220px" }}>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
+                        Mã giảm giá
+                      </label>
+                      <div style={{ display: "flex", gap: "8px", width: "100%" }}>
+                        <input
+                          type="text"
+                          value={promotionCode}
+                          onChange={(e) => {
+                            setPromotionCode(e.target.value);
+                            setPromotionError("");
+                            if (promotionInfo) {
+                              setPromotionInfo(null);
+                            }
+                          }}
+                          placeholder="Nhập mã giảm giá"
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: "10px",
+                            borderRadius: "6px",
+                            border: promotionError ? "1px solid #d32f2f" : "1px solid #333",
+                            background: "#0f172a",
+                            color: "#fff",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                        {promotionInfo ? (
+                          <button
+                            type="button"
+                            onClick={handleRemovePromotion}
+                            style={{
+                              padding: "10px 16px",
+                              borderRadius: "6px",
+                              border: "1px solid #4caf50",
+                              background: "transparent",
+                              color: "#4caf50",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                              flexShrink: 0,
+                            }}
+                          >
+                            Hủy
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleValidatePromotion}
+                            disabled={isValidatingPromotion || !promotionCode.trim()}
+                            style={{
+                              padding: "10px 16px",
+                              borderRadius: "6px",
+                              border: "1px solid #1976d2",
+                              background: isValidatingPromotion || !promotionCode.trim() ? "rgba(25,118,210,0.3)" : "#1976d2",
+                              color: "#fff",
+                              cursor: isValidatingPromotion || !promotionCode.trim() ? "not-allowed" : "pointer",
+                              whiteSpace: "nowrap",
+                              opacity: isValidatingPromotion || !promotionCode.trim() ? 0.6 : 1,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {isValidatingPromotion ? "..." : "Áp dụng"}
+                          </button>
+                        )}
+                      </div>
+                      {promotionError && (
+                        <small style={{ color: "#d32f2f", marginTop: "4px", display: "block" }}>
+                          {promotionError}
+                        </small>
+                      )}
+                      {promotionInfo && (
+                        <small style={{ color: "#4caf50", marginTop: "4px", display: "block" }}>
+                          {promotionInfo.discountType === "PERCENTAGE"
+                            ? `Giảm ${promotionInfo.discountValue}%`
+                            : `Giảm ${promotionInfo.discountValue.toLocaleString("vi-VN")} đ`}
+                        </small>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column" }}>
                       <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
                         Tổng tiền (VNĐ)
                       </label>
@@ -881,7 +1136,7 @@ export default function SeatBookingView() {
                         type="text"
                         value={
                           priceQuote?.totalPrice
-                            ? priceQuote.totalPrice.toLocaleString("vi-VN")
+                            ? calculateFinalPrice().toLocaleString("vi-VN")
                             : ""
                         }
                         readOnly
@@ -894,14 +1149,29 @@ export default function SeatBookingView() {
                           background: "#19253a",
                           color: "#fff",
                           opacity: priceQuote?.totalPrice ? 1 : 0.6,
+                          boxSizing: "border-box",
                         }}
                       />
                       {isPricing && (
-                        <small style={{ color: "#90caf9" }}>Đang tính giá dựa trên ghế đã chọn...</small>
+                        <small style={{ color: "#90caf9", marginTop: "4px", display: "block" }}>
+                          Đang tính giá dựa trên ghế đã chọn...
+                        </small>
+                      )}
+                      {promotionInfo && priceQuote?.totalPrice && (
+                        <div style={{ marginTop: "4px" }}>
+                          <small style={{ color: "#90a4ae", display: "block" }}>
+                            Giá gốc: {priceQuote.totalPrice.toLocaleString("vi-VN")} đ
+                          </small>
+                          {priceQuote.finalPrice !== undefined && priceQuote.finalPrice !== priceQuote.totalPrice && (
+                            <small style={{ color: "#4caf50", display: "block", fontWeight: "600" }}>
+                              Giá sau giảm: {priceQuote.finalPrice.toLocaleString("vi-VN")} đ
+                            </small>
+                          )}
+                        </div>
                       )}
                     </div>
 
-                    <div style={{ flex: "1 1 220px", minWidth: "220px" }}>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
                       <label style={{ display: "block", marginBottom: "6px", color: "#cfd8dc" }}>
                         Phương thức thanh toán
                       </label>
@@ -915,6 +1185,7 @@ export default function SeatBookingView() {
                           border: "1px solid #333",
                           background: "#0f172a",
                           color: "#fff",
+                          boxSizing: "border-box",
                         }}
                       >
                         {paymentOptions.map((option) => (

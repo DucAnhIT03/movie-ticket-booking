@@ -94,12 +94,12 @@ export class AuthService {
     if (dto.email) {
       user = await this.usersRepo.findOne({
         where: { email: dto.email } as any,
-        relations: ['roles', 'roles.role'],
+        relations: ['roles', 'roles.role', 'theater'],
       } as any);
     } else if (dto.phone) {
       user = await this.usersRepo.findOne({
         where: { phone: dto.phone } as any,
-        relations: ['roles', 'roles.role'],
+        relations: ['roles', 'roles.role', 'theater'],
       } as any);
     }
     if (!user) throw new UnauthorizedException('Invalid credentials');
@@ -128,7 +128,19 @@ export class AuthService {
     const token = this.jwtService.sign({ sub: user.id, email: user.email });
     
     const { password, ...profile } = user as any;
-    return { user: { ...profile, roles: roleNames }, accessToken: token };
+    // Đảm bảo theaterId được trả về (có thể từ theaterId hoặc theater.id)
+    // TypeORM map theater_id từ DB thành theaterId trong entity
+    const theaterId = (user as any).theaterId || (user as any).theater?.id || null;
+    const userResponse = { 
+      ...profile, 
+      roles: roleNames, 
+      theaterId: theaterId 
+    };
+    
+    // Debug log để kiểm tra
+    console.log('Auth login - User ID:', user.id, 'TheaterId:', theaterId, 'User object:', { theaterId: (user as any).theaterId });
+    
+    return { user: userResponse, accessToken: token };
   }
 
 

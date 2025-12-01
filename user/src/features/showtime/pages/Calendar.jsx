@@ -7,6 +7,7 @@ import { useMovies } from "../../home/hooks/useMovies";
 import { formatGenres, getGenresData } from "../../../shared/utils/formatGenres";
 import showtimeService from "../../../services/showtimes/showtimeService";
 import movieService from "../../../services/movies/movieService";
+import MovieCard from "../../home/components/MovieCard/MovieCard";
 
 function Calendar() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ function Calendar() {
   const [moviesFromShowtimes, setMoviesFromShowtimes] = useState([]);
   const timezoneOffset = useMemo(() => new Date().getTimezoneOffset(), []);
   
-  // Tạo danh sách 5 ngày kể từ hôm nay
+  
   const getAvailableDates = () => {
     const dates = [];
     const today = new Date();
@@ -36,7 +37,7 @@ function Calendar() {
   const dates = getAvailableDates();
   const [selectedDate, setSelectedDate] = useState(dates[0] || "");
   
-  // Format ngày phát hành (DD/MM/YYYY)
+  
   const formatDate = (movie) => {
     let dateString = movie.startDate || movie.start_date || movie.releaseDate || movie.release_date;
     if (!dateString) return "";
@@ -48,7 +49,7 @@ function Calendar() {
     return `${day}/${month}/${year}`;
   };
 
-  // Format độ tuổi với mô tả đầy đủ
+
   const formatAgeRating = (rating) => {
     if (!rating) return "";
     
@@ -63,7 +64,7 @@ function Calendar() {
     return ratingMap[rating] || `${rating} - Phim phổ biến theo độ tuổi`;
   };
 
-  // Xử lý khi click vào nút giờ chiếu
+  
   const handleTimeClick = (showtimeId, time, movieId) => {
     localStorage.setItem("selectedShowtimeId", showtimeId);
     localStorage.setItem("selectedTime", time);
@@ -71,24 +72,24 @@ function Calendar() {
     if (movieId) {
       localStorage.setItem("selectedMovieId", movieId);
     }
-    // Navigate to choose seat page
+   
     navigate("/choose-seat");
   };
 
-  // Convert date từ DD-MM-YYYY sang YYYY-MM-DD
+ 
   const convertDateToAPIFormat = (dateStr) => {
     if (!dateStr) return "";
     const [day, month, year] = dateStr.split("-");
     return `${year}-${month}-${day}`;
   };
 
-  // Memoize movie IDs để tránh dependency array thay đổi
+  
   const nowShowingMovieIds = useMemo(() => {
     if (!nowShowing || !Array.isArray(nowShowing)) return [];
     return nowShowing.map(m => m.id);
   }, [nowShowing]);
 
-  // Fetch showtimes theo ngày đã chọn và fetch thông tin phim nếu thiếu
+
   useEffect(() => {
     if (!selectedDate) return;
     
@@ -102,7 +103,7 @@ function Calendar() {
           const showtimesData = response.data || [];
           setShowtimes(showtimesData);
           
-          // Lấy danh sách movieId từ showtimes
+          
           const movieIds = new Set();
           showtimesData.forEach(st => {
             const movieId = st.movieId || st.movie?.id;
@@ -111,22 +112,21 @@ function Calendar() {
             }
           });
           
-          // Fetch TẤT CẢ phim có showtimes để đảm bảo không bị mất phim
-          // Chỉ skip những phim đã có đầy đủ thông tin trong st.movie
+        
           const movieIdsArray = Array.from(movieIds);
           const moviesToFetch = movieIdsArray.filter(id => {
-            // Kiểm tra xem showtime có thông tin movie đầy đủ không
+           
             const showtime = showtimesData.find(st => (st.movieId || st.movie?.id) === id);
-            // Nếu showtime có movie với đầy đủ thông tin (có title), không cần fetch
+           
             if (showtime && showtime.movie && showtime.movie.id && showtime.movie.title) {
               return false;
             }
-            // Còn lại đều cần fetch để đảm bảo có đầy đủ thông tin
+            
             return true;
           });
           
           if (moviesToFetch.length > 0) {
-            // Fetch từng phim
+         
             const moviePromises = moviesToFetch.map(id => 
               movieService.getMovieById(id)
             );
@@ -157,55 +157,68 @@ function Calendar() {
     fetchShowtimes();
   }, [selectedDate, nowShowingMovieIds]);
 
-  // Chỉ hiển thị phim có showtimes trong ngày đã chọn
+  
   const getMoviesToDisplay = () => {
-    // Nếu không có showtimes, không hiển thị phim nào
+   
     if (!showtimes || showtimes.length === 0) {
       return [];
     }
     
-    // Tạo map phim từ showtimes - đảm bảo tất cả phim có showtimes đều được hiển thị
     const moviesMap = new Map();
     
-    showtimes.forEach(st => {
+      showtimes.forEach(st => {
       const movieId = st.movieId || st.movie?.id;
       if (!movieId) return;
       
-      // Nếu chưa có trong map, thử lấy từ nhiều nguồn
       if (!moviesMap.has(movieId)) {
         let movie = null;
         
-        // Ưu tiên 1: Lấy từ showtime.movie (nếu có đầy đủ thông tin)
-        if (st.movie && st.movie.id && st.movie.title) {
-          movie = st.movie;
-        } 
-        // Ưu tiên 2: Lấy từ moviesFromShowtimes (đã fetch riêng - đảm bảo có đầy đủ)
-        else if (moviesFromShowtimes && Array.isArray(moviesFromShowtimes)) {
+        
+        if (moviesFromShowtimes && Array.isArray(moviesFromShowtimes)) {
           movie = moviesFromShowtimes.find(m => m.id === movieId);
         }
-        // Ưu tiên 3: Lấy từ nowShowing
-        else if (nowShowing && Array.isArray(nowShowing)) {
+       
+        if (!movie && nowShowing && Array.isArray(nowShowing)) {
           movie = nowShowing.find(m => m.id === movieId);
         }
-        
-        // Nếu vẫn không tìm thấy, tạo object phim tạm từ showtime để hiển thị
-        // Đảm bảo không bị mất phim
-        if (!movie && st.movie) {
-          movie = st.movie; // Dùng thông tin từ showtime.movie dù không đầy đủ
+       
+        if (!movie && st.movie && st.movie.id && st.movie.title) {
+          movie = st.movie;
         }
         
-        // Thêm vào map nếu có movie (kể cả tạm thời)
+       
+        if (!movie && st.movie) {
+          movie = st.movie; 
+        }
+        
+       
+        if (movie && (!movie.genres && !movie.movieGenres && !movie.genre)) {
+          
+          const fullMovie = moviesFromShowtimes?.find(m => m.id === movieId) || 
+                           nowShowing?.find(m => m.id === movieId);
+          if (fullMovie) {
+            
+            movie = {
+              ...movie,
+              genres: fullMovie.genres || movie.genres,
+              movieGenres: fullMovie.movieGenres || movie.movieGenres,
+              genre: fullMovie.genre || movie.genre
+            };
+          }
+        }
+        
+        
         if (movie) {
           moviesMap.set(movieId, movie);
         }
       }
     });
     
-    // Trả về danh sách phim có showtimes trong ngày đã chọn
+    
     return Array.from(moviesMap.values());
   };
 
-  // Lấy showtimes của một phim (trả về cả time và showtime id để làm key)
+  
   const getShowtimesForMovie = (movieId) => {
     if (!showtimes || !Array.isArray(showtimes)) return [];
     
@@ -223,19 +236,19 @@ function Calendar() {
         
         const hours = String(startTime.getHours()).padStart(2, "0");
         const minutes = String(startTime.getMinutes()).padStart(2, "0");
-        // Lấy screenId để phân biệt các phòng chiếu
+        
         const screenId = st.screenId || st.screen?.id || `screen-${index}`;
-        // Đảm bảo luôn có id duy nhất
+       
         const uniqueId = st.id || `showtime-${movieId}-${screenId}-${st.startTime}-${index}`;
         
         return {
           time: `${hours}:${minutes}`,
-          id: uniqueId, // Đảm bảo luôn có id duy nhất
-          screenId: screenId, // Lưu screenId để phân biệt phòng
-          showtime: st // Giữ nguyên showtime để dùng sau này
+          id: uniqueId, 
+          screenId: screenId,
+          showtime: st 
         };
       })
-      .filter(item => item !== null) // Loại bỏ các item null
+      .filter(item => item !== null) 
       .sort((a, b) => a.time.localeCompare(b.time));
   };
 
@@ -300,67 +313,26 @@ function Calendar() {
             ) : (
               <div className="movie-list">
                 {getMoviesToDisplay().map((movie) => {
-                  const genresData = getGenresData(movie);
-                  const genre = formatGenres(genresData);
-                  const releaseDate = formatDate(movie);
-                  const posterUrl = movie.image || movie.poster || "/logo.png";
                   const movieShowtimes = getShowtimesForMovie(movie.id);
                   
                   return (
-                    <div key={movie.id} className="movie-card">
-                      <Link
-                        to={`/movie-detail/${movie.id}`}
-                        style={{ textDecoration: "none", color: "inherit" }}
-                      >
-                        <img
-                          src={posterUrl}
-                          alt={movie.title || "Movie poster"}
-                          className="poster"
-                          onError={(e) => {
-                            e.target.src = "/logo.png";
-                          }}
-                        />
-                      </Link>
-                      <div className="movie-details">
-                        <Link
-                          to={`/movie-detail/${movie.id}`}
-                          style={{ textDecoration: "none", color: "inherit" }}
-                        >
-                          <h2>{movie.title || "Chưa có tên"}</h2>
-                        </Link>
-                        <p className="movie-meta">
-                          {genre && <span>{genre}</span>}
-                          {movie.duration && <span>{movie.duration} phút</span>}
-                          <span>2D</span>
-                        </p>
-                        {movie.country && (
-                          <p>
-                            <b>Xuất xứ:</b> {movie.country}
-                          </p>
-                        )}
-                        {releaseDate && (
-                          <p>
-                            <b>Khởi chiếu:</b> {releaseDate}
-                          </p>
-                        )}
-                        {movie.rating && (
-                          <p className="age">{formatAgeRating(movie.rating)}</p>
-                        )}
+                    <div key={movie.id} className="calendar-movie-wrapper">
+                      <MovieCard movie={movie} />
+                      <div className="showtimes-container">
                         <div className="times">
                           {movieShowtimes && movieShowtimes.length > 0 ? (
                             movieShowtimes.map((timeObj, index) => {
-                              // Đảm bảo timeObj hợp lệ
+                              
                               if (!timeObj || typeof timeObj !== 'object') {
                                 return null;
                               }
                               
-                              // Key duy nhất: dùng id làm key chính (luôn unique)
-                              // Nếu không có id, tạo key từ movie.id, time, screenId và index
+                            
                               const uniqueKey = timeObj.id 
                                 ? `showtime-${timeObj.id}` 
                                 : `showtime-${movie.id}-${timeObj.time || 'time'}-${timeObj.screenId || 'screen'}-${index}`;
                               
-                              // Đảm bảo time là string - kiểm tra kỹ
+                             
                               let timeString = '';
                               if (typeof timeObj.time === 'string') {
                                 timeString = timeObj.time;
@@ -370,7 +342,7 @@ function Calendar() {
                                 timeString = '';
                               }
                               
-                              // Nếu không có time string hợp lệ, không render
+                           
                               if (!timeString) {
                                 return null;
                               }
@@ -384,12 +356,12 @@ function Calendar() {
                                   {timeString}
                                 </button>
                               );
-                            }).filter(Boolean) // Loại bỏ các null
+                            }).filter(Boolean) 
                           ) : (
-                            <p style={{ color: "#888", fontSize: "0.9rem" }}>Chưa có suất chiếu</p>
+                            <p className="no-showtimes">Chưa có suất chiếu</p>
                           )}
                         </div>
-                      </div> 
+                      </div>
                     </div>
                   );
                 })}

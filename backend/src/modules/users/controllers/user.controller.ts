@@ -257,4 +257,50 @@ export class UserController {
   async unblockUser(@Param('id') id: string) {
     return this.userService.unblockUser(Number(id));
   }
+
+  @UseGuards(AdminGuard)
+  @Patch(':id/theater')
+  @ApiOperation({ summary: 'Gán rạp cho nhân viên - Chỉ admin' })
+  @ApiParam({ name: 'id', description: 'ID của nhân viên', example: 1 })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        theaterId: {
+          type: 'number',
+          nullable: true,
+          description: 'ID của rạp phim (null để gỡ rạp)',
+          example: 1
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Gán rạp thành công',
+    schema: {
+      example: {
+        success: true,
+        message: 'Đã gán rạp thành công',
+        user: {
+          id: 1,
+          firstName: 'Nguyen',
+          lastName: 'Van A',
+          email: 'employee@example.com',
+          theaterId: 1,
+          roles: ['ROLE_EMPLOYEE']
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Chỉ có thể gán rạp cho nhân viên' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  @ApiResponse({ status: 403, description: 'Không có quyền admin' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng' })
+  async assignTheater(
+    @Param('id') id: string,
+    @Body() body: { theaterId: number | null }
+  ) {
+    return this.userService.assignTheater(Number(id), body.theaterId);
+  }
 }

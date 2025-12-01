@@ -8,6 +8,7 @@ export enum PaymentMethod {
   VIETQR = 'VIETQR',
   VNPAY = 'VNPAY',
   VIETTEL_PAY = 'VIETTEL_PAY',
+  SEAPAY = 'SEAPAY',
   PAYPAL = 'PAYPAL',
   CASH = 'CASH',
   POS = 'POS',

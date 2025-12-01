@@ -19,9 +19,11 @@ CREATE TABLE IF NOT EXISTS `users` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NULL,
   `status` ENUM('ACTIVE','BLOCKED') NOT NULL DEFAULT 'ACTIVE',
+  `theater_id` INT NULL COMMENT 'ID rạp được gán cho nhân viên (NULL = chưa gán)',
   INDEX `idx_users_email` (`email`),
   INDEX `idx_users_status` (`status`),
-  INDEX `idx_users_created_at` (`created_at`)
+  INDEX `idx_users_created_at` (`created_at`),
+  INDEX `idx_users_theater_id` (`theater_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2) roles
@@ -358,6 +360,25 @@ CREATE TABLE IF NOT EXISTS `user_promotions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- Thêm foreign key constraint cho users.theater_id (phải thêm sau khi bảng Theaters đã được tạo)
+-- Kiểm tra xem constraint đã tồn tại chưa trước khi thêm
+SET @constraint_exists = (
+  SELECT COUNT(*) 
+  FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'users'
+    AND CONSTRAINT_NAME = 'fk_users_theater'
+);
+
+SET @sql = IF(@constraint_exists = 0,
+  'ALTER TABLE `users` ADD CONSTRAINT `fk_users_theater` FOREIGN KEY (`theater_id`) REFERENCES `Theaters`(`id`) ON DELETE SET NULL ON UPDATE CASCADE',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 20) OTP Verifications
 CREATE TABLE IF NOT EXISTS `otp_verifications` (

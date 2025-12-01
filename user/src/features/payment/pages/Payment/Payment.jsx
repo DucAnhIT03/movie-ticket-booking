@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../Payment/Payment.css";
 import Header from "../../../../shared/layout/Header/Header";
 import Footer from "../../../../shared/layout/Footer/Footer";
@@ -14,10 +14,13 @@ import theaterService from "../../../../services/theaters/theaterService";
 import promotionService from "../../../../services/promotions/promotionService";
 import axiosClient from "../../../../services/axiosClient";
 import { isAuthenticated } from "../../../../shared/utils/auth";
+import sepayLogo from "../../../../assets/sepay.png";
 
 export default function PaymentPage() {
   const [selected, setSelected] = useState("VIETQR");
   const [showQRModal, setShowQRModal] = useState(false);
+  const [autoPaymentStatus, setAutoPaymentStatus] = useState("idle");
+  const [seapayMessage, setSeapayMessage] = useState("Seapay đang xử lý thanh toán của bạn...");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -27,6 +30,30 @@ export default function PaymentPage() {
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [promoError, setPromoError] = useState("");
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [sepayCheckoutData, setSepayCheckoutData] = useState(null);
+  const sepayStatusTimerRef = useRef(null);
+  const sepayFormRef = useRef(null);
+  const sepayFrameNameRef = useRef(`sepayCheckoutFrame-${Date.now()}`);
+
+  const stopSepayWatcher = () => {
+    if (sepayStatusTimerRef.current) {
+      clearInterval(sepayStatusTimerRef.current);
+      sepayStatusTimerRef.current = null;
+    }
+  };
+
+  const clearPaymentSession = ({ preserveSelection = false } = {}) => {
+    stopSepayWatcher();
+    setSepayCheckoutData(null);
+    setAutoPaymentStatus("idle");
+    setSeapayMessage("Seapay đang xử lý thanh toán của bạn...");
+    localStorage.removeItem("currentBookingId");
+    localStorage.removeItem("currentPaymentId");
+    if (!preserveSelection) {
+      localStorage.removeItem("selectedSeats");
+      localStorage.removeItem("totalPrice");
+    }
+  };
 
   
   const [bookingData, setBookingData] = useState({
@@ -197,6 +224,12 @@ export default function PaymentPage() {
     loadBookingData();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      stopSepayWatcher();
+    };
+  }, []);
+
  
   const calculateTotalWithPromotion = () => {
     let total = bookingData.totalPrice;
@@ -228,7 +261,16 @@ export default function PaymentPage() {
     { id: "VIETQR", name: "VietQR", img: "/vietqr.png" },
     { id: "VNPAY", name: "VNPAY", img: "/vnpay.png" },
     { id: "VIETTEL_PAY", name: "Viettel Money", img: "/viettelmoney.png" },
+    { id: "SEAPAY", name: "Seapay AutoPay", img: sepayLogo, auto: true },
   ];
+  const selectedMethodMeta = methods.find((m) => m.id === selected);
+  const isAutoMethodSelected = Boolean(selectedMethodMeta?.auto);
+
+  useEffect(() => {
+    if (showQRModal && isAutoMethodSelected && sepayCheckoutData && sepayFormRef.current) {
+      sepayFormRef.current.submit();
+    }
+  }, [showQRModal, isAutoMethodSelected, sepayCheckoutData]);
 
   
   const generateQRCode = (method) => {
@@ -239,6 +281,55 @@ export default function PaymentPage() {
       VIETTEL_PAY: `viettel://payment?amount=${total}&description=Thanh toan ve phim ${movieName}&merchant=CINEMA`,
     };
     return qrData[method] || qrData.VIETQR;
+  };
+
+  const startSepayStatusWatcher = (paymentId) => {
+    stopSepayWatcher();
+    sepayStatusTimerRef.current = window.setInterval(async () => {
+      try {
+        const response = await paymentService.getSepayStatus(paymentId);
+        const data = response?.data;
+        if (!data) return;
+
+        if (data.paymentStatus === "COMPLETED") {
+          setAutoPaymentStatus("success");
+          setSeapayMessage("Thanh toán thành công! Đang xác nhận vé...");
+          stopSepayWatcher();
+          setTimeout(() => finalizePaymentSuccess(), 600);
+          return;
+        }
+
+        if (data.failureReason) {
+          setSeapayMessage(data.failureReason);
+        } else if (data.orderStatus) {
+          setSeapayMessage(`Trạng thái SePay: ${data.orderStatus}`);
+        }
+      } catch (pollError) {
+        console.warn("SePay status polling error:", pollError);
+      }
+    }, 4000);
+  };
+
+  const initSeapayCheckout = async (paymentId) => {
+    setAutoPaymentStatus("processing");
+    setSeapayMessage("Đang khởi tạo thanh toán SePay...");
+    setShowQRModal(true);
+    try {
+      const response = await paymentService.createSepayCheckout(paymentId);
+      if (!response?.data?.checkoutUrl || !response?.data?.fields) {
+        throw new Error("Dữ liệu SePay không hợp lệ");
+      }
+      setSepayCheckoutData(response.data);
+      startSepayStatusWatcher(paymentId);
+      return true;
+    } catch (err) {
+      console.error("Error initializing SePay checkout:", err);
+      setError(err?.response?.data?.message || err.message || "Không thể khởi tạo thanh toán SePay.");
+      setAutoPaymentStatus("error");
+      setShowQRModal(false);
+      stopSepayWatcher();
+      return false;
+    }
   };
 
   const handlePayment = async () => {
@@ -288,6 +379,18 @@ export default function PaymentPage() {
    
       localStorage.setItem("currentBookingId", bookingId.toString());
       localStorage.setItem("currentPaymentId", payment.id.toString());
+
+      if (selected === "SEAPAY") {
+        const initialized = await initSeapayCheckout(payment.id);
+        if (!initialized) {
+          try {
+            await bookingService.cancelBooking(bookingId);
+          } catch (cancelErr) {
+            console.warn("Không thể hủy booking sau khi SePay lỗi:", cancelErr);
+          }
+        }
+        return;
+      }
 
 
       if (selected === "VNPAY") {
@@ -411,32 +514,62 @@ export default function PaymentPage() {
   };
 
   const closeQRModal = () => {
+    if (autoPaymentStatus === "processing") return;
+    stopSepayWatcher();
+    setSepayCheckoutData(null);
     setShowQRModal(false);
+    if (autoPaymentStatus !== "idle") {
+      setAutoPaymentStatus("idle");
+    }
   };
+
+  const finalizePaymentSuccess = () => {
+    stopSepayWatcher();
+    clearPaymentSession();
+    setShowQRModal(false);
+    setAutoPaymentStatus("idle");
+    navigate("/payment-success");
+  };
+
+  useEffect(() => {
+    const handleSePayMessage = (event) => {
+      const payload = event?.data;
+      if (payload?.type !== "SEPAY_PAYMENT_RESULT") {
+        return;
+      }
+      if (payload.success) {
+      setAutoPaymentStatus("success");
+      setSeapayMessage("Thanh toán thành công! Đang xác nhận vé...");
+      stopSepayWatcher();
+      setTimeout(() => finalizePaymentSuccess(), 600);
+    } else {
+      setSeapayMessage(payload.message || "Thanh toán bị hủy hoặc thất bại.");
+      setAutoPaymentStatus("error");
+      stopSepayWatcher();
+    }
+    };
+
+    window.addEventListener("message", handleSePayMessage);
+    return () => window.removeEventListener("message", handleSePayMessage);
+  }, []);
 
   const handlePaymentSuccess = async () => {
     setLoading(true);
     try {
       const paymentId = localStorage.getItem("currentPaymentId");
       if (paymentId) {
-        
         await paymentService.completePayment(
-          parseInt(paymentId),
+          parseInt(paymentId, 10),
           `TXN_${Date.now()}`,
           true
         );
       }
 
-      localStorage.removeItem("selectedSeats");
-      localStorage.removeItem("totalPrice");
-      localStorage.removeItem("currentBookingId");
-      localStorage.removeItem("currentPaymentId");
-
-    setShowQRModal(false);
-    navigate("/payment-success");
+      finalizePaymentSuccess();
     } catch (err) {
       console.error("Error completing payment:", err);
       setError("Có lỗi xảy ra khi hoàn tất thanh toán.");
+    } finally {
       setLoading(false);
     }
   };
@@ -448,30 +581,26 @@ export default function PaymentPage() {
       const bookingId = localStorage.getItem("currentBookingId");
 
       if (paymentId) {
-        
         await paymentService.completePayment(
-          parseInt(paymentId),
+          parseInt(paymentId, 10),
           `TXN_${Date.now()}`,
           false
         );
       }
 
       if (bookingId) {
-    
-        await bookingService.cancelBooking(parseInt(bookingId));
+        await bookingService.cancelBooking(parseInt(bookingId, 10));
       }
 
-      
-      localStorage.removeItem("selectedSeats");
-      localStorage.removeItem("totalPrice");
-      localStorage.removeItem("currentBookingId");
-      localStorage.removeItem("currentPaymentId");
-
-    setShowQRModal(false);
-    navigate("/payment-failure");
+      clearPaymentSession();
+      setAutoPaymentStatus("idle");
+      stopSepayWatcher();
+      setShowQRModal(false);
+      navigate("/payment-failure");
     } catch (err) {
       console.error("Error canceling payment:", err);
       setError("Có lỗi xảy ra khi hủy thanh toán.");
+    } finally {
       setLoading(false);
     }
   };
@@ -905,8 +1034,13 @@ export default function PaymentPage() {
             <div className="qr-modal-content">
               <div className="payment-info">
                 <div className="selected-method">
-                  <img src={methods.find(m => m.id === selected)?.img} alt={methods.find(m => m.id === selected)?.name} />
-                  <span>{methods.find(m => m.id === selected)?.name}</span>
+                  {selectedMethodMeta?.img && (
+                    <img
+                      src={selectedMethodMeta.img}
+                      alt={selectedMethodMeta?.name || "Phương thức"}
+                    />
+                  )}
+                  <span>{selectedMethodMeta?.name || "Phương thức"}</span>
                 </div>
                 <div className="amount-info">
                   <span className="amount-label">Số tiền:</span>
@@ -916,10 +1050,42 @@ export default function PaymentPage() {
               
               <div className="qr-code-container">
                 <div className="qr-code">
-                  <img src="/maqrthanhtoan.png" alt="Mã QR thanh toán" className="qr-image" />
+                  {isAutoMethodSelected ? (
+                    <div className="qr-iframe-wrapper">
+                      <iframe
+                        name={sepayFrameNameRef.current}
+                        title="SePay Checkout"
+                        className="sepay-frame"
+                        allow="payment"
+                      />
+                      {sepayCheckoutData && (
+                        <form
+                          ref={sepayFormRef}
+                          action={sepayCheckoutData.checkoutUrl}
+                          method="POST"
+                          target={sepayFrameNameRef.current}
+                          style={{ display: "none" }}
+                        >
+                          {Object.entries(sepayCheckoutData.fields).map(([key, value]) => (
+                            <input key={key} type="hidden" name={key} value={value} readOnly />
+                          ))}
+                        </form>
+                      )}
+                      <div className={`auto-status auto-${autoPaymentStatus}`}>
+                        {autoPaymentStatus === "processing" && <div className="auto-spinner" />}
+                        {autoPaymentStatus === "success" && <IoMdCheckmark className="auto-icon success" />}
+                        {autoPaymentStatus === "error" && <IoClose className="auto-icon error" />}
+                        <span>{seapayMessage}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <img src="/maqrthanhtoan.png" alt="Mã QR thanh toán" className="qr-image" />
+                  )}
                 </div>
                 <p className="qr-instruction">
-                  Mở ứng dụng {methods.find(m => m.id === selected)?.name} và quét mã QR để thanh toán
+                  {isAutoMethodSelected
+                    ? "Trang thanh toán SePay đang được tải bên dưới. Vui lòng quét mã trong khung và giữ màn hình mở cho tới khi hệ thống cập nhật trạng thái."
+                    : `Mở ứng dụng ${selectedMethodMeta?.name} và quét mã QR để thanh toán`}
                 </p>
               </div>
               
@@ -941,21 +1107,35 @@ export default function PaymentPage() {
               </div>
             </div>
             
-            <div className="qr-modal-footer">
-              <button 
-                className="btn-cancel" 
-                onClick={handlePaymentFailure}
-                disabled={loading}
-              >
-                Hủy thanh toán
-              </button>
-              <button 
-                className="btn-confirm" 
-                onClick={handlePaymentSuccess}
-                disabled={loading}
-              >
-                {loading ? "Đang xử lý..." : "Đã thanh toán"}
-              </button>
+            <div className={`qr-modal-footer ${isAutoMethodSelected ? "auto-mode" : ""}`}>
+              {isAutoMethodSelected ? (
+                <div className="auto-payment-footer">
+                  <div className={`auto-status-chip auto-${autoPaymentStatus}`}>
+                    {autoPaymentStatus === "processing" && <div className="auto-spinner small" />}
+                    {autoPaymentStatus === "success" && <IoMdCheckmark className="auto-icon success" />}
+                    {autoPaymentStatus === "error" && <IoClose className="auto-icon error" />}
+                    <span>{seapayMessage}</span>
+                  </div>
+                  <p>Seapay sẽ tự động cập nhật trạng thái và chuyển trang ngay sau khi hoàn tất.</p>
+                </div>
+              ) : (
+                <>
+                  <button 
+                    className="btn-cancel" 
+                    onClick={handlePaymentFailure}
+                    disabled={loading}
+                  >
+                    Hủy thanh toán
+                  </button>
+                  <button 
+                    className="btn-confirm" 
+                    onClick={handlePaymentSuccess}
+                    disabled={loading}
+                  >
+                    {loading ? "Đang xử lý..." : "Đã thanh toán"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

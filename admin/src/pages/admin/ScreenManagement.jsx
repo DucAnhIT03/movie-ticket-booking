@@ -102,10 +102,41 @@ export default function ScreenManagement() {
             return;
         }
 
+        // Kiểm tra trùng tên phòng chiếu trong cùng một rạp
+        const trimmedName = data.name.trim();
+        const theaterId = parseInt(data.theater_id, 10);
+        
+        // Tải tất cả phòng chiếu của rạp để kiểm tra chính xác
+        try {
+            const checkRes = await screenService.getAllScreens({
+                page: 1,
+                limit: 1000, // Lấy tất cả để kiểm tra
+                theater_id: theaterId,
+            });
+            
+            if (checkRes.status === 200) {
+                const allScreensInTheater = checkRes.data?.items || checkRes.data || [];
+                const existingScreen = allScreensInTheater.find(
+                    (screen) => 
+                        screen.theater_id === theaterId && 
+                        screen.name?.trim().toLowerCase() === trimmedName.toLowerCase() &&
+                        screen.id !== data.id // Loại trừ phòng chiếu đang sửa
+                );
+                
+                if (existingScreen) {
+                    toast.error(`Tên phòng chiếu "${trimmedName}" đã tồn tại trong rạp này!`);
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error("Error checking duplicate screen name:", error);
+            // Tiếp tục nếu không thể kiểm tra, để backend xử lý
+        }
+
         const payload = {
-            name: data.name.trim(),
+            name: trimmedName,
             seat_capacity: parseInt(data.seat_capacity, 10),
-            theater_id: parseInt(data.theater_id, 10),
+            theater_id: theaterId,
         };
 
         try {

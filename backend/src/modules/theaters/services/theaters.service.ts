@@ -12,8 +12,20 @@ export class TheatersService {
   ) {}
 
   async create(payload: CreateTheaterRequestDto): Promise<TheaterEntity> {
+    const normalizedName = payload.name.trim();
+    const normalizedLocation = payload.location.trim();
+
+    const duplicated = await this.theatersRepo.findByNameAndLocation(normalizedName, normalizedLocation);
+    if (duplicated) {
+      throw new BadRequestException('Đã tồn tại rạp có cùng tên và địa chỉ.');
+    }
+
     try {
-      return await this.theatersRepo.create(payload);
+      return await this.theatersRepo.create({
+        ...payload,
+        name: normalizedName,
+        location: normalizedLocation,
+      });
     } catch (error) {
       if (error.code === 'ER_DATA_TOO_LONG') {
         throw new BadRequestException('Dữ liệu quá dài. Vui lòng kiểm tra lại thông tin nhập vào.');
@@ -52,7 +64,26 @@ export class TheatersService {
   }
 
   async update(id: number, payload: UpdateTheaterRequestDto): Promise<TheaterEntity> {
-    return this.theatersRepo.update(id, payload);
+    const theater = await this.theatersRepo.findById(id);
+    if (!theater) {
+      throw new NotFoundException('Theater not found');
+    }
+
+    const nameToUse = payload.name?.trim() ?? theater.name;
+    const locationToUse = payload.location?.trim() ?? theater.location;
+
+    if (payload.name || payload.location) {
+      const duplicated = await this.theatersRepo.findByNameAndLocation(nameToUse, locationToUse, id);
+      if (duplicated) {
+        throw new BadRequestException('Đã tồn tại rạp có cùng tên và địa chỉ.');
+      }
+    }
+
+    return this.theatersRepo.update(id, {
+      ...payload,
+      name: nameToUse,
+      location: locationToUse,
+    });
   }
 
   async remove(id: number): Promise<void> {

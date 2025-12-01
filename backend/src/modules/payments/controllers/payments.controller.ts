@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Patch, UseGuards, Req, Query, Res, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, UseGuards, Req, Query, Res, BadRequestException, All } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { PaymentsService } from 'src/modules/payments/services/payments.service';
@@ -10,6 +10,8 @@ import { PaymentResponseDto } from '../dtos/response/payments.response.dto';
 import { VnpayUrlResponseDto } from '../dtos/response/vnpay-url.response.dto';
 import { VnpayWebhookResponseDto } from '../dtos/response/vnpay-webhook.response.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { SepayCheckoutResponseDto } from '../dtos/response/sepay-checkout.response.dto';
+import { SepayStatusResponseDto } from '../dtos/response/sepay-status.response.dto';
 
 @ApiTags('💳 Thanh toán')
 @Controller('payments')
@@ -154,6 +156,73 @@ export class PaymentsController {
       
     
       throw error;
+    }
+  }
+
+  @Post(':id/sepay/checkout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('jwt')
+  @ApiOperation({
+    summary: 'Khởi tạo phiên thanh toán SePay',
+    description: 'Tạo form dữ liệu SePay để hiển thị QR chuyển khoản trong ứng dụng.',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'ID thanh toán (payment ID)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dữ liệu form SePay',
+    type: SepayCheckoutResponseDto,
+  })
+  async initSepayCheckout(@Req() req: any, @Param('id') id: string) {
+    const requester = req.user as any;
+    const isAdmin = Array.isArray(requester?.roles) && requester.roles.includes('ROLE_ADMIN');
+    const userId = requester?.id ?? requester?.sub;
+    const checkout = await this.svc.initSepayCheckout(Number(id), userId, isAdmin);
+    return new SepayCheckoutResponseDto(checkout);
+  }
+
+  @Get(':id/sepay/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('jwt')
+  @ApiOperation({
+    summary: 'Lấy trạng thái đơn hàng SePay',
+    description: 'Kiểm tra trạng thái thanh toán trực tiếp từ SePay và đồng bộ với hệ thống.',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'ID thanh toán (payment ID)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Trạng thái hiện tại của giao dịch SePay',
+    type: SepayStatusResponseDto,
+  })
+  async getSepayStatus(@Req() req: any, @Param('id') id: string) {
+    const requester = req.user as any;
+    const isAdmin = Array.isArray(requester?.roles) && requester.roles.includes('ROLE_ADMIN');
+    const userId = requester?.id ?? requester?.sub;
+    const status = await this.svc.getSepayOrderStatus(Number(id), userId, isAdmin);
+    return new SepayStatusResponseDto(status);
+  }
+
+  @All('sepay/return')
+  @ApiOperation({
+    summary: 'Nhận callback từ SePay',
+    description: 'Endpoint nhận redirect/callback từ SePay sau khi thanh toán và đồng bộ trạng thái.',
+  })
+  async handleSepayReturn(@Req() req: any, @Res() res: Response) {
+    const payload = Object.keys(req.body || {}).length ? req.body : req.query;
+
+    try {
+      const result = await this.svc.handleSepayReturn(payload);
+      return this.renderSepayBridge(res, {
+        success: result.success,
+        paymentId: result.paymentId,
+        message: result.success ? 'Thanh toán thành công' : 'Thanh toán thất bại',
+      });
+    } catch (error: any) {
+      const fallbackPaymentId = payload?.paymentId || payload?.payment_id;
+      return this.renderSepayBridge(res, {
+        success: false,
+        paymentId: fallbackPaymentId,
+        message: error?.message || 'Không thể xác thực giao dịch SePay',
+      });
     }
   }
 
@@ -331,5 +400,68 @@ export class PaymentsController {
       console.error('Error handling VNPAY webhook:', error);
       return { RspCode: '99', Message: 'Unknown error' };
     }
+  }
+
+  private renderSepayBridge(
+    res: Response,
+    data: { success: boolean; paymentId?: number | string; message?: string },
+  ) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const paymentQuery = data.paymentId ? `?paymentId=${data.paymentId}` : '';
+    const redirectUrl = data.success
+      ? `${frontendUrl}/payment-success${paymentQuery}`
+      : `${frontendUrl}/payment-failure${paymentQuery}`;
+
+    const safeMessage = (data.message || '').replace(/</g, '&lt;');
+
+    const html = `<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SePay Status</title>
+    <style>
+      body { background: #0b0f17; color: #fff; display:flex; align-items:center; justify-content:center; height:100vh; font-family: Arial, sans-serif; margin:0; }
+      .card { background:#141c2b; padding:32px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.6); text-align:center; width: min(420px, 90vw); }
+      .status { font-size:20px; margin-bottom:12px; }
+      .status.success { color:#4caf50; }
+      .status.error { color:#ff5252; }
+      .loader { width:36px; height:36px; margin:16px auto; border-radius:50%; border:4px solid rgba(255,255,255,0.2); border-top-color:#1fb6ff; animation:spin 1s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="status ${data.success ? 'success' : 'error'}">${safeMessage || (data.success ? 'Thanh toán thành công' : 'Thanh toán thất bại')}</div>
+      <div class="loader"></div>
+      <p>Vui lòng đợi trong giây lát...</p>
+    </div>
+    <script>
+      (function () {
+        const payload = {
+          type: 'SEPAY_PAYMENT_RESULT',
+          success: ${data.success ? 'true' : 'false'},
+          paymentId: ${data.paymentId ? `'${data.paymentId}'` : 'null'},
+          message: ${JSON.stringify(data.message || '')}
+        };
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(payload, '*');
+          }
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage(payload, '*');
+          }
+        } catch (err) {
+          console.warn('Unable to post message to parent:', err);
+        }
+        setTimeout(function () {
+          window.top.location.href = '${redirectUrl}';
+        }, 1200);
+      })();
+    </script>
+  </body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
   }
 }

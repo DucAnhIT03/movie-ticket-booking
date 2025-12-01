@@ -55,14 +55,21 @@ export default function Login() {
         return;
       }
 
+      
+      const userWithTheaterId = {
+        ...user,
+        theaterId: user.theaterId || user.theater_id || null
+      };
+
+      console.log("Login user data:", userWithTheaterId); // Debug log
 
       dispatch(updateInfo({
         token: accessToken,
-        profile: user
+        profile: userWithTheaterId
       }));
 
       localStorage.setItem("adminAccessToken", accessToken);
-      localStorage.setItem("adminUser", JSON.stringify(user));
+      localStorage.setItem("adminUser", JSON.stringify(userWithTheaterId));
       localStorage.setItem("adminIsLoggedIn", "true");
 
       alert(`Đăng nhập thành công! Chào ${user.firstName || user.email}!`);

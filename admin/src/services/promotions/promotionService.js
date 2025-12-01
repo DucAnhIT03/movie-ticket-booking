@@ -47,8 +47,14 @@ const promotionService = {
   },
 
   
-  applyCode(code) {
-    return axiosClient.post("/promotions/apply", { code }, {
+  // Áp dụng mã giảm giá
+  // bypassUserLimit: true = Admin/Employee có thể dùng mã nhiều lần (bỏ qua giới hạn "mỗi user 1 lần")
+  // Nhưng vẫn phải tuân theo giới hạn tổng số lượt sử dụng của mã
+  applyCode(code, bypassUserLimit = false) {
+    return axiosClient.post("/promotions/apply", { 
+      code,
+      bypassUserLimit // Bỏ qua giới hạn "mỗi user chỉ dùng 1 lần", nhưng vẫn kiểm tra tổng số lượt sử dụng
+    }, {
       validateStatus: () => true,
     });
   },

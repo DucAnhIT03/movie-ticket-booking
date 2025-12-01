@@ -34,6 +34,9 @@ export class UserResponseDto {
   @ApiProperty({ enum: ['ACTIVE', 'BLOCKED'], example: 'ACTIVE' })
   status!: string;
 
+  @ApiProperty({ nullable: true })
+  theaterId!: number | null;
+
   static fromEntity(e: any): UserResponseDto {
     return {
       id: e.id,
@@ -47,6 +50,7 @@ export class UserResponseDto {
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
       status: e.status || 'ACTIVE',
+      theaterId: e.theaterId || e.theater?.id || null,
     } as UserResponseDto;
   }
 }

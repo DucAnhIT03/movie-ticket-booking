@@ -49,6 +49,28 @@ const paymentService = {
       throw error;
     }
   },
+
+  // Tạo phiên thanh toán SePay
+  createSepayCheckout: async (paymentId) => {
+    try {
+      const response = await axiosClient.post(`/payments/${paymentId}/sepay/checkout`);
+      return response;
+    } catch (error) {
+      console.error("Error initializing SePay checkout:", error);
+      throw error;
+    }
+  },
+
+  // Lấy trạng thái đơn hàng SePay
+  getSepayStatus: async (paymentId) => {
+    try {
+      const response = await axiosClient.get(`/payments/${paymentId}/sepay/status`);
+      return response;
+    } catch (error) {
+      console.error("Error fetching SePay status:", error);
+      throw error;
+    }
+  },
 };
 
 export default paymentService;

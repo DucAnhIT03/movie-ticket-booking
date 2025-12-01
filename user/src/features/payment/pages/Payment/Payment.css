@@ -513,6 +513,122 @@
     background-color: #f40612;
 }
 
+.qr-modal-footer.auto-mode {
+    flex-direction: column;
+}
+
+.qr-iframe-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.sepay-frame {
+    width: 360px;
+    max-width: 70vw;
+    height: 420px;
+    border: none;
+    border-radius: 12px;
+    background-color: #fff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.auto-payment-footer {
+    width: 100%;
+    text-align: center;
+    color: #b0bec5;
+}
+
+.auto-payment-footer p {
+    margin-top: 12px;
+    font-size: 13px;
+}
+
+.auto-status {
+    margin-top: 12px;
+    padding: 14px;
+    border-radius: 10px;
+    background-color: rgba(31, 182, 255, 0.08);
+    border: 1px solid rgba(31, 182, 255, 0.4);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.auto-status.auto-success {
+    border-color: rgba(76, 175, 80, 0.6);
+    background-color: rgba(76, 175, 80, 0.12);
+}
+
+.auto-status.auto-error {
+    border-color: rgba(244, 67, 54, 0.6);
+    background-color: rgba(244, 67, 54, 0.12);
+}
+
+.auto-status-chip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border-radius: 12px;
+    padding: 12px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.auto-status-chip.auto-processing {
+    border-color: rgba(31, 182, 255, 0.5);
+}
+
+.auto-status-chip.auto-success {
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+.auto-status-chip.auto-error {
+    border-color: rgba(244, 67, 54, 0.5);
+}
+
+.auto-spinner {
+    width: 36px;
+    height: 36px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #1fb6ff;
+    border-radius: 50%;
+    animation: seapay-spin 1s linear infinite;
+}
+
+.auto-spinner.small {
+    width: 20px;
+    height: 20px;
+    border-width: 3px;
+}
+
+.auto-icon {
+    font-size: 26px;
+}
+
+.auto-icon.success {
+    color: #4caf50;
+}
+
+.auto-icon.error {
+    color: #f44336;
+}
+
+@keyframes seapay-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 
 @media (max-width: 1200px) {
     .content {
@@ -572,6 +688,11 @@
     .qr-image {
         width: 150px;
         height: 150px;
+    }
+    
+    .sepay-frame {
+        width: 100%;
+        height: 320px;
     }
     
     .qr-modal-footer {

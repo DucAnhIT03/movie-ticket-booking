@@ -1,0 +1,26 @@
+NAME:
+  config - update or migrate ngrok's configuration file
+
+USAGE:
+  ngrok config [flags]
+
+DESCRIPTION: 
+  The config command gives a quick way to create or update ngrok's configuration
+  file. Use 'add-authtoken' or 'add-api-key' to set the corresponding properties.
+
+  Use 'check' to test a configuration file for validity. If you have an old
+  configuration file, you can also use 'upgrade' to automatically migrate to the
+  latest version.
+
+COMMANDS:
+  add-api-key                    save api key to configuration file
+  add-authtoken                  save authtoken to configuration file
+  add-connect-url                adds the connect URL (connect_url) to configuration file for custom agent ingress
+  add-server-addr                alias of add-connect-url
+  check                          check configuration file
+  edit                           edit configuration file
+  upgrade                        auto-upgrade configuration file
+
+OPTIONS:
+      --config strings   path to config files; they are merged if multiple
+  -h, --help             help for config

@@ -80,11 +80,32 @@ export default function MovieManagement() {
     }
   };
 
+  const getCurrentUserTheaterId = () => {
+    try {
+      const raw = localStorage.getItem("adminUser");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const roles = Array.isArray(parsed?.roles) ? parsed.roles : [];
+      const isEmployee = roles.includes("ROLE_EMPLOYEE") && !roles.includes("ROLE_ADMIN");
+      return isEmployee ? (parsed?.theaterId || null) : null;
+    } catch (error) {
+      return null;
+    }
+  };
+
   const loadTheaters = async () => {
     try {
       const res = await theaterService.getAllTheaters();
       if (res.status === 200) {
-        setTheaters(res.data.items || res.data || []);
+        let theatersData = res.data.items || res.data || [];
+        const currentUserTheaterId = getCurrentUserTheaterId();
+        
+        // Nếu là nhân viên, chỉ hiển thị rạp được gán
+        if (currentUserTheaterId) {
+          theatersData = theatersData.filter(t => t.id === currentUserTheaterId);
+        }
+        
+        setTheaters(theatersData);
       }
     } catch (error) {
       console.error("Error loading theaters:", error);
@@ -95,7 +116,15 @@ export default function MovieManagement() {
     try {
       const res = await screenService.getAllScreens();
       if (res.status === 200) {
-        setScreens(res.data.items || res.data || []);
+        let screensData = res.data.items || res.data || [];
+        const currentUserTheaterId = getCurrentUserTheaterId();
+        
+        // Nếu là nhân viên, chỉ hiển thị phòng chiếu của rạp được gán
+        if (currentUserTheaterId) {
+          screensData = screensData.filter(s => s.theater_id === currentUserTheaterId);
+        }
+        
+        setScreens(screensData);
       }
     } catch (error) {
       console.error("Error loading screens:", error);

@@ -13,6 +13,7 @@ import seatService from "../../../services/seats/seatService";
 import movieService from "../../../services/movies/movieService";
 import showtimeService from "../../../services/showtimes/showtimeService";
 import ticketPriceService from "../../../services/ticket-prices/ticketPriceService";
+import theaterService from "../../../services/theaters/theaterService";
 import { validateSeatSelection } from "../utils/seatValidation";
 import { isAuthenticated } from "../../../shared/utils/auth";
 
@@ -28,6 +29,7 @@ export default function ChooseSeat() {
   const [bookedSeatIds, setBookedSeatIds] = useState(new Set());
   const [screenInfo, setScreenInfo] = useState(null);
   const [showtimeInfo, setShowtimeInfo] = useState(null);
+  const [theaterInfo, setTheaterInfo] = useState(null);
   const [priceCache, setPriceCache] = useState({}); 
   const [errorMessage, setErrorMessage] = useState(""); 
 
@@ -58,15 +60,143 @@ export default function ChooseSeat() {
     }
 
     if (savedShowtimeId) {
-      showtimeService.getAll({}).then(res => {
+    
+      showtimeService.getById(parseInt(savedShowtimeId)).then(res => {
         if (res.status === 200 && res.data) {
-          const allShowtimes = Array.isArray(res.data) ? res.data : res.data.data || [];
+          const currentShowtime = res.data;
+          setShowtimeInfo(currentShowtime);
+          setScreenInfo(currentShowtime.screen);
+          
+          
+          console.log("Current showtime:", currentShowtime);
+          console.log("Screen info:", currentShowtime.screen);
+          
+          const theater = currentShowtime.screen?.theater || 
+                         currentShowtime.screen?.Theater || 
+                         currentShowtime.theater ||
+                         currentShowtime.Theater;
+          
+          console.log("Theater from showtime:", theater);
+          
+          if (theater && (theater.id || theater.name)) {
+            
+            console.log("Setting theater info from showtime:", theater);
+            setTheaterInfo(theater);
+          } else {
+         
+            const theaterId = currentShowtime.screen?.theaterId || 
+                             currentShowtime.screen?.theater_id ||
+                             currentShowtime.theaterId ||
+                             currentShowtime.theater_id;
+            console.log("Theater ID found:", theaterId);
+            if (theaterId) {
+              theaterService.getById(theaterId).then(theaterRes => {
+                console.log("Theater API response:", theaterRes);
+                if (theaterRes.status === 200 && theaterRes.data) {
+                  console.log("Setting theater info from API:", theaterRes.data);
+                  setTheaterInfo(theaterRes.data);
+                } else {
+                  console.warn("Failed to fetch theater:", theaterRes);
+                }
+              }).catch(err => {
+                console.error("Error fetching theater:", err);
+              });
+            } else {
+        
+              showtimeService.getAll({}).then(allRes => {
+                if (allRes.status === 200 && allRes.data) {
+                  const allShowtimes = Array.isArray(allRes.data) ? allRes.data : allRes.data.data || [];
+                  const foundShowtime = allShowtimes.find(st => st.id === parseInt(savedShowtimeId));
+                  if (foundShowtime) {
+                    const fallbackTheater = foundShowtime.screen?.theater || 
+                                           foundShowtime.screen?.Theater || 
+                                           foundShowtime.theater ||
+                                           foundShowtime.Theater;
+                    if (fallbackTheater && (fallbackTheater.id || fallbackTheater.name)) {
+                      setTheaterInfo(fallbackTheater);
+                    } else {
+                      const fallbackTheaterId = foundShowtime.screen?.theaterId || 
+                                               foundShowtime.screen?.theater_id ||
+                                               foundShowtime.theaterId;
+                      if (fallbackTheaterId) {
+                        theaterService.getById(fallbackTheaterId).then(theaterRes => {
+                          if (theaterRes.status === 200 && theaterRes.data) {
+                            setTheaterInfo(theaterRes.data);
+                          }
+                        });
+                      }
+                    }
+                  }
+                }
+              });
+            }
+          }
+        } else {
+      
+          showtimeService.getAll({}).then(allRes => {
+            if (allRes.status === 200 && allRes.data) {
+              const allShowtimes = Array.isArray(allRes.data) ? allRes.data : allRes.data.data || [];
           const currentShowtime = allShowtimes.find(st => st.id === parseInt(savedShowtimeId));
           if (currentShowtime) {
             setShowtimeInfo(currentShowtime);
             setScreenInfo(currentShowtime.screen);
-          }
+                
+                const theater = currentShowtime.screen?.theater || 
+                               currentShowtime.screen?.Theater || 
+                               currentShowtime.theater ||
+                               currentShowtime.Theater;
+                
+                if (theater && (theater.id || theater.name)) {
+                  setTheaterInfo(theater);
+                } else {
+                  const theaterId = currentShowtime.screen?.theaterId || 
+                                   currentShowtime.screen?.theater_id ||
+                                   currentShowtime.theaterId;
+                  if (theaterId) {
+                    theaterService.getById(theaterId).then(theaterRes => {
+                      if (theaterRes.status === 200 && theaterRes.data) {
+                        setTheaterInfo(theaterRes.data);
+                      }
+                    });
+                  }
+                }
+              }
+            }
+          });
         }
+      }).catch(err => {
+        console.error("Error fetching showtime:", err);
+      
+        showtimeService.getAll({}).then(allRes => {
+          if (allRes.status === 200 && allRes.data) {
+            const allShowtimes = Array.isArray(allRes.data) ? allRes.data : allRes.data.data || [];
+            const currentShowtime = allShowtimes.find(st => st.id === parseInt(savedShowtimeId));
+            if (currentShowtime) {
+              setShowtimeInfo(currentShowtime);
+              setScreenInfo(currentShowtime.screen);
+              
+              const theater = currentShowtime.screen?.theater || 
+                             currentShowtime.screen?.Theater || 
+                             currentShowtime.theater ||
+                             currentShowtime.Theater;
+              
+              if (theater && (theater.id || theater.name)) {
+                setTheaterInfo(theater);
+              } else {
+                const theaterId = currentShowtime.screen?.theaterId || 
+                                 currentShowtime.screen?.theater_id ||
+                                 currentShowtime.theaterId;
+                if (theaterId) {
+                  theaterService.getById(theaterId).then(theaterRes => {
+                    if (theaterRes.status === 200 && theaterRes.data) {
+                      setTheaterInfo(theaterRes.data);
+                    }
+                  });
+                }
+              }
+            }
+          }
+        });
       });
     }
   }, []);
@@ -501,6 +631,15 @@ export default function ChooseSeat() {
             <p>
               Giờ chiếu: <strong>{showtime}</strong>
             </p>
+            {theaterInfo ? (
+              <p className="theater-name">
+                Rạp: <strong>{theaterInfo.name || theaterInfo.theaterName || "Chưa có tên"}</strong>
+              </p>
+            ) : screenInfo?.theaterId ? (
+              <p className="theater-name">
+                Rạp: <strong>Đang tải...</strong>
+              </p>
+            ) : null}
             {selectedDate && (
               <p>Ngày: <strong>{selectedDate}</strong></p>
             )}
