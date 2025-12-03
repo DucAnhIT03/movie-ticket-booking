@@ -8,7 +8,7 @@ export default function GenreModal({ title, onClose, onSave, initialData, fields
     if (initialData) {
       setFormData(initialData);
     } else {
-      // Khởi tạo formData rỗng
+     
       const emptyData = {};
       fields.forEach((field) => {
         emptyData[field.name] = field.defaultValue || "";
@@ -29,7 +29,7 @@ export default function GenreModal({ title, onClose, onSave, initialData, fields
     e.preventDefault();
     e.stopPropagation();
 
-    // Validate các field required
+    
     for (const field of fields) {
       if (field.required) {
         const value = formData[field.name];

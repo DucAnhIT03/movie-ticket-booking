@@ -5,23 +5,21 @@ import './MovieModal.css';
 export default function MovieModal({ title, onClose, onSave, initialData, fields, isSaving = false, saveProgress = "" }) {
   const [formData, setFormData] = useState({});
   
-  // Lấy danh sách screens và theaters từ fields để lọc
+
   const getFieldByName = (name) => fields.find(f => f.name === name);
   const theaterField = getFieldByName('theaterIds');
   const screenField = getFieldByName('screenIds');
-  
-  // Lọc screens dựa trên theaters đã chọn
+
   const getFilteredScreenOptions = () => {
     if (!screenField || !screenField.options) return [];
     
     const selectedTheaterIds = formData.theaterIds || [];
     
-    // Nếu chưa chọn rạp nào, không hiển thị phòng nào
+    
     if (selectedTheaterIds.length === 0) {
       return [];
     }
-    
-    // Lọc screens thuộc các rạp đã chọn
+ 
     return screenField.options.filter(opt => {
       if (opt.theaterId) {
         return selectedTheaterIds.includes(opt.theaterId);
@@ -30,7 +28,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
     });
   };
   
-  // Xóa các screenIds không hợp lệ khi theaterIds thay đổi
+ 
   useEffect(() => {
     const selectedTheaterIds = formData.theaterIds || [];
     const selectedScreenIds = formData.screenIds || [];
@@ -39,7 +37,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
       const filteredScreenOptions = getFilteredScreenOptions();
       const validScreenIds = filteredScreenOptions.map(opt => opt.value);
       
-      // Lọc ra các screenIds không còn hợp lệ
+   
       const invalidScreenIds = selectedScreenIds.filter(id => !validScreenIds.includes(id));
       
       if (invalidScreenIds.length > 0) {
@@ -49,7 +47,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
         }));
       }
     } else if (selectedTheaterIds.length === 0 && selectedScreenIds.length > 0) {
-      // Nếu không chọn rạp nào, xóa tất cả phòng đã chọn
+     
       setFormData(prev => ({
         ...prev,
         screenIds: []
@@ -59,15 +57,15 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
 
   useEffect(() => {
     if (initialData) {
-      // Chuyển đổi field API → UI
+      
       const mappedData = {
         ...initialData,
         descriptions: initialData.description || initialData.descriptions || "",
         release_date: initialData.releaseDate
-          ? initialData.releaseDate.split("T")[0] // lấy yyyy-mm-dd
+          ? initialData.releaseDate.split("T")[0] 
           : ""
       };
-    // Áp dụng giá trị mặc định cho các field chưa có dữ liệu
+  
     fields.forEach(field => {
       if (mappedData[field.name] === undefined) {
         if (field.type === 'multiselect') {
@@ -103,7 +101,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
     }
   }, [initialData, fields]);
 
-  // Cập nhật showtimesByDate khi start_date hoặc end_date thay đổi
+ 
   useEffect(() => {
     const startDate = formData.start_date;
     const endDate = formData.end_date;
@@ -118,16 +116,15 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
         dateList.push(dateStr);
       }
 
-      // Cập nhật showtimesByDate, giữ lại các giờ đã chọn cho các ngày còn lại
       const currentShowtimes = formData.showtimesByDate || {};
       const newShowtimes = {};
       
       dateList.forEach(dateStr => {
-        // Giữ lại giờ đã chọn nếu ngày vẫn còn trong khoảng, nếu không thì khởi tạo mới
+  
         newShowtimes[dateStr] = currentShowtimes[dateStr] || ['00:00'];
       });
 
-      // Chỉ cập nhật nếu có thay đổi
+     
       const hasChanged = JSON.stringify(newShowtimes) !== JSON.stringify(currentShowtimes);
       if (hasChanged) {
         setFormData(prev => ({
@@ -141,7 +138,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files && files.length > 0) {
-      // Xử lý file upload
+     
       setFormData((prev) => ({
         ...prev,
         [name]: files[0]
@@ -161,14 +158,13 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
     console.log('handleSubmit called', formData);
 
     try {
-      // Validate các field dựa trên fields prop (chỉ validate field có trong form)
-      // Kiểm tra xem có field title không (form phim) hay không (form khác)
+    
       const hasTitleField = fields.some(f => f.name === 'title');
       const hasDurationField = fields.some(f => f.name === 'duration');
       const hasReleaseDateField = fields.some(f => f.name === 'release_date');
       const hasFileField = fields.some(f => f.name === 'file');
       
-      // Chỉ validate nếu field có trong form
+     
       if (hasTitleField && (!formData.title || formData.title.trim() === '')) {
         alert('Vui lòng nhập tiêu đề phim');
         return;
@@ -190,13 +186,13 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
         return;
       }
 
-      // Validate file upload (chỉ khi thêm mới và có field file)
+   
       if (hasFileField && !initialData && !formData.file) {
         alert('Vui lòng upload ảnh poster');
         return;
       }
 
-      // Validate ngày bắt đầu/kết thúc (nếu có cả 2 field)
+     
       const hasStartDateField = fields.some(f => f.name === 'start_date');
       const hasEndDateField = fields.some(f => f.name === 'end_date');
       if (hasStartDateField && hasEndDateField && formData.start_date && formData.end_date) {
@@ -209,7 +205,6 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
         }
       }
 
-      // Chuyển showtimesByDate thành mảng giờ chiếu (loại bỏ các giờ trống)
       const allShowtimes = [];
       if (formData.showtimesByDate) {
         Object.entries(formData.showtimesByDate).forEach(([date, times]) => {
@@ -220,46 +215,45 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
         });
       }
 
-      // Chuyển UI → API - chỉ gửi các field có trong form
+  
       const submitData = {};
       
-      // Lấy danh sách tên field từ fields prop
+   
       const fieldNames = fields.map(f => f.name);
       const hasShowtimesField = fields.some(f => f.type === 'showtimes');
       if (hasShowtimesField && !fieldNames.includes('showtimesByDate')) {
         fieldNames.push('showtimesByDate');
       }
       
-      // Chỉ thêm các field có trong form vào submitData
+ 
       fieldNames.forEach(fieldName => {
         if (formData[fieldName] !== undefined && formData[fieldName] !== null && formData[fieldName] !== '') {
           submitData[fieldName] = formData[fieldName];
         }
       });
 
-      // Đính kèm id để phân biệt thêm mới / chỉnh sửa
+
       if (initialData?.id !== undefined && initialData?.id !== null) {
         submitData.id = initialData.id;
       }
       
-      // Xử lý các field đặc biệt
+
       if (fieldNames.includes('showtimesByDate')) {
         submitData.showtimes = allShowtimes;
         submitData.showtimesByDate = formData.showtimesByDate || {};
       }
       
-      // Xử lý descriptions/description cho form phim
+
       if (fieldNames.includes('descriptions')) {
         submitData.descriptions = formData.descriptions || '';
         submitData.description = formData.descriptions || '';
       }
-      
-      // Xử lý file nếu có
+
       if (formData.file) {
         submitData.file = formData.file;
       }
       
-      // Xóa các field undefined để tránh gửi lên server
+     
       Object.keys(submitData).forEach(key => {
         if (submitData[key] === undefined) {
           delete submitData[key];
@@ -268,7 +262,6 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
 
       console.log('Submit data:', submitData);
 
-      // Gọi onSave
       onSave(submitData);
     } catch (error) {
       console.error('Error in handleSubmit:', error);
@@ -286,7 +279,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
 
         <form onSubmit={handleSubmit} className="modal-form" noValidate>
           {(() => {
-            // Nhóm các field theo row
+          
             const fieldGroups = {};
             fields.forEach(field => {
               const rowKey = field.row || `single-${field.name}`;
@@ -296,7 +289,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
               fieldGroups[rowKey].push(field);
             });
 
-            // Render các nhóm
+          
             return Object.entries(fieldGroups).map(([rowKey, rowFields]) => {
               const isRow = rowFields.length > 1;
               return (
@@ -324,7 +317,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
                 >
                   <option value="">-- Chọn {field.label} --</option>
                   {field.options.map((option) => {
-                    // Hỗ trợ cả string và object
+                 
                     const optionValue = typeof option === 'string' ? option : option.value;
                     const optionLabel = typeof option === 'string' ? option : (option.label || option.value);
                     return (
@@ -335,7 +328,7 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
                   })}
                 </select>
               ) : field.type === 'multiselect' && field.options ? (() => {
-                // Lọc options cho screenIds dựa trên theaterIds đã chọn
+                
                 const displayOptions = field.name === 'screenIds' 
                   ? getFilteredScreenOptions()
                   : field.options;

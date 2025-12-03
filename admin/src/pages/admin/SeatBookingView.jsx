@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { io } from "socket.io-client";
 import { Building, Tv, Calendar, RefreshCw, Grid, Check } from "lucide-react";
 import { toast } from "react-toastify";
 import theaterService from "../../services/theaters/theaterService";
@@ -17,8 +18,6 @@ export default function SeatBookingView() {
   const [selectedScreenId, setSelectedScreenId] = useState("");
   const [selectedShowtimeId, setSelectedShowtimeId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(null);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -30,6 +29,9 @@ export default function SeatBookingView() {
   const [promotionInfo, setPromotionInfo] = useState(null);
   const [isValidatingPromotion, setIsValidatingPromotion] = useState(false);
   const [promotionError, setPromotionError] = useState("");
+
+  // WebSocket instance (giữ ở level component để dùng trong cleanup)
+  const [socket, setSocket] = useState(null);
 
   const currentUserRoles = useMemo(() => {
     try {
@@ -83,6 +85,76 @@ export default function SeatBookingView() {
     loadTheaters();
   }, []);
 
+  // Kết nối WebSocket để nhận sự kiện cập nhật ghế real-time
+  useEffect(() => {
+    // Dùng cùng baseURL với axiosClient
+    const baseURL = "http://localhost:3000";
+    const socketInstance = io(`${baseURL}/seat-booking`, {
+      transports: ["websocket"],
+    });
+
+    setSocket(socketInstance);
+
+    socketInstance.on("connect", () => {
+      console.log("SeatBookingView: Connected to seat-booking WebSocket");
+    });
+
+    socketInstance.on("seat_update", (payload) => {
+      console.log("SeatBookingView: Received seat_update", payload);
+      if (!payload || !payload.showtimeId) return;
+
+      if (
+        !selectedShowtimeId ||
+        Number(selectedShowtimeId) !== Number(payload.showtimeId)
+      ) {
+        return;
+      }
+
+      const { seatIds, action } = payload;
+
+      // Nếu backend không gửi chi tiết ghế, fallback load lại không loading
+      if (!Array.isArray(seatIds) || seatIds.length === 0) {
+        loadSeats({ showLoading: false });
+        return;
+      }
+
+      const targetIds = new Set(seatIds.map((id) => Number(id)));
+
+      // Cập nhật cục bộ trạng thái ghế để tránh giật layout
+      setSeats((prevSeats) => {
+        if (!prevSeats || prevSeats.length === 0) {
+          // Nếu chưa có dữ liệu, fallback load lại
+          loadSeats({ showLoading: false });
+          return prevSeats;
+        }
+
+        return prevSeats.map((seat) => {
+          if (!targetIds.has(seat.id)) return seat;
+
+          if (action === "BOOKED") {
+            return { ...seat, isBooked: true };
+          }
+          if (action === "RELEASED") {
+            return { ...seat, isBooked: false };
+          }
+
+          // Action khác (hoặc không xác định) thì giữ nguyên
+          return seat;
+        });
+      });
+    });
+
+    socketInstance.on("disconnect", () => {
+      console.log("SeatBookingView: Disconnected from seat-booking WebSocket");
+    });
+
+    return () => {
+      console.log("SeatBookingView: Cleaning up WebSocket");
+      socketInstance.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedShowtimeId]);
+
   useEffect(() => {
     if (selectedTheaterId) {
       loadScreens();
@@ -104,16 +176,12 @@ export default function SeatBookingView() {
 
   useEffect(() => {
     if (selectedShowtimeId) {
-      loadSeats();
-      if (autoRefresh) {
-        startAutoRefresh();
-      }
+      // Lần load đầu khi chọn suất chiếu: cho phép hiện loading
+      loadSeats({ showLoading: true });
     } else {
       setSeats([]);
-      stopAutoRefresh();
     }
-    return () => stopAutoRefresh();
-  }, [selectedShowtimeId, autoRefresh]);
+  }, [selectedShowtimeId]);
 
   useEffect(() => {
     
@@ -182,21 +250,6 @@ export default function SeatBookingView() {
       cancelled = true;
     };
   }, [selectedShowtimeId, selectedSeats, promotionCode, promotionInfo]);
-
-  const startAutoRefresh = () => {
-    stopAutoRefresh();
-    const interval = setInterval(() => {
-      loadSeats();
-    }, 5000); 
-    setRefreshInterval(interval);
-  };
-
-  const stopAutoRefresh = () => {
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-      setRefreshInterval(null);
-    }
-  };
 
   const loadTheaters = async () => {
     try {
@@ -278,9 +331,12 @@ export default function SeatBookingView() {
     }
   };
 
-  const loadSeats = async () => {
+  const loadSeats = async (options = {}) => {
+    const { showLoading = true } = options;
     if (!selectedShowtimeId) return;
-    setIsLoading(true);
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const res = await seatService.getSeatsByShowtime(selectedShowtimeId);
       console.log("Seats response:", res);
@@ -305,7 +361,9 @@ export default function SeatBookingView() {
       console.error("Error loading seats:", error);
       toast.error(error.response?.data?.message || "Lỗi khi tải sơ đồ ghế!");
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -635,49 +693,7 @@ export default function SeatBookingView() {
           </select>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <button
-            onClick={loadSeats}
-            disabled={!selectedShowtimeId || isLoading}
-            style={{
-              padding: "10px 20px",
-              background: "#1976d2",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              cursor: selectedShowtimeId && !isLoading ? "pointer" : "not-allowed",
-              opacity: selectedShowtimeId && !isLoading ? 1 : 0.5,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <RefreshCw size={18} /> Tải lại
-          </button>
-
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: selectedShowtimeId ? "pointer" : "not-allowed",
-              opacity: selectedShowtimeId ? 1 : 0.5,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => {
-                setAutoRefresh(e.target.checked);
-                if (!e.target.checked) {
-                  stopAutoRefresh();
-                }
-              }}
-              disabled={!selectedShowtimeId}
-            />
-            <span>Tự động cập nhật (5s)</span>
-          </label>
-        </div>
+        {/* Đã bỏ nút tải lại vì đã có cập nhật realtime qua WebSocket */}
       </div>
 
       {/* Sơ đồ ghế */}

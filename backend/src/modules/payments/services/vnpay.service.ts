@@ -4,12 +4,12 @@ import * as crypto from 'crypto';
 import * as qs from 'qs';
 
 export interface VnpayPaymentUrlParams {
-  amount: number; // Số tiền (VND)
-  orderId: string; // Mã đơn hàng (unique)
-  orderInfo: string; // Thông tin đơn hàng
-  returnUrl: string; // URL trả về sau khi thanh toán
-  ipAddr: string; // IP của khách hàng
-  locale?: string; // Ngôn ngữ (vn, en)
+  amount: number; 
+  orderId: string; 
+  orderInfo: string; 
+  returnUrl: string; 
+  ipAddr: string; 
+  locale?: string;
 }
 
 export interface VnpayCallbackParams {
@@ -38,7 +38,7 @@ export class VnpayService {
   private readonly vnpApiUrl: string;
 
   constructor(private configService: ConfigService) {
-    // Lấy config từ environment variables
+   
     this.tmnCode = this.configService.get<string>('VNPAY_TMN_CODE') || '';
     this.secretKey = this.configService.get<string>('VNPAY_SECRET_KEY') || '';
     
@@ -52,19 +52,17 @@ export class VnpayService {
       ? 'https://www.vnpayment.vn/merchant_webapi/api/transaction'
       : 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction';
     
-    // Return URL từ config hoặc default
+    
     const baseUrl = this.configService.get<string>('BASE_URL') || 'http://localhost:3000';
     this.vnpReturnUrl = this.configService.get<string>('VNPAY_RETURN_URL') || `${baseUrl}/api/payments/vnpay/return`;
     
-    // Log warning nếu thiếu config (chỉ log, không throw để tránh crash khi khởi động)
+    
     if (!this.tmnCode || !this.secretKey) {
       console.warn('⚠️  VNPAY configuration is missing. Please check VNPAY_TMN_CODE and VNPAY_SECRET_KEY in environment variables.');
     }
   }
 
-  /**
-   * Tạo payment URL để redirect đến VNPAY
-   */
+  
   createPaymentUrl(params: VnpayPaymentUrlParams): string {
     if (!this.tmnCode || !this.secretKey) {
       throw new BadRequestException('VNPAY configuration is missing. Please check VNPAY_TMN_CODE and VNPAY_SECRET_KEY in environment variables.');
@@ -81,7 +79,7 @@ export class VnpayService {
     const ipAddr = params.ipAddr || '127.0.0.1';
     const locale = params.locale || 'vn';
 
-    // Validate các tham số
+    
     if (!orderId || orderId.trim() === '') {
       throw new BadRequestException('Order ID is required');
     }
@@ -92,7 +90,7 @@ export class VnpayService {
       throw new BadRequestException('Return URL must be a valid HTTP/HTTPS URL');
     }
 
-    // Tạo các tham số - đảm bảo tất cả giá trị đều là string và không rỗng
+    
     const vnp_Params: Record<string, string> = {};
     vnp_Params['vnp_Version'] = '2.1.0';
     vnp_Params['vnp_Command'] = 'pay';
@@ -100,18 +98,17 @@ export class VnpayService {
     vnp_Params['vnp_Locale'] = locale;
     vnp_Params['vnp_CurrCode'] = 'VND';
     vnp_Params['vnp_TxnRef'] = orderId;
-    // VNPAY yêu cầu orderInfo không được encode trước, sẽ được encode khi tạo query string
-    // Nhưng cần đảm bảo không có ký tự đặc biệt gây lỗi
+   
     vnp_Params['vnp_OrderInfo'] = orderInfo;
     vnp_Params['vnp_OrderType'] = 'other';
     vnp_Params['vnp_BankCode'] = 'QR';
-    vnp_Params['vnp_Amount'] = Math.round(amount * 100).toString(); // VNPAY yêu cầu số tiền nhân 100, làm tròn để tránh số thập phân
+    vnp_Params['vnp_Amount'] = Math.round(amount * 100).toString();
     vnp_Params['vnp_ReturnUrl'] = returnUrl;
     vnp_Params['vnp_IpAddr'] = ipAddr;
     vnp_Params['vnp_CreateDate'] = createDate;
     vnp_Params['vnp_ExpireDate'] = expireDate;
 
-    // Loại bỏ các giá trị undefined, null, hoặc rỗng trước khi sắp xếp
+    
     const filteredParams: Record<string, string> = {};
     for (const key in vnp_Params) {
       const value = vnp_Params[key];
@@ -120,16 +117,16 @@ export class VnpayService {
       }
     }
 
-    // Sắp xếp các tham số theo thứ tự alphabet
+    
     const sortedParams = this.sortObject(filteredParams);
     
-    // Chuỗi dùng để ký theo chuẩn VNPay: giữ nguyên giá trị, không encode
+   
     const rawQueryParams = qs.stringify(sortedParams, { encode: false });
     
-    // Tạo secure hash (KHÔNG bao gồm vnp_SecureHashType trong hash)
+    
     const secureHash = this.createSecureHash(rawQueryParams);
     
-    // Gắn hash vào params cuối cùng
+
     const finalParams = {
       ...sortedParams,
       vnp_SecureHashType: 'SHA512',
@@ -137,10 +134,9 @@ export class VnpayService {
     };
     const finalQueryString = qs.stringify(finalParams, { encode: false });
     
-    // Trả về URL hoàn chỉnh
     const fullUrl = `${this.vnpUrl}?${finalQueryString}`;
     
-    // Log để debug (chỉ log trong development)
+   
     if (process.env.NODE_ENV !== 'production') {
       this.logger.debug('VNPAY raw params:', rawQueryParams);
       this.logger.debug('VNPAY final params:', finalQueryString);
@@ -150,14 +146,14 @@ export class VnpayService {
         orderInfo,
         returnUrl,
         tmnCode: this.tmnCode,
-        secureHash: secureHash.substring(0, 20) + '...', // Chỉ log một phần hash để bảo mật
+        secureHash: secureHash.substring(0, 20) + '...', 
         urlLength: fullUrl.length,
         hasAllParams: sortedParams && Object.keys(sortedParams).length > 0,
       });
       console.log('VNPAY URL (first 200 chars):', fullUrl.substring(0, 200));
     }
     
-    // Validate URL
+    
     if (!fullUrl || fullUrl.length < 100) {
       throw new BadRequestException('VNPAY URL không hợp lệ. Vui lòng kiểm tra cấu hình.');
     }
@@ -184,17 +180,14 @@ export class VnpayService {
       }
     }
     
-    // Sắp xếp và tạo query string
+    
     const sortedParams = this.sortObject(filteredParams);
     const rawQueryParams = qs.stringify(sortedParams, { encode: false });
     
-    // Tạo hash để so sánh
     const checkSum = this.createSecureHash(rawQueryParams);
     
-    // So sánh hash (case-insensitive theo chuẩn VNPAY)
     const isValid = secureHash.toLowerCase() === checkSum.toLowerCase();
     
-    // Parse amount từ VNPAY (amount được gửi nhân 100)
     const amount = params.vnp_Amount ? parseInt(params.vnp_Amount, 10) / 100 : undefined;
     
     return {
@@ -205,18 +198,14 @@ export class VnpayService {
     };
   }
 
-  /**
-   * Tạo secure hash theo chuẩn VNPAY
-   */
+
   private createSecureHash(queryString: string): string {
     const hmac = crypto.createHmac('sha512', this.secretKey);
     hmac.update(queryString, 'utf-8');
     return hmac.digest('hex');
   }
 
-  /**
-   * Sắp xếp object theo key
-   */
+  
   private sortObject(obj: Record<string, string>): Record<string, string> {
     const sorted: Record<string, string> = {};
     const keys = Object.keys(obj).sort();
@@ -228,9 +217,7 @@ export class VnpayService {
     return sorted;
   }
 
-  /**
-   * Format date theo chuẩn VNPAY (yyyyMMddHHmmss)
-   */
+  
   private formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');

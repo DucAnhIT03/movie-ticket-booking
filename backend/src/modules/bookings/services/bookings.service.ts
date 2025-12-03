@@ -22,9 +22,12 @@ import { BookingRepository } from '../repositories/booking.repository';
 import { BookingSeatRepository } from '../repositories/booking-seat.repository';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { BookingChannel, Roles } from '../../../common/constants/enums';
+
+type BookingStatus = 'BOOKED' | 'PENDING' | 'CANCELLED' | 'FAILED' | null;
 import { CreateOfflineBookingDto } from '../dtos/request/create-offline-booking.dto';
 import { TicketPricesService } from '../../ticket-prices/services/ticket-prices.service';
 import { OfflineBookingQuoteDto } from '../dtos/request/offline-booking-quote.dto';
+import { SeatBookingGateway } from '../../seats/gateways/seat-booking.gateway';
 
 @Injectable()
 export class BookingsService {
@@ -48,6 +51,7 @@ export class BookingsService {
     private readonly userRepo: Repository<Users>,
 
     private readonly ticketPricesService: TicketPricesService,
+    private readonly seatGateway: SeatBookingGateway,
   ) {}
 
   private async ensureStaffAccount(staffId: number) {
@@ -217,6 +221,30 @@ export class BookingsService {
     return { totalPrice, breakdown };
   }
 
+  private resolveBookingStatus(payments: Payment[] | undefined | null): BookingStatus {
+    if (!payments || payments.length === 0) {
+      return 'PENDING';
+    }
+
+    if (payments.some((p) => p.payment_status === PaymentStatus.COMPLETED)) {
+      return 'BOOKED';
+    }
+
+    if (payments.some((p) => p.payment_status === PaymentStatus.CANCELLED)) {
+      return 'CANCELLED';
+    }
+
+    if (payments.some((p) => p.payment_status === PaymentStatus.FAILED)) {
+      return 'FAILED';
+    }
+
+    if (payments.some((p) => p.payment_status === PaymentStatus.PENDING)) {
+      return 'PENDING';
+    }
+
+    return null;
+  }
+
   private async getBookedSeats(showtimeId: number): Promise<number[]> {
     const bookings = await this.bookingRepo.find({
       where: { showtimeId: showtimeId },
@@ -368,6 +396,11 @@ export class BookingsService {
         await queryRunner.commitTransaction();
       }
 
+      await this.seatGateway.broadcastSeatUpdate(
+        dto.showtimeId,
+        dto.seatIds,
+        'BOOKED',
+      );
       return newBooking;
     } catch (err) {
       if (queryRunner.isTransactionActive) {
@@ -452,6 +485,13 @@ export class BookingsService {
         throw new NotFoundException('Không tìm thấy vé sau khi tạo');
       }
 
+      // Thông báo cập nhật ghế realtime cho suất chiếu này
+      await this.seatGateway.broadcastSeatUpdate(
+        dto.showtimeId,
+        dto.seatIds,
+        'BOOKED',
+      );
+
       return {
         booking: createdBooking,
         pricing,
@@ -509,12 +549,25 @@ export class BookingsService {
         );
       }
 
+      const seatIds =
+        booking.bookingSeats?.map((bs) => bs.seatId).filter(Boolean) || [];
+
       // Xóa booking
       await queryRunner.manager.delete(Booking, { id: booking.id });
 
       if (queryRunner.isTransactionActive) {
         await queryRunner.commitTransaction();
       }
+
+      // Thông báo cập nhật ghế realtime cho suất chiếu liên quan
+      if (booking.showtimeId && seatIds.length > 0) {
+        await this.seatGateway.broadcastSeatUpdate(
+          booking.showtimeId,
+          seatIds,
+          'RELEASED',
+        );
+      }
+
       return { message: 'Xóa vé thành công' };
     } catch (err) {
       if (queryRunner.isTransactionActive) {
@@ -529,7 +582,7 @@ export class BookingsService {
   async cancelBooking(userId: number, dto: CancelBookingDto) {
     const booking = await this.bookingRepo.findOne({
       where: { id: dto.bookingId },
-      relations: ['payments', 'showtime', 'user'],
+      relations: ['payments', 'showtime', 'user', 'bookingSeats'],
     });
 
     if (!booking) {
@@ -552,6 +605,9 @@ export class BookingsService {
       );
     }
 
+    const seatIds =
+      booking.bookingSeats?.map((bs) => bs.seatId).filter(Boolean) || [];
+
     const queryRunner = this.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -570,6 +626,16 @@ export class BookingsService {
       if (queryRunner.isTransactionActive) {
         await queryRunner.commitTransaction();
       }
+
+      // Thông báo cập nhật ghế realtime cho suất chiếu liên quan
+      if (booking.showtimeId && seatIds.length > 0) {
+        await this.seatGateway.broadcastSeatUpdate(
+          booking.showtimeId,
+          seatIds,
+          'RELEASED',
+        );
+      }
+
       return { message: 'Hủy vé thành công' };
     } catch (err) {
       if (queryRunner.isTransactionActive) {
@@ -714,16 +780,38 @@ export class BookingsService {
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 10));
     const skip = (pageNum - 1) * limitNum;
 
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+    const userPhone = (user as any).phone ? String((user as any).phone).trim() : null;
+
     const query = this.bookingRepo.createQueryBuilder('booking');
 
     query
       .leftJoinAndSelect('booking.showtime', 'showtime')
       .leftJoinAndSelect('showtime.movie', 'movie')
+      .leftJoinAndSelect('showtime.screen', 'screen')
+      .leftJoinAndSelect('screen.theater', 'theater')
       .leftJoinAndSelect('booking.payments', 'payment')
       .leftJoinAndSelect('booking.bookingSeats', 'bookingSeats')
       .leftJoinAndSelect('bookingSeats.seat', 'seat');
 
-    query.where('booking.userId = :userId', { userId });
+    query.where(
+      new Brackets((qb) => {
+        qb.where('(booking.userId = :userId AND booking.channel = :onlineChannel)', {
+          userId,
+          onlineChannel: BookingChannel.ONLINE,
+        });
+
+        if (userPhone) {
+          qb.orWhere('(booking.channel = :offlineChannel AND booking.customerPhone = :phone)', {
+            offlineChannel: BookingChannel.OFFLINE,
+            phone: userPhone,
+          });
+        }
+      }),
+    );
 
     if (status) {
       if (status === 'BOOKED') {
@@ -776,8 +864,13 @@ export class BookingsService {
 
     const [items, total] = await query.getManyAndCount();
 
+    const itemsWithStatus = items.map((booking) => {
+      (booking as any).status = this.resolveBookingStatus(booking.payments);
+      return booking;
+    });
+
     return {
-      items,
+      items: itemsWithStatus,
       total,
       page: pageNum,
       limit: limitNum,

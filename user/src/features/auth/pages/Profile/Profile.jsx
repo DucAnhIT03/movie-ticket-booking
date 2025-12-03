@@ -287,15 +287,46 @@ export default function Profile() {
     }));
   };
 
-  const renderTicketStatus = (status) => {
-    const labelMap = {
-      BOOKED: "Đã thanh toán",
-      PENDING: "Chờ thanh toán",
-      CANCELLED: "Đã hủy",
-      FAILED: "Thanh toán thất bại",
-    };
-    const label = labelMap[status] || status || "Không xác định";
-    return <span className={`ticket-status-badge ${status?.toLowerCase()}`}>{label}</span>;
+  const statusLabelMap = {
+    BOOKED: "Đã thanh toán",
+    PENDING: "Chờ thanh toán",
+    CANCELLED: "Đã hủy",
+    FAILED: "Thanh toán thất bại",
+  };
+
+  const deriveTicketStatus = (ticket) => {
+    if (ticket.status) return ticket.status;
+    const payments = ticket.payments || [];
+
+    if (payments.some((p) => p.payment_status === "COMPLETED")) {
+      return "BOOKED";
+    }
+    if (payments.some((p) => p.payment_status === "CANCELLED")) {
+      return "CANCELLED";
+    }
+    if (payments.some((p) => p.payment_status === "FAILED")) {
+      return "FAILED";
+    }
+    if (payments.some((p) => p.payment_status === "PENDING")) {
+      return "PENDING";
+    }
+
+    return payments.length === 0 ? "PENDING" : null;
+  };
+
+  const getTicketStatusLabel = (ticket) => {
+    const status = deriveTicketStatus(ticket);
+    return status ? statusLabelMap[status] || status : "Không xác định";
+  };
+
+  const renderTicketStatus = (ticket) => {
+    const status = deriveTicketStatus(ticket);
+    const badgeClass = status ? status.toLowerCase() : "unknown-status";
+    return (
+      <span className={`ticket-status-badge ${badgeClass}`}>
+        {getTicketStatusLabel(ticket)}
+      </span>
+    );
   };
 
   const formatCurrency = (value) => {
@@ -310,21 +341,33 @@ export default function Profile() {
   const renderTicketCard = (ticket) => {
     const showtime = ticket.showtime || {};
     const movie = showtime.movie || {};
+    const screen = showtime.screen || {};
+    const theater = screen.theater || {};
     const seats = (ticket.bookingSeats || []).map((item) => item?.seat?.seatNumber || item?.seat?.seat_number).filter(Boolean);
     const startTime = showtime.startTime ? new Date(showtime.startTime).toLocaleString("vi-VN") : "—";
     return (
       <div key={ticket.id} className="ticket-card">
-        <div className="ticket-card__header">
+          <div className="ticket-card__header">
           <div>
             <p className="ticket-code">Mã vé: BK-{String(ticket.id).padStart(6, "0")}</p>
             <h4>{movie.title || "Tên phim chưa cập nhật"}</h4>
           </div>
-          {renderTicketStatus(ticket.status)}
+          {renderTicketStatus(ticket)}
         </div>
         <div className="ticket-card__body">
           <div>
             <span className="label">Suất chiếu</span>
             <p>{startTime}</p>
+          </div>
+          <div>
+            <span className="label">Rạp</span>
+            <p>
+              {theater.name
+                ? theater.name
+                : screen.name
+                ? `Phòng ${screen.name}`
+                : "Không xác định"}
+            </p>
           </div>
           <div>
             <span className="label">Ghế</span>

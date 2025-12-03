@@ -16,7 +16,6 @@ export default function GenreManagement() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedGenre, setSelectedGenre] = useState(null);
 
-    // ✅ Lấy dữ liệu từ API (có phân trang + tìm kiếm)
     useEffect(() => {
         loadGenres({ page: 1 });
     }, []);
@@ -51,30 +50,27 @@ export default function GenreManagement() {
         }
     };
 
-    // ✅ Tự động reload khi gõ tìm kiếm (debounce nhẹ)
     useEffect(() => {
         const handle = setTimeout(() => {
             loadGenres({ page: 1, search: searchTerm });
         }, 400);
         return () => clearTimeout(handle);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+      
     }, [searchTerm]);
 
-    // ✅ Mở modal
     const handleOpenModal = (genre) => {
         setSelectedGenre(genre);
         setIsModalOpen(true);
     };
 
-    // ✅ Đóng modal
     const handleCloseModal = () => {
         setSelectedGenre(null);
         setIsModalOpen(false);
     };
 
-    // ✅ Lưu thể loại
+ 
     const handleSaveGenre = async (data) => {
-        // Chuyển đổi từ genre_name (UI) sang genreName (API)
+     
         const genreName = data.genre_name || data.genreName;
         
         if (!genreName || !genreName.trim()) {
@@ -86,7 +82,7 @@ export default function GenreManagement() {
 
         try {
             if (data.id) {
-                // Cập nhật - kiểm tra trùng tên (trừ chính nó)
+             
                 const existingGenre = genres.find(
                     (g) => 
                         (g.genreName || g.genre_name)?.toLowerCase() === trimmedName.toLowerCase() &&
@@ -100,12 +96,12 @@ export default function GenreManagement() {
                 const res = await genreService.updateGenre(data.id, { genreName: trimmedName });
                 if (res.status === 200) {
                     toast.success("Cập nhật thể loại thành công!");
-                    loadGenres(); // Reload danh sách
+                    loadGenres(); 
                     handleCloseModal();
                 } else if (res.status === 404) {
                     toast.error("Không tìm thấy thể loại");
                 } else {
-                    // Xử lý lỗi từ backend (có thể là duplicate)
+          
                     const errorMessage = res.data?.message || "Lỗi khi cập nhật thể loại";
                     if (errorMessage.toLowerCase().includes("duplicate") || 
                         errorMessage.toLowerCase().includes("unique") ||
@@ -116,7 +112,7 @@ export default function GenreManagement() {
                     }
                 }
             } else {
-                // Thêm mới - kiểm tra trùng tên
+               
                 const existingGenre = genres.find(
                     (g) => (g.genreName || g.genre_name)?.toLowerCase() === trimmedName.toLowerCase()
                 );
@@ -128,10 +124,10 @@ export default function GenreManagement() {
                 const res = await genreService.createGenre({ genreName: trimmedName });
                 if (res.status === 201) {
                     toast.success("Thêm thể loại thành công!");
-                    loadGenres(); // Reload danh sách
+                    loadGenres(); 
                     handleCloseModal();
                 } else {
-                    // Xử lý lỗi từ backend (có thể là duplicate)
+                    
                     const errorMessage = res.data?.message || "Lỗi khi thêm thể loại";
                     if (errorMessage.toLowerCase().includes("duplicate") || 
                         errorMessage.toLowerCase().includes("unique") ||
@@ -144,7 +140,7 @@ export default function GenreManagement() {
             }
         } catch (error) {
             console.error("Error saving genre:", error);
-            // Kiểm tra lỗi từ response
+           
             const errorMessage = error.response?.data?.message || error.message || "Lỗi kết nối đến server!";
             if (errorMessage.toLowerCase().includes("duplicate") || 
                 errorMessage.toLowerCase().includes("unique") ||
@@ -156,7 +152,7 @@ export default function GenreManagement() {
         }
     };
 
-    // ✅ Xóa
+ 
     const handleDeleteGenre = async (id) => {
         if (!window.confirm("Bạn có chắc chắn muốn xóa thể loại này không?")) {
             return;
@@ -166,7 +162,7 @@ export default function GenreManagement() {
             const res = await genreService.deleteGenre(id);
             if (res.status === 200) {
                 toast.success("Xóa thể loại thành công!");
-                loadGenres(); // Reload danh sách
+                loadGenres(); 
             } else if (res.status === 404) {
                 toast.error("Không tìm thấy thể loại");
             } else {

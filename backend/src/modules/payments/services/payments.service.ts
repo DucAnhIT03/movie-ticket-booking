@@ -72,15 +72,12 @@ export class PaymentsService {
 
     if (!payment) throw new NotFoundException('Payment not found');
 
-    // Kiểm tra nếu payment đã completed rồi thì không update nữa (tránh duplicate)
+   
     const wasAlreadyCompleted = payment.payment_status === PaymentStatus.COMPLETED;
     if (wasAlreadyCompleted && success) {
       this.logger.warn(`Payment ${paymentId} already completed, skipping update`);
       return payment;
     }
-
-    // Nếu đang failed và nhận được success, vẫn cho phép update (có thể là retry)
-    // Nhưng nếu đã completed thì không update nữa
 
     payment.transaction_id = transactionId;
     payment.payment_status = success
@@ -90,13 +87,12 @@ export class PaymentsService {
 
     await this.paymentRepo.save(payment);
 
-    // Gửi email khi thanh toán thành công (chỉ gửi 1 lần khi chuyển sang COMPLETED từ trạng thái khác)
     if (success && !wasAlreadyCompleted) {
       try {
         await this.sendPaymentSuccessEmail(payment);
       } catch (error) {
         this.logger.error(`Failed to send payment success email for payment ${paymentId}:`, error);
-        // Không throw error để không ảnh hưởng đến quá trình thanh toán
+
       }
     }
 
@@ -104,7 +100,7 @@ export class PaymentsService {
   }
 
   private async sendPaymentSuccessEmail(payment: Payment) {
-    // Lấy đầy đủ thông tin booking với các relations cần thiết
+   
     const bookingId = (payment.booking as any)?.id || payment.booking?.id;
     if (!bookingId) {
       this.logger.warn(`Cannot send email: missing booking ID for payment ${payment.id}`);
@@ -189,9 +185,7 @@ export class PaymentsService {
     return payment;
   }
 
-  /**
-   * Tạo VNPAY payment URL
-   */
+  
   async createVnpayPaymentUrl(
     paymentId: number,
     returnUrl: string,

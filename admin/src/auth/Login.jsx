@@ -61,7 +61,7 @@ export default function Login() {
         theaterId: user.theaterId || user.theater_id || null
       };
 
-      console.log("Login user data:", userWithTheaterId); // Debug log
+      console.log("Login user data:", userWithTheaterId); 
 
       dispatch(updateInfo({
         token: accessToken,

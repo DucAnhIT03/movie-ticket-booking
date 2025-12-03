@@ -71,7 +71,7 @@ export class PosterController {
   })
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
   async update(@Body() body: any, @UploadedFile() file?: Express.Multer.File) {
-    // Xử lý upload ảnh nếu có
+   
     if (file?.buffer) {
       validateImageFile(file);
       try {

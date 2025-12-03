@@ -14,13 +14,14 @@
 }
 
 .movie-title {
-  text-align: left;
+  text-align: center;
   color: var(--light-color);
   font-size: 2rem;
   margin-bottom: 20px;
   font-weight: bold;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
 }
 

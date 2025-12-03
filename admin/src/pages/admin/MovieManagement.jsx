@@ -100,7 +100,7 @@ export default function MovieManagement() {
         let theatersData = res.data.items || res.data || [];
         const currentUserTheaterId = getCurrentUserTheaterId();
         
-        // Nếu là nhân viên, chỉ hiển thị rạp được gán
+        
         if (currentUserTheaterId) {
           theatersData = theatersData.filter(t => t.id === currentUserTheaterId);
         }
@@ -119,7 +119,7 @@ export default function MovieManagement() {
         let screensData = res.data.items || res.data || [];
         const currentUserTheaterId = getCurrentUserTheaterId();
         
-        // Nếu là nhân viên, chỉ hiển thị phòng chiếu của rạp được gán
+
         if (currentUserTheaterId) {
           screensData = screensData.filter(s => s.theater_id === currentUserTheaterId);
         }
@@ -131,9 +131,106 @@ export default function MovieManagement() {
     }
   };
 
-  const handleOpenModal = (movie) => {
+  const handleOpenModal = async (movie) => {
+    // Thêm phim mới
+    if (!movie) {
+      setSelectedMovie(null);
+      setIsModalOpen(true);
+      return;
+    }
+
+    // Mặc định mở modal ngay với dữ liệu cơ bản
     setSelectedMovie(movie);
     setIsModalOpen(true);
+
+    // Sau đó load thêm thông tin suất chiếu để map ngược lại form,
+    // giúp không bị mất các cấu hình đã setup trước đó
+    try {
+      const res = await showtimeService.getShowtimesByMovie(movie.id);
+      if (res.status !== 200 || !Array.isArray(res.data)) {
+        return;
+      }
+
+      const showtimes = res.data;
+      if (showtimes.length === 0) {
+        return;
+      }
+
+      // Lấy danh sách screenId từ suất chiếu
+      const screenIds = Array.from(
+        new Set(
+          showtimes
+            .map((st) => st.screenId || st.screen_id)
+            .filter((id) => id !== null && id !== undefined),
+        ),
+      );
+
+      // Suy ra theaterIds từ screens đã load
+      const theaterIds = Array.from(
+        new Set(
+          screenIds
+            .map((screenId) => {
+              const screen = screens.find((s) => s.id === screenId);
+              return screen ? screen.theater_id : null;
+            })
+            .filter((id) => id !== null && id !== undefined),
+        ),
+      );
+
+      // Tính start_date, end_date và showtimesByDate
+      let minDate = null;
+      let maxDate = null;
+      const showtimesByDate = {};
+
+      showtimes.forEach((st) => {
+        const rawStart = st.startTime || st.start_time;
+        if (!rawStart) return;
+        const start = new Date(rawStart);
+        if (isNaN(start.getTime())) return;
+
+        const dateStr = start.toISOString().split("T")[0];
+        const timeStr = start.toTimeString().slice(0, 5); // HH:mm
+
+        if (!showtimesByDate[dateStr]) {
+          showtimesByDate[dateStr] = [];
+        }
+        if (!showtimesByDate[dateStr].includes(timeStr)) {
+          showtimesByDate[dateStr].push(timeStr);
+        }
+
+        if (!minDate || start < minDate) {
+          minDate = start;
+        }
+        if (!maxDate || start > maxDate) {
+          maxDate = start;
+        }
+      });
+
+      const start_date = minDate ? minDate.toISOString().split("T")[0] : "";
+      const end_date = maxDate ? maxDate.toISOString().split("T")[0] : "";
+
+      const flatShowtimes = Array.from(
+        new Set(
+          Object.values(showtimesByDate).flat().filter((t) => t && t.trim() !== ""),
+        ),
+      );
+
+      // Cập nhật lại selectedMovie với các field cấu hình đã suy ra
+      setSelectedMovie((prev) => {
+        if (!prev || prev.id !== movie.id) return prev;
+        return {
+          ...prev,
+          start_date,
+          end_date,
+          screenIds,
+          theaterIds,
+          showtimesByDate,
+          showtimes: flatShowtimes,
+        };
+      });
+    } catch (error) {
+      console.error("Error loading showtimes for movie when opening modal:", error);
+    }
   };
 
   const handleCloseModal = () => {
@@ -146,7 +243,7 @@ export default function MovieManagement() {
     setSaveProgress("Đang lưu phim...");
     
     try {
-      // Chuyển đổi dữ liệu
+   
       const releaseDate = movieData.release_date 
         ? new Date(movieData.release_date).toISOString()
         : new Date().toISOString();
@@ -172,7 +269,7 @@ export default function MovieManagement() {
         ratingWarning: movieData.ratingWarning || movieData.rating_warning || null,
       };
 
-      // Chỉ thêm file nếu có upload mới
+ 
       if (movieData.file) {
         payload.file = movieData.file;
       }
@@ -181,11 +278,11 @@ export default function MovieManagement() {
       let res;
 
       if (movieId) {
-        // Cập nhật
+      
         setSaveProgress("Đang cập nhật phim...");
         res = await movieService.updateMovie(movieId, payload);
         if (res.status === 200) {
-          // Cập nhật thể loại nếu có
+          
           if (movieData.genreIds && Array.isArray(movieData.genreIds) && movieData.genreIds.length > 0) {
             setSaveProgress("Đang cập nhật thể loại...");
             await movieService.setMovieGenres(movieId, movieData.genreIds);
@@ -206,8 +303,7 @@ export default function MovieManagement() {
             setSaveProgress("Đang cập nhật suất chiếu...");
             await createShowtimesForMovie(movieId, movieData);
           }
-          
-          // Tối ưu: chỉ cập nhật phim trong danh sách thay vì reload toàn bộ
+    
           const updatedMovie = res.data;
           setMovies(prevMovies =>
             sortByNewest(
@@ -234,7 +330,7 @@ export default function MovieManagement() {
           toast.error(res.data?.message || "Lỗi khi cập nhật phim");
         }
       } else {
-        // Tạo mới
+       
         setSaveProgress("Đang tạo phim mới...");
         res = await movieService.createMovie(payload);
         
@@ -242,30 +338,28 @@ export default function MovieManagement() {
           movieId = res.data.id;
           const newMovie = res.data;
           
-          // Set thể loại nếu có
           if (movieData.genreIds && Array.isArray(movieData.genreIds) && movieData.genreIds.length > 0) {
             setSaveProgress("Đang thiết lập thể loại...");
             await movieService.setMovieGenres(movieId, movieData.genreIds);
-            // Cập nhật genres cho newMovie
+            
             newMovie.genres = genres
               .filter(g => movieData.genreIds.includes(g.id))
               .map(g => g.genreName || g.genre_name);
           }
 
-          // Tạo showtimes nếu có thông tin
+          
           if (movieData.start_date && movieData.end_date && movieData.screenIds && 
               (movieData.showtimesByDate || movieData.showtimes)) {
             setSaveProgress("Đang tạo suất chiếu...");
             await createShowtimesForMovie(movieId, movieData);
           }
 
-          // Tối ưu: chỉ thêm phim mới vào danh sách thay vì reload toàn bộ
           setMovies(prevMovies => sortByNewest([newMovie, ...prevMovies]));
           
           toast.success("Thêm phim thành công!");
           handleCloseModal();
         } else {
-          // Hiển thị lỗi chi tiết hơn
+     
           const errorMessage = res.data?.message || res.data?.error || "Lỗi khi thêm phim";
           const errorDetails = Array.isArray(errorMessage) ? errorMessage.join(", ") : errorMessage;
           console.error("Lỗi khi thêm phim:", res.data);
@@ -292,7 +386,7 @@ export default function MovieManagement() {
       const durationMinutes = parseInt(duration, 10) || 120;
       const promises = [];
       
-      // Nếu có showtimesByDate, sử dụng giờ chiếu theo từng ngày
+     
       const uniqueScreenIds = Array.from(new Set(screenIds.map(id => parseInt(id, 10))));
 
       if (showtimesByDate && Object.keys(showtimesByDate).length > 0) {
@@ -302,33 +396,33 @@ export default function MovieManagement() {
             : [];
           
           if (validTimes.length > 0) {
-            // Lặp qua từng phòng đã chọn
+       
             for (const screenId of uniqueScreenIds) {
-              // Lặp qua từng giờ chiếu của ngày này
+             
               for (const time of validTimes) {
-                // Đảm bảo time có format HH:mm (không có :00 ở cuối)
+             
                 let timeStr = time.trim();
                 
-                // Nếu time không có dấu :, bỏ qua
+              
                 if (!timeStr.includes(':')) {
                   console.warn(`Giờ chiếu không hợp lệ: ${timeStr}, bỏ qua`);
                   continue;
                 }
                 
-                // Nếu time đã có format HH:mm:00, chỉ lấy HH:mm
+             
                 if (timeStr.split(':').length > 2) {
                   const parts = timeStr.split(':');
                   timeStr = `${parts[0]}:${parts[1]}`;
                 }
                 
-                // Kiểm tra xem có phần giờ và phút không
+               
                 const [hours, minutes] = timeStr.split(':');
                 if (!hours || hours.trim() === '' || !minutes || minutes.trim() === '') {
                   console.warn(`Giờ chiếu không hợp lệ (thiếu giờ hoặc phút): ${timeStr}, bỏ qua`);
                   continue;
                 }
                 
-                // Validate format HH:mm
+               
                 const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
                 if (!timeRegex.test(timeStr)) {
                   console.warn(`Giờ chiếu không hợp lệ: ${timeStr}, bỏ qua`);
@@ -336,14 +430,14 @@ export default function MovieManagement() {
                 }
                 
                 try {
-                  // Đảm bảo format đúng HH:mm (2 chữ số cho giờ và phút)
+           
                   const normalizedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
                   
-                  // Tạo Date theo local timezone để đảm bảo thời gian hiển thị đúng
+                 
                   const [year, month, day] = dateStr.split('-');
                   const startDateTime = new Date(
                     parseInt(year, 10),
-                    parseInt(month, 10) - 1, // Month is 0-indexed
+                    parseInt(month, 10) - 1,
                     parseInt(day, 10),
                     parseInt(normalizedTime.split(':')[0], 10),
                     parseInt(normalizedTime.split(':')[1], 10),
@@ -351,7 +445,7 @@ export default function MovieManagement() {
                     0
                   );
                   
-                  // Kiểm tra Date có hợp lệ không
+                
                   if (isNaN(startDateTime.getTime())) {
                     console.error(`Không thể tạo Date từ: ${dateStr} ${normalizedTime}`);
                     continue;
@@ -359,7 +453,7 @@ export default function MovieManagement() {
                   
                   const endDateTime = new Date(startDateTime.getTime() + (durationMinutes * 60 * 1000));
                   
-                  // Kiểm tra endDateTime có hợp lệ không
+               
                   if (isNaN(endDateTime.getTime())) {
                     console.error(`Không thể tạo endTime từ startTime`);
                     continue;
@@ -381,7 +475,7 @@ export default function MovieManagement() {
           }
         });
       } else if (movieData.showtimes && Array.isArray(movieData.showtimes)) {
-        // Fallback: nếu không có showtimesByDate, dùng showtimes chung (áp dụng cho tất cả ngày)
+      
         const startDate = new Date(start_date);
         const endDate = new Date(end_date);
         const showtimeHours = Array.from(
@@ -398,29 +492,29 @@ export default function MovieManagement() {
 
             for (const screenId of uniqueScreenIds) {
               for (const time of showtimeHours) {
-                // Đảm bảo time có format HH:mm (không có :00 ở cuối)
+              
                 let timeStr = time.trim();
                 
-                // Nếu time không có dấu :, bỏ qua
+             
                 if (!timeStr.includes(':')) {
                   console.warn(`Giờ chiếu không hợp lệ: ${timeStr}, bỏ qua`);
                   continue;
                 }
                 
-                // Nếu time đã có format HH:mm:00, chỉ lấy HH:mm
+              
                 if (timeStr.split(':').length > 2) {
                   const parts = timeStr.split(':');
                   timeStr = `${parts[0]}:${parts[1]}`;
                 }
                 
-                // Kiểm tra xem có phần giờ và phút không
+           
                 const [hours, minutes] = timeStr.split(':');
                 if (!hours || hours.trim() === '' || !minutes || minutes.trim() === '') {
                   console.warn(`Giờ chiếu không hợp lệ (thiếu giờ hoặc phút): ${timeStr}, bỏ qua`);
                   continue;
                 }
                 
-                // Validate format HH:mm
+               
                 const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
                 if (!timeRegex.test(timeStr)) {
                   console.warn(`Giờ chiếu không hợp lệ: ${timeStr}, bỏ qua`);
@@ -428,14 +522,13 @@ export default function MovieManagement() {
                 }
                 
                 try {
-                  // Đảm bảo format đúng HH:mm (2 chữ số cho giờ và phút)
+                
                   const normalizedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
                   
-                  // Tạo Date theo local timezone để đảm bảo thời gian hiển thị đúng
                   const [year, month, day] = dateStr.split('-');
                   const startDateTime = new Date(
                     parseInt(year, 10),
-                    parseInt(month, 10) - 1, // Month is 0-indexed
+                    parseInt(month, 10) - 1,
                     parseInt(day, 10),
                     parseInt(normalizedTime.split(':')[0], 10),
                     parseInt(normalizedTime.split(':')[1], 10),
@@ -443,7 +536,7 @@ export default function MovieManagement() {
                     0
                   );
                   
-                  // Kiểm tra Date có hợp lệ không
+                  
                   if (isNaN(startDateTime.getTime())) {
                     console.error(`Không thể tạo Date từ: ${dateStr} ${normalizedTime}`);
                     continue;
@@ -451,7 +544,7 @@ export default function MovieManagement() {
                   
                   const endDateTime = new Date(startDateTime.getTime() + (durationMinutes * 60 * 1000));
                   
-                  // Kiểm tra endDateTime có hợp lệ không
+                 
                   if (isNaN(endDateTime.getTime())) {
                     console.error(`Không thể tạo endTime từ startTime`);
                     continue;
@@ -475,11 +568,11 @@ export default function MovieManagement() {
       }
 
       if (promises.length === 0) {
-        return; // Không có giờ chiếu nào để tạo
+        return; 
       }
 
-      // Tối ưu: xử lý theo batch để tránh quá tải
-      const BATCH_SIZE = 20; // Xử lý 20 showtimes mỗi lần
+     
+      const BATCH_SIZE = 20;
       let successCount = 0;
       let failCount = 0;
 
@@ -495,7 +588,7 @@ export default function MovieManagement() {
           }
         });
 
-        // Cập nhật progress nếu có nhiều batch
+        
         if (promises.length > BATCH_SIZE) {
           const progress = Math.min(100, Math.round(((i + batch.length) / promises.length) * 100));
           setSaveProgress(`Đang tạo suất chiếu... ${progress}%`);
@@ -523,7 +616,7 @@ export default function MovieManagement() {
       const res = await movieService.deleteMovie(movieId);
       if (res.status === 200) {
         toast.success("Xóa phim thành công!");
-        // Nếu trang hiện tại không còn item nào, quay về trang trước
+     
         if (movies.length === 1 && page > 1) {
           setPage(page - 1);
         } else {

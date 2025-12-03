@@ -8,11 +8,13 @@ import { BookingSeat } from '../../shared/schemas/booking-seat.entity';
 import { SeatsService } from './services/seats.service';
 import { SeatsController } from './controllers/seats.controller';
 import { SeatRepository } from './repositories/seat.repository';
+import { SeatBookingGateway } from './gateways/seat-booking.gateway';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Seat, Screen, Showtime, Booking, BookingSeat])],
   controllers: [SeatsController],
-  providers: [SeatsService, SeatRepository],
-  exports: [SeatsService],
+  providers: [SeatsService, SeatRepository, SeatBookingGateway],
+  exports: [SeatsService, SeatBookingGateway],
 })
 export class SeatsModule {}
+

@@ -16,6 +16,7 @@ import { BookingRepository } from './repositories/booking.repository';
 import { BookingSeatRepository } from './repositories/booking-seat.repository';
 import { PaymentRepository } from './repositories/payment.repository';
 import { TicketPricesModule } from '../ticket-prices/ticket-prices.module';
+import { SeatsModule } from '../seats/seats.module';
 
 @Module({
   imports: [
@@ -30,9 +31,11 @@ import { TicketPricesModule } from '../ticket-prices/ticket-prices.module';
       Users,
     ]),
     TicketPricesModule,
+    SeatsModule,
   ],
   controllers: [AdminBookingsController, UserBookingsController],
   providers: [BookingsService, EmailService, BookingRepository, BookingSeatRepository, PaymentRepository],
   exports: [BookingsService],
 })
 export class BookingsModule {}
+

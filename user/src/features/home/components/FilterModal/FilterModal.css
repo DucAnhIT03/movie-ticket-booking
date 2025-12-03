@@ -22,14 +22,15 @@
 }
 
 .filter-modal {
-  background: #fff;
-  border-radius: 12px;
+  background: #020617; /* đồng bộ nền tối như các trang */
+  border-radius: 16px;
   width: 90%;
-  max-width: 500px;
+  max-width: 520px;
   max-height: 90vh;
   overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.85);
   animation: slideUp 0.3s ease-out;
+  border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
 @keyframes slideUp {
@@ -48,8 +49,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid rgba(30, 64, 175, 0.5);
+  background: radial-gradient(circle at top, rgba(30, 64, 175, 0.35), transparent 55%);
 }
 
 .filter-modal-title {
@@ -62,7 +63,7 @@
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: #e5e7eb;
 }
 
 .filter-modal-close {
@@ -73,14 +74,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: #9ca3af;
   transition: color 0.2s;
   border-radius: 4px;
 }
 
 .filter-modal-close:hover {
-  color: #1f2937;
-  background: #e5e7eb;
+  color: #e5e7eb;
+  background: rgba(30, 64, 175, 0.25);
 }
 
 .filter-modal-body {
@@ -88,6 +89,11 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  background: linear-gradient(
+    145deg,
+    rgba(15, 23, 42, 0.98),
+    rgba(15, 23, 42, 0.96)
+  );
 }
 
 .filter-group {
@@ -99,36 +105,40 @@
 .filter-group label {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #e5e7eb;
 }
 
 .filter-select {
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid rgba(55, 65, 81, 0.9);
   border-radius: 8px;
   font-size: 14px;
-  color: #1f2937;
-  background: #fff;
+  color: #e5e7eb;
+  background: #020617;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .filter-select:hover {
-  border-color: #9ca3af;
+  border-color: #60a5fa;
 }
 
 .filter-select:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
 }
 
 .filter-modal-footer {
   display: flex;
   gap: 12px;
   padding: 20px 24px;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid rgba(30, 64, 175, 0.5);
+  background: linear-gradient(
+    to right,
+    rgba(15, 23, 42, 0.98),
+    rgba(15, 23, 42, 0.96)
+  );
   justify-content: flex-end;
 }
 
@@ -144,17 +154,19 @@
 }
 
 .filter-btn-reset {
-  background: #f3f4f6;
-  color: #374151;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  border: 1px solid rgba(55, 65, 81, 0.9);
 }
 
 .filter-btn-reset:hover {
-  background: #e5e7eb;
+  background: rgba(30, 64, 175, 0.25);
 }
 
 .filter-btn-apply {
-  background: #3b82f6;
-  color: #fff;
+  background: #2563eb;
+  color: #f9fafb;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.45);
 }
 
 .filter-btn-apply:hover {

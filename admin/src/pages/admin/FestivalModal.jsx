@@ -18,7 +18,7 @@ export default function FestivalModal({ title, onClose, onSave, initialData, isS
 
   useEffect(() => {
     if (initialData) {
-      // Format datetime for input
+
       const formatDateTime = (dateString) => {
         if (!dateString) return "";
         const date = new Date(dateString);
@@ -57,14 +57,14 @@ export default function FestivalModal({ title, onClose, onSave, initialData, isS
     const { name, value, files } = e.target;
     
     if (files && files.length > 0) {
-      // Xử lý file upload
+    
       const file = files[0];
       setFormData((prev) => ({
         ...prev,
         [name]: file,
-        imageUrl: "", // Xóa URL cũ khi chọn file mới
+        imageUrl: "", 
       }));
-      // Tạo preview
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -77,7 +77,6 @@ export default function FestivalModal({ title, onClose, onSave, initialData, isS
       }));
     }
     
-    // Xóa lỗi khi người dùng bắt đầu nhập
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -98,7 +97,6 @@ export default function FestivalModal({ title, onClose, onSave, initialData, isS
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
     const newErrors = {};
     if (!formData.title.trim()) {
       newErrors.title = "Tiêu đề không được để trống";
@@ -125,20 +123,17 @@ export default function FestivalModal({ title, onClose, onSave, initialData, isS
       return;
     }
 
-    // Format datetime to ISO string
     const formatToISO = (dateTimeString) => {
       if (!dateTimeString) return null;
       return new Date(dateTimeString).toISOString();
     };
 
-    // Gọi onSave với dữ liệu
-    // Nếu có file mới, gửi file object; nếu không, gửi URL
     const dataToSave = {
       title: formData.title,
       content: formData.content || null,
       image: formData.image && typeof formData.image === 'object' 
-        ? formData.image  // Gửi file object để backend upload
-        : (formData.imageUrl || null), // Gửi URL nếu không có file mới
+        ? formData.image 
+        : (formData.imageUrl || null),
       start_time: formatToISO(formData.start_time),
       end_time: formatToISO(formData.end_time),
       id: initialData?.id,
