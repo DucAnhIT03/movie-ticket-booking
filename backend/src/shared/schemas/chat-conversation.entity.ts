@@ -58,3 +58,4 @@ export class ChatConversation {
   updated_at?: Date;
 }
 
+

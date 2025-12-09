@@ -34,6 +34,7 @@ export default function PaymentPage() {
   const sepayStatusTimerRef = useRef(null);
   const sepayFormRef = useRef(null);
   const sepayFrameNameRef = useRef(`sepayCheckoutFrame-${Date.now()}`);
+  const cleanupNeededRef = useRef(false);
 
   const stopSepayWatcher = () => {
     if (sepayStatusTimerRef.current) {
@@ -42,7 +43,22 @@ export default function PaymentPage() {
     }
   };
 
+  const cancelPendingBooking = async () => {
+    const bookingIdLS = localStorage.getItem("currentBookingId");
+    const bookingId = bookingIdLS ? parseInt(bookingIdLS) : null;
+    if (!bookingId || !cleanupNeededRef.current) return;
+    try {
+      await bookingService.cancelBooking(bookingId);
+    } catch (err) {
+      console.warn("⚠️ [Payment] Cannot cancel pending booking:", err?.message || err);
+    } finally {
+      cleanupNeededRef.current = false;
+      clearPaymentSession({ preserveSelection: false });
+    }
+  };
+
   const clearPaymentSession = ({ preserveSelection = false } = {}) => {
+    cleanupNeededRef.current = false;
     stopSepayWatcher();
     setSepayCheckoutData(null);
     setAutoPaymentStatus("idle");
@@ -227,6 +243,21 @@ export default function PaymentPage() {
   useEffect(() => {
     return () => {
       stopSepayWatcher();
+      cancelPendingBooking();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (cleanupNeededRef.current) {
+        cancelPendingBooking();
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
 
@@ -261,6 +292,7 @@ export default function PaymentPage() {
     { id: "VIETQR", name: "VietQR", img: "/vietqr.png" },
     { id: "VNPAY", name: "VNPAY", img: "/vnpay.png" },
     { id: "VIETTEL_PAY", name: "Viettel Money", img: "/viettelmoney.png" },
+    { id: "MOMO", name: "MoMo", img: "/momo.png" },
     { id: "SEAPAY", name: "Seapay AutoPay", img: sepayLogo, auto: true },
   ];
   const selectedMethodMeta = methods.find((m) => m.id === selected);
@@ -355,6 +387,7 @@ export default function PaymentPage() {
 
       const booking = bookingResponse.data;
       const bookingId = booking.id;
+      cleanupNeededRef.current = true;
 
       
       const paymentData = {
@@ -478,6 +511,36 @@ export default function PaymentPage() {
         }
       }
 
+      if (selected === "MOMO") {
+        try {
+          const apiBaseUrl = axiosClient.defaults.baseURL || "http://localhost:3000";
+          const normalizedBase = apiBaseUrl.replace(/\/$/, "");
+          const ipnUrl = `${normalizedBase}/payments/momo/ipn`;
+          const returnUrl = `${window.location.origin}/payment-success?paymentId=${payment.id}`;
+
+          const momoResponse = await paymentService.createMomoUrl(payment.id, returnUrl, ipnUrl);
+          const payUrl =
+            momoResponse?.data?.payUrl ||
+            momoResponse?.data?.deeplink ||
+            momoResponse?.data?.qrCodeUrl;
+
+          if (!payUrl) {
+            throw new Error("Không nhận được payUrl từ MoMo");
+          }
+
+          window.location.href = payUrl;
+          cleanupNeededRef.current = false;
+          return;
+        } catch (momoError) {
+          console.error("❌ [Payment] Error creating MoMo URL:", momoError);
+          const msg =
+            momoError?.response?.data?.message ||
+            momoError?.message ||
+            "Không thể tạo liên kết thanh toán MoMo. Vui lòng thử lại.";
+          throw new Error(msg);
+        }
+      }
+
       setShowQRModal(true);
     } catch (err) {
       console.error("Error processing payment:", err);
@@ -508,6 +571,7 @@ export default function PaymentPage() {
       }
       
       setError(errorMessage);
+      await cancelPendingBooking();
     } finally {
       setLoading(false);
     }
@@ -525,6 +589,7 @@ export default function PaymentPage() {
 
   const finalizePaymentSuccess = () => {
     stopSepayWatcher();
+    cleanupNeededRef.current = false;
     clearPaymentSession();
     setShowQRModal(false);
     setAutoPaymentStatus("idle");

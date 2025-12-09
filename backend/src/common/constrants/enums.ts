@@ -12,6 +12,7 @@ export enum PaymentMethod {
   PAYPAL = 'PAYPAL',
   CASH = 'CASH',
   POS = 'POS',
+  MOMO = 'MOMO',
 }
 
 export enum PaymentStatus {

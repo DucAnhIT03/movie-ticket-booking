@@ -3,7 +3,7 @@ import { Booking } from 'src/shared/schemas/booking.entity';
 import { Promotion } from 'src/shared/schemas/promotion.entity';
 import { PaymentMethod, PaymentStatus } from 'src/common/constrants/enums';
 
-@Entity('Payments')
+@Entity({ name: 'payments' })
 export class Payment {
   @PrimaryGeneratedColumn()
   id: number;

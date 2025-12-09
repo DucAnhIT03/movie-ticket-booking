@@ -50,6 +50,20 @@ const paymentService = {
     }
   },
 
+  // Tạo MoMo payment URL
+  createMomoUrl: async (paymentId, returnUrl, ipnUrl) => {
+    try {
+      const response = await axiosClient.post(`/payments/${paymentId}/momo/url`, {
+        returnUrl,
+        ipnUrl,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error creating MoMo URL:", error);
+      throw error;
+    }
+  },
+
   // Tạo phiên thanh toán SePay
   createSepayCheckout: async (paymentId) => {
     try {

@@ -1,9 +1,16 @@
 import axios from "axios";
 
+// Lấy base URL từ env (Vite). Tránh dùng process.env trên browser.
+const apiBaseUrl =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  "http://localhost:3000";
+
 const axiosClient = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: apiBaseUrl.replace(/\/$/, ""), // bỏ trailing slash để tránh double slash
   headers: {
     "Content-Type": "application/json",
+    // Bypass ngrok browser warning page to nhận JSON thay vì HTML interstitial
+    "ngrok-skip-browser-warning": "true",
   },
 });
 

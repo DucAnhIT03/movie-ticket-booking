@@ -6,6 +6,7 @@ import { VnpayService } from '../services/vnpay.service';
 import { CreatePaymentDto } from '../dtos/request/create-payment.dto';
 import { CompletePaymentDto } from '../dtos/request/complete-payment.dto';
 import { CreateVnpayUrlDto } from '../dtos/request/create-vnpay-url.dto';
+import { CreateMomoUrlDto } from '../dtos/request/create-momo-url.dto';
 import { PaymentResponseDto } from '../dtos/response/payments.response.dto';
 import { VnpayUrlResponseDto } from '../dtos/response/vnpay-url.response.dto';
 import { VnpayWebhookResponseDto } from '../dtos/response/vnpay-webhook.response.dto';
@@ -89,6 +90,7 @@ export class PaymentsController {
     @Param('id') id: string,
     @Body() dto: CompletePaymentDto
   ) {
+    console.log('[PAYMENT] completePayment called', { id, transactionId: dto.transactionId, success: dto.success });
     const payment = await this.svc.completePayment(Number(id), dto.transactionId, dto.success ?? true);
     return PaymentResponseDto.fromEntity(payment);
   }
@@ -157,6 +159,43 @@ export class PaymentsController {
     
       throw error;
     }
+  }
+
+  @Post(':id/momo/url')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('jwt')
+  @ApiOperation({
+    summary: 'Tạo liên kết thanh toán MoMo',
+    description: 'Sinh payUrl/deeplink MoMo cho giao dịch PENDING',
+  })
+  async createMomoUrl(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: CreateMomoUrlDto,
+  ) {
+    const requester = req.user as any;
+    const isAdmin = Array.isArray(requester?.roles) && requester.roles.includes('ROLE_ADMIN');
+    const userId = requester?.id ?? requester?.sub;
+
+    const result = await this.svc.createMomoPaymentUrl(
+      Number(id),
+      dto.returnUrl,
+      dto.ipnUrl,
+      userId,
+      isAdmin,
+    );
+
+    return result;
+  }
+
+  @Post('momo/ipn')
+  @ApiOperation({
+    summary: 'Webhook MoMo',
+    description: 'Nhận IPN từ MoMo và tự động cập nhật trạng thái thanh toán',
+  })
+  async momoIpn(@Body() body: any) {
+    const result = await this.svc.handleMomoIpn(body);
+    return { message: 'ok', ...result };
   }
 
   @Post(':id/sepay/checkout')

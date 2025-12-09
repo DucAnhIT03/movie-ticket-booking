@@ -329,7 +329,7 @@ CREATE TABLE IF NOT EXISTS `promotions` (
 CREATE TABLE IF NOT EXISTS `Payments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `booking_id` INT NOT NULL,
-`payment_method` ENUM('VIETQR','VNPAY','VIETTEL_PAY','PAYPAL','CASH','POS') NOT NULL,
+`payment_method` ENUM('VIETQR','VNPAY','VIETTEL_PAY','SEAPAY','PAYPAL','CASH','POS','MOMO') NOT NULL,
   `payment_status` ENUM('PENDING','COMPLETED','FAILED','CANCELLED') NOT NULL DEFAULT 'PENDING',
   `payment_time` DATETIME NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian tạo payment, dùng để track timeout cho seat locking',

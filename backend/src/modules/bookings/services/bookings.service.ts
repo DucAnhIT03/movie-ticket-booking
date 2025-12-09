@@ -396,11 +396,6 @@ export class BookingsService {
         await queryRunner.commitTransaction();
       }
 
-      await this.seatGateway.broadcastSeatUpdate(
-        dto.showtimeId,
-        dto.seatIds,
-        'BOOKED',
-      );
       return newBooking;
     } catch (err) {
       if (queryRunner.isTransactionActive) {

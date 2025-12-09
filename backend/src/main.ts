@@ -21,7 +21,14 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET','HEAD','PUT','PATCH','POST','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization','Accept','Origin','X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
+      'X-Requested-With',
+      'ngrok-skip-browser-warning', // allow FE bypass ngrok interstitial
+    ],
     exposedHeaders: ['Content-Length','Content-Range'],
     preflightContinue: false,
     optionsSuccessStatus: 204,

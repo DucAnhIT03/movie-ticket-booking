@@ -10,14 +10,16 @@ import { VnpayService } from './services/vnpay.service';
 import { QueueModule } from '../../providers/queue/queue.module';
 import { PaymentTimeoutScheduler } from './schedulers/payment-timeout.scheduler';
 import { SepayService } from './services/sepay.service';
+import { MomoService } from './services/momo.service';
+import { SeatBookingGateway } from '../seats/gateways/seat-booking.gateway';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Payment, Booking]),
     QueueModule,
   ],
-  providers: [PaymentsService, PaymentRepository, BookingRepository, VnpayService, SepayService, PaymentTimeoutScheduler],
+  providers: [PaymentsService, PaymentRepository, BookingRepository, VnpayService, SepayService, MomoService, SeatBookingGateway, PaymentTimeoutScheduler],
   controllers: [PaymentsController],
-  exports: [PaymentsService, VnpayService, SepayService],
+  exports: [PaymentsService, VnpayService, SepayService, MomoService],
 })
 export class PaymentsModule {}

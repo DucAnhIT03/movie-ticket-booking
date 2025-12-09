@@ -46,3 +46,4 @@ CREATE TABLE IF NOT EXISTS `chat_messages` (
   CONSTRAINT `fk_message_theater` FOREIGN KEY (`theater_id`) REFERENCES `Theaters`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+

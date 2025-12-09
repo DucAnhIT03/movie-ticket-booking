@@ -7,6 +7,8 @@ import { BookingRepository } from '../repositories/booking.repository';
 import { VnpayService } from './vnpay.service';
 import { QueueService } from 'src/providers/queue/queue.service';
 import { SepayService } from './sepay.service';
+import { MomoService } from './momo.service';
+import { SeatBookingGateway } from '../../seats/gateways/seat-booking.gateway';
 
 @Injectable()
 export class PaymentsService {
@@ -19,6 +21,8 @@ export class PaymentsService {
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
     private readonly sepayService: SepayService,
+    private readonly momoService: MomoService,
+    private readonly seatGateway: SeatBookingGateway,
   ) {}
 
   async createPayment(bookingId: number, method: PaymentMethod, amount: number, requesterUserId?: number, isAdmin: boolean = false, promotionId?: number) {
@@ -65,17 +69,53 @@ export class PaymentsService {
     transactionId: string,
     success = true,
   ) {
+    this.logger.log(
+      `[PAYMENT] completePayment start id=${paymentId}, tx=${transactionId}, success=${success}`,
+    );
     const payment = await this.paymentRepo.findOne({
       where: { id: paymentId },
-      relations: ['booking'],
+      relations: [
+        'booking',
+        'booking.showtime',
+        'booking.bookingSeats',
+        'booking.bookingSeats.seat',
+      ],
     });
+
+    // Fallback if not found by id: try transaction_id matches provided transactionId/orderId
+    if (!payment && transactionId) {
+      this.logger.warn(
+        `[PAYMENT] Payment id=${paymentId} not found by id, try lookup by transaction_id=${transactionId}`,
+      );
+      const byTx = await this.paymentRepo.findOne({
+        where: { transaction_id: transactionId },
+        relations: [
+          'booking',
+          'booking.showtime',
+          'booking.bookingSeats',
+          'booking.bookingSeats.seat',
+        ],
+      });
+      if (byTx) {
+        paymentId = byTx.id;
+        return this.completePayment(paymentId, transactionId, success);
+      }
+    }
 
     if (!payment) throw new NotFoundException('Payment not found');
 
-   
+    const bookingSeatsCount = (payment.booking as any)?.bookingSeats?.length || 0;
+    const bookingShowtimeId =
+      (payment.booking as any)?.showtimeId || (payment.booking as any)?.showtime?.id;
+
+    this.logger.debug(
+      `[PAYMENT] Fetch payment ${paymentId}: status=${payment.payment_status}, bookingId=${(payment.booking as any)?.id}, showtimeId=${bookingShowtimeId}, seats=${bookingSeatsCount}`,
+    );
+
     const wasAlreadyCompleted = payment.payment_status === PaymentStatus.COMPLETED;
     if (wasAlreadyCompleted && success) {
-      this.logger.warn(`Payment ${paymentId} already completed, skipping update`);
+      this.logger.warn(`Payment ${paymentId} already completed, ensuring broadcast only`);
+      await this.safeBroadcastSeatUpdate(paymentId, payment.booking);
       return payment;
     }
 
@@ -87,16 +127,46 @@ export class PaymentsService {
 
     await this.paymentRepo.save(payment);
 
+    this.logger.debug(
+      `[PAYMENT] Saved payment ${paymentId} -> status=${payment.payment_status}, success=${success}`,
+    );
+
     if (success && !wasAlreadyCompleted) {
+      // always try to send email but never block seat updates
       try {
         await this.sendPaymentSuccessEmail(payment);
       } catch (error) {
-        this.logger.error(`Failed to send payment success email for payment ${paymentId}:`, error);
-
+        this.logger.error(`Failed to send payment success email for ${paymentId}:`, error);
       }
+
+      await this.safeBroadcastSeatUpdate(paymentId, payment.booking);
     }
 
     return payment;
+  }
+
+  private async safeBroadcastSeatUpdate(paymentId: number, booking: any) {
+    try {
+      const seatIds =
+        booking?.bookingSeats
+          ?.map((bs: any) => bs.seat?.id || bs.seatId)
+          .filter(Boolean) || [];
+      const showtimeId = booking?.showtimeId || booking?.showtime?.id;
+
+      this.logger.debug(
+        `[PAYMENT] Broadcast seat update payment=${paymentId} -> showtime=${showtimeId}, seats=${seatIds.join(',')}`,
+      );
+
+      if (showtimeId && seatIds.length > 0) {
+        await this.seatGateway.broadcastSeatUpdate(showtimeId, seatIds, 'BOOKED');
+      } else {
+        this.logger.warn(
+          `[PAYMENT] Missing showtime or seats on broadcast paymentId=${paymentId}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Failed to broadcast seat update for payment ${paymentId}:`, error);
+    }
   }
 
   private async sendPaymentSuccessEmail(payment: Payment) {
@@ -139,23 +209,34 @@ export class PaymentsService {
       ?.map((bs) => bs.seat?.seatNumber || '')
       .filter(Boolean) || [];
 
-    // Xác định phương thức thanh toán
-    let paymentMethodName = 'Khác';
-    if (payment.payment_method === PaymentMethod.VNPAY) {
-      paymentMethodName = 'VNPAY';
-    } else if (payment.payment_method === PaymentMethod.VIETQR) {
-      paymentMethodName = 'VietQR';
-    } else if (payment.payment_method === PaymentMethod.VIETTEL_PAY) {
-      paymentMethodName = 'ViettelPay';
-    } else if (payment.payment_method === PaymentMethod.SEAPAY) {
-      paymentMethodName = 'Seapay';
-    } else if (payment.payment_method === PaymentMethod.PAYPAL) {
-      paymentMethodName = 'PayPal';
-    }
+    // Xác định phương thức thanh toán hiển thị ra email hóa đơn
+    const paymentMethodName = (() => {
+      switch (payment.payment_method) {
+        case PaymentMethod.VNPAY:
+          return 'VNPAY';
+        case PaymentMethod.VIETQR:
+          return 'VietQR';
+        case PaymentMethod.VIETTEL_PAY:
+          return 'ViettelPay';
+        case PaymentMethod.SEAPAY:
+          return 'Seapay';
+        case PaymentMethod.PAYPAL:
+          return 'PayPal';
+        case PaymentMethod.MOMO:
+          return 'MoMo';
+        case PaymentMethod.POS:
+          return 'POS (quầy)';
+        case PaymentMethod.CASH:
+          return 'Tiền mặt';
+        default:
+          return 'Khác';
+      }
+    })();
 
     // Gửi email hóa đơn với thông tin đầy đủ
     await this.queueService.enqueueBookingInvoiceEmail({
       to: user.email,
+      subject: `Hóa đơn thanh toán vé #${booking.id} - ${movieTitle}`,
       userName: userName,
       bookingId: booking.id,
       movieTitle: movieTitle,
@@ -213,7 +294,7 @@ export class PaymentsService {
     }
 
     
-    const orderId = `PAY${paymentId}_${Date.now()}`;
+    const orderId = `PAY${paymentId}_BK${(payment.booking as any)?.id}_PND${Date.now()}`;
     
     const movieName = ((payment.booking as any).showtime?.movie?.title || 
                      (payment.booking as any).showtime?.movie?.name || 
@@ -241,6 +322,196 @@ export class PaymentsService {
       this.logger.error(`Failed to create VNPAY payment URL for payment ${paymentId}:`, error);
       throw error;
     }
+  }
+
+  async createMomoPaymentUrl(
+    paymentId: number,
+    returnUrl: string,
+    ipnUrl?: string,
+    requesterUserId?: number,
+    isAdmin: boolean = false,
+  ) {
+    const payment = await this.paymentRepo.findOne({
+      where: { id: paymentId },
+      relations: ['booking', 'booking.showtime', 'booking.showtime.movie'],
+    });
+
+    if (!payment) throw new NotFoundException('Payment not found');
+
+    if (!isAdmin && requesterUserId && payment.booking.userId !== requesterUserId) {
+      throw new ForbiddenException('Bạn không có quyền tạo thanh toán cho vé này');
+    }
+
+    if (payment.payment_method !== PaymentMethod.MOMO && payment.payment_method !== PaymentMethod.POS) {
+      throw new BadRequestException('Payment method is not MOMO');
+    }
+
+    if (payment.payment_status !== PaymentStatus.PENDING) {
+      throw new BadRequestException('Payment is not in PENDING status');
+    }
+
+    const orderId = `PAY${paymentId}_${Date.now()}`;
+    const movieName = ((payment.booking as any).showtime?.movie?.title || 'Vé xem phim').trim().substring(0, 80);
+    const orderInfo = `Thanh toán MoMo: ${movieName}`.substring(0, 90);
+    const extraData = Buffer.from(
+      JSON.stringify({
+        paymentId,
+        bookingId: (payment.booking as any)?.id,
+      }),
+    ).toString('base64');
+
+    const effectiveIpnUrl = ipnUrl || returnUrl;
+    this.logger.log(
+      `[MOMO] Creating payment: paymentId=${paymentId}, orderId=${orderId}, returnUrl=${returnUrl}, ipnUrl=${effectiveIpnUrl}`,
+    );
+
+    // Lưu tạm orderId vào transaction_id để tra cứu fallback nếu IPN về mà không parse được id
+    if (!payment.transaction_id) {
+      payment.transaction_id = orderId;
+      await this.paymentRepo.save(payment);
+    }
+
+    const amountNumber = Math.round(Number(payment.amount || 0));
+    // MoMo yêu cầu 1,000 <= amount <= 50,000,000
+    if (amountNumber < 1000 || amountNumber > 50_000_000) {
+      throw new BadRequestException('Số tiền thanh toán phải trong khoảng 1.000 - 50.000.000 VND để thanh toán MoMo');
+    }
+
+    // Dùng payWithMethod để MoMo hiển thị lựa chọn ví/ATM/thẻ
+    const response = await this.momoService.createPayment({
+      amount: amountNumber,
+      orderId,
+      orderInfo,
+      returnUrl,
+      ipnUrl: effectiveIpnUrl,
+      requestType: 'payWithMethod',
+      extraData,
+    });
+
+    if (response.resultCode !== 0) {
+      this.logger.error(`MoMo create payment failed for ${paymentId}: ${JSON.stringify(response)}`);
+      throw new BadRequestException('Không thể tạo liên kết thanh toán MoMo');
+    }
+
+    return {
+      payUrl: response.payUrl,
+      deeplink: response.deeplink,
+      qrCodeUrl: response.qrCodeUrl,
+      paymentId,
+      orderId,
+    };
+  }
+
+  async handleMomoIpn(payload: any) {
+    const signatureValid = this.momoService.verifySignature(payload);
+    if (!signatureValid) {
+      this.logger.warn(`[MOMO][IPN] Invalid signature for orderId=${payload?.orderId}`);
+      throw new BadRequestException('Chữ ký MoMo không hợp lệ');
+    }
+
+    // orderId format: PAY{paymentId}_BK{bookingId}_{timestamp}
+    const orderId = payload?.orderId as string;
+    const matched = orderId?.match(/^PAY(\d+)_BK(\d+)_PND/);
+    let paymentId = matched ? Number(matched[1]) : null;
+    let bookingIdFromOrder: number | null = matched && matched[2] ? Number(matched[2]) : null;
+
+    let bookingIdFromExtra: number | null = bookingIdFromOrder;
+    // Fallback: lấy paymentId/bookingId từ extraData nếu orderId không parse được
+    if (payload?.extraData) {
+      try {
+        const decodedExtra = Buffer.from(payload.extraData, 'base64').toString('utf8');
+        const parsedExtra = JSON.parse(decodedExtra);
+        if (!paymentId && parsedExtra?.paymentId) {
+          paymentId = Number(parsedExtra.paymentId);
+        }
+        if (parsedExtra?.bookingId) {
+          bookingIdFromExtra = Number(parsedExtra.bookingId);
+        }
+      } catch (err) {
+        this.logger.warn(`[MOMO] Không thể parse extraData cho orderId=${orderId}: ${err?.message}`);
+      }
+    }
+
+    if (!paymentId) {
+      throw new BadRequestException('orderId hoặc extraData không hợp lệ');
+    }
+
+    const success = Number(payload?.resultCode) === 0;
+    const transactionId = payload?.transId?.toString() || orderId;
+
+    this.logger.log(
+      `[MOMO][IPN] Received: orderId=${orderId}, paymentId=${paymentId}, bookingId=${bookingIdFromExtra}, resultCode=${payload?.resultCode}, transId=${transactionId}, amount=${payload?.amount}`,
+    );
+
+    // Resolve payment record before completing
+    const relations = [
+      'booking',
+      'booking.showtime',
+      'booking.bookingSeats',
+      'booking.bookingSeats.seat',
+    ] as const;
+
+    let payment =
+      (await this.paymentRepo.findOne({ where: { id: paymentId }, relations: relations as any })) ||
+      (await this.paymentRepo.findOne({ where: { transaction_id: orderId }, relations: relations as any })) ||
+      (await this.paymentRepo.findOne({ where: { transaction_id: transactionId }, relations: relations as any }));
+
+    if (!payment && bookingIdFromExtra) {
+      payment = await this.paymentRepo.findOne({
+        where: { booking: { id: bookingIdFromExtra } as any },
+        order: { id: 'DESC' as any },
+        relations: relations as any,
+      });
+    }
+
+    if (!payment && bookingIdFromExtra) {
+      const booking = await this.bookingRepo.findOne({
+        where: { id: bookingIdFromExtra },
+        relations: ['bookingSeats', 'bookingSeats.seat', 'showtime'],
+      });
+      if (booking) {
+        // tránh tạo trùng nếu đã có payment completed
+        const existingCompleted = await this.paymentRepo.findOne({
+          where: {
+            booking: { id: bookingIdFromExtra } as any,
+            payment_status: PaymentStatus.COMPLETED,
+          },
+        });
+        if (!existingCompleted) {
+          const newPayment = this.paymentRepo.create({
+            booking,
+            payment_method: PaymentMethod.MOMO,
+            payment_status: success ? PaymentStatus.COMPLETED : PaymentStatus.FAILED,
+            amount: Number(payload?.amount) || booking.totalPriceMovie,
+            transaction_id: transactionId || orderId,
+            payment_time: new Date(),
+          });
+          payment = await this.paymentRepo.save(newPayment);
+          const createdPaymentId = payment ? payment.id : 'unknown';
+          this.logger.warn(
+            `[MOMO][IPN] Created missing payment for booking ${bookingIdFromExtra} with id=${createdPaymentId} (fallback)`,
+          );
+        }
+      }
+    }
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    const resolvedPaymentId = payment.id;
+
+    try {
+      await this.completePayment(resolvedPaymentId, transactionId, success);
+    } catch (error) {
+      this.logger.error(
+        `[MOMO][IPN] Failed to complete payment ${resolvedPaymentId}: ${error?.message}`,
+        error instanceof Error ? error.stack : error,
+      );
+      throw error;
+    }
+
+    return { success, paymentId: resolvedPaymentId };
   }
 
   async initSepayCheckout(
