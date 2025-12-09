@@ -26,6 +26,8 @@ import EmailNotificationManagement from "./pages/admin/EmailNotificationManageme
 import BannerManagement from "./pages/admin/BannerManagement";
 import EventManagement from "./pages/admin/EventManagement";
 import Profile from "./pages/admin/Profile";
+import ChatManagement from "./pages/admin/ChatManagement";
+import ChatWidget from "./components/ChatWidget";
 import "./App.css";
 
 function App() {
@@ -119,9 +121,17 @@ function App() {
     return element;
   };
 
+  const shouldShowChatWidget = () => {
+    const storedUser = getStoredUser();
+    const roleList = Array.isArray(storedUser?.roles) ? storedUser.roles : [];
+    // Chỉ hiển thị cho nhân viên, ẩn với admin
+    return roleList.includes("ROLE_EMPLOYEE") && !roleList.includes("ROLE_ADMIN");
+  };
+
   return (
     <div className="container">
       <div className="main-content">
+        {shouldShowChatWidget() && <ChatWidget />}
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<Login />} />
@@ -227,6 +237,15 @@ function App() {
                 <RoleRoute
                   allowedRoles={['ROLE_ADMIN', 'ROLE_EMPLOYEE']}
                   element={<Profile />}
+                />
+              }
+            />
+            <Route
+              path="chat-management"
+              element={
+                <RoleRoute
+                  allowedRoles={['ROLE_ADMIN']}
+                  element={<ChatManagement />}
                 />
               }
             />

@@ -31,11 +31,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         },
         removeOnComplete: {
           count: 1000,
-          age: 24 * 3600, // 24 hours
+          age: 24 * 3600, 
         },
         removeOnFail: {
           count: 5000,
-          age: 7 * 24 * 3600, // 7 days
+          age: 7 * 24 * 3600, 
         },
       },
     }),

@@ -13,7 +13,7 @@ export class QueueService {
   
   async enqueueMail(payload: SendMailPayload, options?: JobsOptions): Promise<string | undefined> {
     try {
-      // Validate payload
+      
       if (!payload.to) {
         throw new Error('Email recipient (to) is required');
       }
@@ -22,8 +22,7 @@ export class QueueService {
         throw new Error('Email subject is required');
       }
 
-      // If type and data are provided, MailService will generate HTML from template
-      // So we don't need to validate html/text here
+   
       if (!payload.type || !payload.data) {
         if (!payload.html && !payload.text) {
           throw new Error('Email content (html or text) is required');

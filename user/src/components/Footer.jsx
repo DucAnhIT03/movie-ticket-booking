@@ -1,13 +1,23 @@
+import { Link } from "react-router-dom";
+
 export default function Footer() {
   return (
     <footer className="footer">
       <div className="footer-container">
         <div className="footer-links">
           <a href="#">Chính sách</a>
-          <a href="#">Lịch chiếu</a>
-          <a href="#">Tin tức</a>
-          <a href="#">Giá vé</a>
-          <a href="#">Hỏi đáp</a>
+          <Link to="/calendar">Lịch chiếu</Link>
+          <Link to="/news">Tin tức</Link>
+          <Link to="/ticket-price">Giá vé</Link>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              window.dispatchEvent(new Event("openChatWidget"));
+            }}
+          >
+            Hỏi đáp
+          </a>
           <a href="#">Liên hệ</a>
         </div>
 

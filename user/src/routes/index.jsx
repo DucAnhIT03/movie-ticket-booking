@@ -18,6 +18,7 @@ import Login from "../features/auth/pages/Login/Login.jsx";
 import Register from "../features/auth/pages/Register/Register.jsx";
 import Profile from "../features/auth/pages/Profile/Profile.jsx";
 import FestivalDetail from "../features/festival/pages/FestivalDetail.jsx";
+import Chat from "../features/chat/pages/Chat.jsx";
 
 function AppRouter() {
   return (
@@ -46,6 +47,7 @@ function AppRouter() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/chat" element={<Chat />} />
       </Routes>
     </Router>
   );

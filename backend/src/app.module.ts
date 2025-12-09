@@ -28,6 +28,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { TicketPricesModule } from './modules/ticket-prices/ticket-prices.module';
 import { EmailLogsModule } from './modules/email-logs/email-logs.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     TicketPricesModule,
     EmailLogsModule,
     DashboardModule,
+    ChatModule,
     
     UploadsModule,
   ],

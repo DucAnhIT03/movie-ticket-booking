@@ -16,6 +16,7 @@ import {
   Mail,
   Image as ImageIcon,
   CalendarClock,
+  MessageSquare,
 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import "./AdminLayout.css";
@@ -46,6 +47,12 @@ const NAV_ITEMS = [
     to: "/admin/email-notifications",
     label: "Quản lý Email & Thông báo",
     icon: Mail,
+    roles: ["ROLE_ADMIN"],
+  },
+  {
+    to: "/admin/chat-management",
+    label: "Quản lý Chat",
+    icon: MessageSquare,
     roles: ["ROLE_ADMIN"],
   },
 ];

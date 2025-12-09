@@ -14,6 +14,7 @@ import movieService from "../../../services/movies/movieService";
 import showtimeService from "../../../services/showtimes/showtimeService";
 import ticketPriceService from "../../../services/ticket-prices/ticketPriceService";
 import theaterService from "../../../services/theaters/theaterService";
+import seatBookingSocket from "../../../services/seatBookingSocket";
 import { validateSeatSelection } from "../utils/seatValidation";
 import { isAuthenticated } from "../../../shared/utils/auth";
 
@@ -202,87 +203,128 @@ export default function ChooseSeat() {
   }, []);
 
   
+  const buildSeatGrid = useCallback((seatsData) => {
+    const bookedIds = new Set();
+    seatsData.forEach(seat => {
+      const isBooked = seat.isBooked || seat.booked || false;
+      if (isBooked) {
+        bookedIds.add(seat.id);
+      }
+    });
+
+    const seatsByRow = {};
+    seatsData.forEach(seat => {
+      const seatNumber = seat.seatNumber || seat.seat_number || "";
+      if (!seatNumber) return;
+
+      const match = seatNumber.match(/^([A-Z]+)(\d+)$/);
+      if (match) {
+        const row = match[1];
+        if (!seatsByRow[row]) {
+          seatsByRow[row] = [];
+        }
+
+        seatsByRow[row].push({
+          id: seat.id,
+          seatCode: seatNumber,
+          booked: seat.isBooked || seat.booked || bookedIds.has(seat.id),
+          type: seat.type || "STANDARD",
+          isHidden: seat.isHidden || seat.is_hidden || false, 
+          colNumber: parseInt(match[2]) 
+        });
+      }
+    });
+
+    Object.keys(seatsByRow).forEach(row => {
+      seatsByRow[row].sort((a, b) => a.colNumber - b.colNumber);
+    });
+
+    const seatsGrid = Object.keys(seatsByRow)
+      .sort()
+      .map(row => seatsByRow[row]);
+
+    setBookedSeatIds(bookedIds);
+    setSeats(seatsGrid);
+  }, []);
+
+  const fetchSeats = useCallback(async () => {
+    if (!showtimeId) return;
+    setSeatsLoading(true);
+    try {
+      const response = await seatService.getByShowtime(showtimeId);
+      if (response.status === 200) {
+        const seatsData = (response.data || []).map(seat => ({
+          ...seat,
+          type: seat.type || "STANDARD",
+        }));
+        buildSeatGrid(seatsData);
+      }
+    } catch (err) {
+      console.error("Error fetching seats:", err);
+      setSeats([]);
+    } finally {
+      setSeatsLoading(false);
+    }
+  }, [showtimeId, buildSeatGrid]);
+
+  useEffect(() => {
+    fetchSeats();
+  }, [fetchSeats]);
+
+  // Lắng nghe realtime: chỉ cập nhật những ghế thay đổi
   useEffect(() => {
     if (!showtimeId) return;
+    const socket = seatBookingSocket.connect();
 
-    const fetchSeats = async () => {
-      setSeatsLoading(true);
-      try {
-        const response = await seatService.getByShowtime(showtimeId);
-        if (response.status === 200) {
-          const seatsData = (response.data || []).map(seat => ({
-            ...seat,
-            type: seat.type || 'STANDARD', 
-          }));
-        
-          const bookedIds = new Set();
-          seatsData.forEach(seat => {
-            const isBooked = seat.isBooked || seat.booked || false;
-            if (isBooked) {
-              bookedIds.add(seat.id);
-            }
-          });
-          
-          const seatMap = {};
-          seatsData.forEach(seat => {
-            const seatNumber = seat.seatNumber || seat.seat_number || "";
-            if (!seatNumber) return;
-            
-            seatMap[seatNumber] = {
-              id: seat.id,
-              seatCode: seatNumber,
-              booked: seat.isBooked || seat.booked || bookedIds.has(seat.id),
-              type: seat.type || "STANDARD",
-              isHidden: seat.isHidden || seat.is_hidden || false
-            };
-          });
-          
-          setBookedSeatIds(bookedIds);
-          
-          const seatsByRow = {};
-          
-          seatsData.forEach(seat => {
-            const seatNumber = seat.seatNumber || seat.seat_number || "";
-            if (!seatNumber) return;
+    const handleSeatUpdate = ({ showtimeId: updateShowtimeId, seatIds, action }) => {
+      if (!updateShowtimeId || updateShowtimeId !== showtimeId) return;
 
-            const match = seatNumber.match(/^([A-Z]+)(\d+)$/);
-            if (match) {
-              const row = match[1];
-              if (!seatsByRow[row]) {
-                seatsByRow[row] = [];
-              }
-              
-              seatsByRow[row].push({
-                id: seat.id,
-                seatCode: seatNumber,
-                booked: seat.isBooked || seat.booked || bookedIds.has(seat.id),
-                type: seat.type || "STANDARD",
-                isHidden: seat.isHidden || seat.is_hidden || false, 
-                colNumber: parseInt(match[2]) 
-              });
+      // Nếu không có seatIds hoặc yêu cầu sync thì refetch
+      if (!seatIds || seatIds.length === 0 || action === "SYNC") {
+        fetchSeats();
+        return;
+      }
+
+      setSeats((prev) => {
+        if (!prev || prev.length === 0) return prev;
+        const updated = prev.map((row) =>
+          row.map((seat) => {
+            if (!seatIds.includes(seat.id)) return seat;
+            if (action === "BOOKED") {
+              return { ...seat, booked: true };
             }
-          });
-          
-          Object.keys(seatsByRow).forEach(row => {
-            seatsByRow[row].sort((a, b) => a.colNumber - b.colNumber);
-          });
-          
-          const seatsGrid = Object.keys(seatsByRow)
-            .sort()
-            .map(row => seatsByRow[row]);
-          
-          setSeats(seatsGrid);
-        }
-      } catch (err) {
-        console.error("Error fetching seats:", err);
-        setSeats([]);
-      } finally {
-        setSeatsLoading(false);
+            if (action === "RELEASED") {
+              return { ...seat, booked: false };
+            }
+            return seat;
+          })
+        );
+        return updated;
+      });
+
+      setBookedSeatIds((prev) => {
+        const next = new Set(prev);
+        seatIds.forEach((id) => {
+          if (action === "BOOKED") next.add(id);
+          if (action === "RELEASED") next.delete(id);
+        });
+        return next;
+      });
+
+      // Bỏ chọn ghế vừa bị người khác đặt
+      if (action === "BOOKED") {
+        setSelected((prev) => prev.filter((key) => {
+          const [seatId] = key.split("-");
+          return !seatIds.includes(parseInt(seatId));
+        }));
       }
     };
 
-    fetchSeats();
-  }, [showtimeId]);
+    socket && seatBookingSocket.onSeatUpdate(handleSeatUpdate);
+    return () => {
+      seatBookingSocket.offSeatUpdate(handleSeatUpdate);
+    };
+  }, [showtimeId, fetchSeats]);
 
   const toggleSeat = (seatId, seatCode) => {
 
