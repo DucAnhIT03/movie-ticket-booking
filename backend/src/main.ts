@@ -27,7 +27,7 @@ async function bootstrap() {
       'Accept',
       'Origin',
       'X-Requested-With',
-      'ngrok-skip-browser-warning', // allow FE bypass ngrok interstitial
+      'ngrok-skip-browser-warning',
     ],
     exposedHeaders: ['Content-Length','Content-Range'],
     preflightContinue: false,
