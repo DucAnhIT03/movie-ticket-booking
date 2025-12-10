@@ -326,17 +326,17 @@ CREATE TABLE IF NOT EXISTS `promotions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 18) Payments
-CREATE TABLE IF NOT EXISTS `Payments` (
+CREATE TABLE IF NOT EXISTS `payments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `booking_id` INT NOT NULL,
-`payment_method` ENUM('VIETQR','VNPAY','VIETTEL_PAY','SEAPAY','PAYPAL','CASH','POS','MOMO') NOT NULL,
+  `payment_method` ENUM('VIETQR','VNPAY','VIETTEL_PAY','SEAPAY','PAYPAL','CASH','POS','MOMO') NOT NULL,
   `payment_status` ENUM('PENDING','COMPLETED','FAILED','CANCELLED') NOT NULL DEFAULT 'PENDING',
   `payment_time` DATETIME NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian tạo payment, dùng để track timeout cho seat locking',
   `amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
   `transaction_id` VARCHAR(255) NULL,
   `promotion_id` INT NULL COMMENT 'ID mã khuyến mãi (nếu có)',
-  CONSTRAINT `fk_payments_booking` FOREIGN KEY (`booking_id`) REFERENCES `Bookings`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_payments_booking` FOREIGN KEY (`booking_id`) REFERENCES `Bookings`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_payments_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `promotions`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   INDEX `idx_payments_booking_id` (`booking_id`),
   INDEX `idx_payments_status` (`payment_status`),

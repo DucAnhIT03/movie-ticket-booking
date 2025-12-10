@@ -405,7 +405,7 @@ export default function TheaterManagement() {
           isSaving={isSaving}
           fields={[
             { name: "name", label: "Tên rạp", type: "text" },
-            { name: "location", label: "Địa chỉ", type: "text" },
+            { name: "location", label: "Địa chỉ", type: "addressVN" },
             { name: "phone", label: "Số điện thoại", type: "text" },
           ]}
         />

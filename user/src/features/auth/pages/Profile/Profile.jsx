@@ -338,6 +338,20 @@ export default function Profile() {
     }).format(value);
   };
 
+  const openMapNavigation = (theater) => {
+    if (!theater || !theater.location) {
+      alert("Không có thông tin địa chỉ của rạp phim");
+      return;
+    }
+
+    // Tạo URL Google Maps với địa chỉ
+    const address = encodeURIComponent(theater.location);
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${address}`;
+    
+    // Mở trong tab mới
+    window.open(googleMapsUrl, '_blank');
+  };
+
   const renderTicketCard = (ticket) => {
     const showtime = ticket.showtime || {};
     const movie = showtime.movie || {};
@@ -368,6 +382,30 @@ export default function Profile() {
                 ? `Phòng ${screen.name}`
                 : "Không xác định"}
             </p>
+            {theater.location && (
+              <button
+                onClick={() => openMapNavigation(theater)}
+                style={{
+                  marginTop: "8px",
+                  padding: "6px 12px",
+                  background: "#1976d2",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  transition: "background 0.2s"
+                }}
+                onMouseEnter={(e) => e.target.style.background = "#1565c0"}
+                onMouseLeave={(e) => e.target.style.background = "#1976d2"}
+              >
+                <span>🗺️</span>
+                <span>Điều hướng</span>
+              </button>
+            )}
           </div>
           <div>
             <span className="label">Ghế</span>

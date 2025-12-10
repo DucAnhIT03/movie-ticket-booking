@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { Payment } from 'src/shared/schemas/payment.entity';
+import { Booking } from 'src/shared/schemas/booking.entity';
 import { PaymentStatus, PaymentMethod } from 'src/common/constrants/enums';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { BookingRepository } from '../repositories/booking.repository';
@@ -23,6 +26,8 @@ export class PaymentsService {
     private readonly sepayService: SepayService,
     private readonly momoService: MomoService,
     private readonly seatGateway: SeatBookingGateway,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   async createPayment(bookingId: number, method: PaymentMethod, amount: number, requesterUserId?: number, isAdmin: boolean = false, promotionId?: number) {
@@ -59,9 +64,67 @@ export class PaymentsService {
       paymentData.promotionId = promotionId;
     }
 
-    const payment = this.paymentRepo.create(paymentData);
+    // Sử dụng queryRunner với transaction explicit để đảm bảo payment được commit ngay lập tức
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    return this.paymentRepo.save(payment);
+    try {
+      const payment = queryRunner.manager.create(Payment, paymentData);
+      const savedPayment = await queryRunner.manager.save(Payment, payment);
+      
+      // Commit transaction ngay lập tức
+      await queryRunner.commitTransaction();
+      
+      this.logger.debug(`[PAYMENT] Created and committed payment ${savedPayment.id} for booking ${bookingId}`);
+      
+      // Verify payment was saved với retry (sử dụng connection mới)
+      let verifyAttempts = 0;
+      const maxVerifyAttempts = 5;
+      let verified = false;
+      
+      while (verifyAttempts < maxVerifyAttempts && !verified) {
+        // Sử dụng dataSource.query để đảm bảo dùng connection mới, thấy được committed data
+        const verifyPayment = await this.dataSource.query(
+          `SELECT id, booking_id, payment_status, payment_method, amount FROM payments WHERE id = ? LIMIT 1`,
+          [savedPayment.id],
+        );
+        
+        if (verifyPayment && verifyPayment.length > 0) {
+          verified = true;
+          this.logger.debug(
+            `[PAYMENT] Created payment ${savedPayment.id} for booking ${bookingId}. Verified in database: ${JSON.stringify(verifyPayment[0])}`,
+          );
+        } else {
+          this.logger.warn(`[PAYMENT] Payment ${savedPayment.id} not found in database after creation (attempt ${verifyAttempts + 1})`);
+          if (verifyAttempts < maxVerifyAttempts - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 200 * (verifyAttempts + 1)));
+          }
+        }
+        verifyAttempts++;
+      }
+      
+      if (!verified) {
+        this.logger.error(`[PAYMENT] CRITICAL: Payment ${savedPayment.id} not found in database after ${maxVerifyAttempts} verification attempts!`);
+        // Log thêm thông tin để debug
+        const allPayments = await this.dataSource.query(
+          `SELECT id, booking_id, payment_status FROM payments WHERE booking_id = ? ORDER BY id DESC LIMIT 10`,
+          [bookingId],
+        );
+        this.logger.error(`[PAYMENT] All payments for booking ${bookingId}: ${JSON.stringify(allPayments)}`);
+        throw new Error(`Payment ${savedPayment.id} was not saved to database`);
+      }
+      
+      return savedPayment;
+    } catch (error) {
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      this.logger.error(`[PAYMENT] Error creating payment for booking ${bookingId}:`, error);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async completePayment(
@@ -72,7 +135,7 @@ export class PaymentsService {
     this.logger.log(
       `[PAYMENT] completePayment start id=${paymentId}, tx=${transactionId}, success=${success}`,
     );
-    const payment = await this.paymentRepo.findOne({
+    let payment = await this.paymentRepo.findOne({
       where: { id: paymentId },
       relations: [
         'booking',
@@ -97,12 +160,49 @@ export class PaymentsService {
         ],
       });
       if (byTx) {
+        this.logger.log(
+          `[PAYMENT] Found payment by transaction_id=${transactionId}, actual id=${byTx.id}`,
+        );
+        payment = byTx;
         paymentId = byTx.id;
-        return this.completePayment(paymentId, transactionId, success);
       }
     }
 
-    if (!payment) throw new NotFoundException('Payment not found');
+    // Additional fallback: try to find by orderId format (PAY{id}_timestamp)
+    if (!payment && transactionId) {
+      const orderIdMatch = transactionId.match(/^PAY(\d+)_/);
+      if (orderIdMatch) {
+        const orderIdPaymentId = Number(orderIdMatch[1]);
+        if (orderIdPaymentId !== paymentId) {
+          this.logger.debug(
+            `[PAYMENT] Trying to find payment by orderId format: id=${orderIdPaymentId}`,
+          );
+          const byOrderId = await this.paymentRepo.findOne({
+            where: { id: orderIdPaymentId },
+            relations: [
+              'booking',
+              'booking.showtime',
+              'booking.bookingSeats',
+              'booking.bookingSeats.seat',
+            ],
+          });
+          if (byOrderId) {
+            this.logger.log(
+              `[PAYMENT] Found payment by orderId format, actual id=${byOrderId.id}`,
+            );
+            payment = byOrderId;
+            paymentId = byOrderId.id;
+          }
+        }
+      }
+    }
+
+    if (!payment) {
+      this.logger.error(
+        `[PAYMENT] Payment not found: id=${paymentId}, transactionId=${transactionId}`,
+      );
+      throw new NotFoundException('Payment not found');
+    }
 
     const bookingSeatsCount = (payment.booking as any)?.bookingSeats?.length || 0;
     const bookingShowtimeId =
@@ -338,6 +438,31 @@ export class PaymentsService {
 
     if (!payment) throw new NotFoundException('Payment not found');
 
+    // Đảm bảo booking được load đúng
+    if (!payment.booking) {
+      this.logger.error(`[MOMO] Payment ${paymentId} has no booking relation. Reloading...`);
+      // Thử reload với raw SQL
+      const rawPayment = await this.dataSource.query(
+        `SELECT booking_id FROM payments WHERE id = ? LIMIT 1`,
+        [paymentId],
+      );
+      if (rawPayment && rawPayment.length > 0 && rawPayment[0].booking_id) {
+        const bookingId = rawPayment[0].booking_id;
+        const booking = await this.bookingRepo.findOne({
+          where: { id: bookingId },
+          relations: ['showtime', 'showtime.movie'],
+        });
+        if (booking) {
+          (payment as any).booking = booking;
+          this.logger.debug(`[MOMO] Reloaded booking ${bookingId} for payment ${paymentId}`);
+        } else {
+          throw new NotFoundException(`Booking ${bookingId} not found for payment ${paymentId}`);
+        }
+      } else {
+        throw new NotFoundException(`Payment ${paymentId} has no associated booking`);
+      }
+    }
+
     if (!isAdmin && requesterUserId && payment.booking.userId !== requesterUserId) {
       throw new ForbiddenException('Bạn không có quyền tạo thanh toán cho vé này');
     }
@@ -353,22 +478,106 @@ export class PaymentsService {
     const orderId = `PAY${paymentId}_${Date.now()}`;
     const movieName = ((payment.booking as any).showtime?.movie?.title || 'Vé xem phim').trim().substring(0, 80);
     const orderInfo = `Thanh toán MoMo: ${movieName}`.substring(0, 90);
+    
+    // Đảm bảo bookingId được lấy đúng
+    const bookingId = (payment.booking as any)?.id || payment.booking?.id;
+    if (!bookingId) {
+      this.logger.error(`[MOMO] CRITICAL: Cannot get bookingId for payment ${paymentId}. Payment booking:`, payment.booking);
+      throw new BadRequestException('Không thể lấy thông tin booking từ payment');
+    }
+    
     const extraData = Buffer.from(
       JSON.stringify({
         paymentId,
-        bookingId: (payment.booking as any)?.id,
+        bookingId: bookingId,
       }),
     ).toString('base64');
 
     const effectiveIpnUrl = ipnUrl || returnUrl;
     this.logger.log(
-      `[MOMO] Creating payment: paymentId=${paymentId}, orderId=${orderId}, returnUrl=${returnUrl}, ipnUrl=${effectiveIpnUrl}`,
+      `[MOMO] Creating payment: paymentId=${paymentId}, bookingId=${bookingId}, orderId=${orderId}, returnUrl=${returnUrl}, ipnUrl=${effectiveIpnUrl}`,
     );
 
     // Lưu tạm orderId vào transaction_id để tra cứu fallback nếu IPN về mà không parse được id
+    // Save orderId to transaction_id for IPN lookup fallback
     if (!payment.transaction_id) {
       payment.transaction_id = orderId;
-      await this.paymentRepo.save(payment);
+      
+      // Sử dụng queryRunner với transaction explicit để đảm bảo commit ngay lập tức
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        // Update payment với transaction_id
+        await queryRunner.manager.update(
+          Payment,
+          { id: paymentId },
+          { transaction_id: orderId },
+        );
+        
+        // Commit transaction ngay lập tức
+        await queryRunner.commitTransaction();
+        
+        this.logger.debug(`[MOMO] Saved and committed payment ${paymentId} with transaction_id=${orderId}`);
+        
+        // Verify payment was saved correctly using raw SQL (bypass TypeORM cache)
+        // Sử dụng một connection mới để đảm bảo thấy được committed data
+        let verifyAttempts = 0;
+        const maxVerifyAttempts = 5;
+        let verified = false;
+        
+        while (verifyAttempts < maxVerifyAttempts && !verified) {
+          // Sử dụng raw SQL với connection mới để query
+          const rawVerify = await this.dataSource.query(
+            `SELECT id, booking_id, transaction_id, payment_status, payment_method, amount, created_at FROM payments WHERE id = ? LIMIT 1`,
+            [paymentId],
+          );
+          
+          if (rawVerify && rawVerify.length > 0) {
+            if (rawVerify[0].transaction_id === orderId) {
+              verified = true;
+              this.logger.debug(
+                `[MOMO] Verified payment ${paymentId} transaction_id=${orderId} (raw SQL verified on attempt ${verifyAttempts + 1})`,
+              );
+            } else {
+              this.logger.warn(
+                `[MOMO] Payment ${paymentId} transaction_id mismatch: expected ${orderId}, got ${rawVerify[0].transaction_id} (attempt ${verifyAttempts + 1})`,
+              );
+            }
+          } else {
+            this.logger.warn(
+              `[MOMO] Payment ${paymentId} not found in database after save and commit (attempt ${verifyAttempts + 1})`,
+            );
+          }
+          
+          if (!verified && verifyAttempts < maxVerifyAttempts - 1) {
+            // Wait a bit longer for database to commit
+            await new Promise((resolve) => setTimeout(resolve, 200 * (verifyAttempts + 1)));
+          }
+          verifyAttempts++;
+        }
+        
+        if (!verified) {
+          this.logger.error(
+            `[MOMO] CRITICAL: Payment ${paymentId} could not be verified after ${maxVerifyAttempts} attempts even after commit!`,
+          );
+          // Log thêm thông tin để debug
+          const allPayments = await this.dataSource.query(
+            `SELECT id, booking_id, transaction_id FROM payments WHERE booking_id = ? OR id = ? ORDER BY id DESC LIMIT 10`,
+            [(payment.booking as any)?.id || payment.booking?.id, paymentId],
+          );
+          this.logger.error(`[MOMO] All related payments: ${JSON.stringify(allPayments)}`);
+        }
+      } catch (error) {
+        if (queryRunner.isTransactionActive) {
+          await queryRunner.rollbackTransaction();
+        }
+        this.logger.error(`[MOMO] Error updating payment ${paymentId} transaction_id:`, error);
+        throw error;
+      } finally {
+        await queryRunner.release();
+      }
     }
 
     const amountNumber = Math.round(Number(payment.amount || 0));
@@ -409,11 +618,21 @@ export class PaymentsService {
       throw new BadRequestException('Chữ ký MoMo không hợp lệ');
     }
 
-    // orderId format: PAY{paymentId}_BK{bookingId}_{timestamp}
+    // orderId format có thể là:
+    // - PAY{paymentId}_BK{bookingId}_PND{timestamp} (format cũ)
+    // - PAY{paymentId}_{timestamp} (format mới)
     const orderId = payload?.orderId as string;
-    const matched = orderId?.match(/^PAY(\d+)_BK(\d+)_PND/);
+    
+    // Thử match format cũ trước
+    let matched = orderId?.match(/^PAY(\d+)_BK(\d+)_PND/);
     let paymentId = matched ? Number(matched[1]) : null;
     let bookingIdFromOrder: number | null = matched && matched[2] ? Number(matched[2]) : null;
+    
+    // Nếu không match format cũ, thử format mới: PAY{paymentId}_{timestamp}
+    if (!paymentId) {
+      matched = orderId?.match(/^PAY(\d+)_(\d+)$/);
+      paymentId = matched ? Number(matched[1]) : null;
+    }
 
     let bookingIdFromExtra: number | null = bookingIdFromOrder;
     // Fallback: lấy paymentId/bookingId từ extraData nếu orderId không parse được
@@ -421,20 +640,42 @@ export class PaymentsService {
       try {
         const decodedExtra = Buffer.from(payload.extraData, 'base64').toString('utf8');
         const parsedExtra = JSON.parse(decodedExtra);
+        this.logger.debug(`[MOMO][IPN] Parsed extraData: ${JSON.stringify(parsedExtra)}`);
+        
         if (!paymentId && parsedExtra?.paymentId) {
           paymentId = Number(parsedExtra.paymentId);
+          this.logger.debug(`[MOMO][IPN] Got paymentId from extraData: ${paymentId}`);
         }
         if (parsedExtra?.bookingId) {
-          bookingIdFromExtra = Number(parsedExtra.bookingId);
+          const parsedBookingId = Number(parsedExtra.bookingId);
+          // Validate bookingId - nó không nên bằng paymentId (trừ khi thực sự trùng hợp)
+          if (parsedBookingId && parsedBookingId > 0) {
+            bookingIdFromExtra = parsedBookingId;
+            this.logger.debug(`[MOMO][IPN] Got bookingId from extraData: ${bookingIdFromExtra}`);
+            
+            // Warning nếu bookingId trùng với paymentId (có thể là bug)
+            if (paymentId && bookingIdFromExtra === paymentId) {
+              this.logger.warn(
+                `[MOMO][IPN] WARNING: bookingId (${bookingIdFromExtra}) equals paymentId (${paymentId}). This might indicate a bug.`,
+              );
+            }
+          } else {
+            this.logger.warn(`[MOMO][IPN] Invalid bookingId in extraData: ${parsedExtra.bookingId}`);
+          }
         }
       } catch (err) {
         this.logger.warn(`[MOMO] Không thể parse extraData cho orderId=${orderId}: ${err?.message}`);
       }
     }
-
+    
+    // Final validation
     if (!paymentId) {
-      throw new BadRequestException('orderId hoặc extraData không hợp lệ');
+      throw new BadRequestException('orderId hoặc extraData không hợp lệ - không tìm thấy paymentId');
     }
+    
+    this.logger.debug(
+      `[MOMO][IPN] Resolved IDs: paymentId=${paymentId}, bookingIdFromOrder=${bookingIdFromOrder}, bookingIdFromExtra=${bookingIdFromExtra}`,
+    );
 
     const success = Number(payload?.resultCode) === 0;
     const transactionId = payload?.transId?.toString() || orderId;
@@ -451,42 +692,277 @@ export class PaymentsService {
       'booking.bookingSeats.seat',
     ] as const;
 
-    let payment =
-      (await this.paymentRepo.findOne({ where: { id: paymentId }, relations: relations as any })) ||
-      (await this.paymentRepo.findOne({ where: { transaction_id: orderId }, relations: relations as any })) ||
-      (await this.paymentRepo.findOne({ where: { transaction_id: transactionId }, relations: relations as any }));
+    // Retry logic với exponential backoff để xử lý race condition
+    // IPN có thể đến trước khi payment được commit vào database
+    const maxRetries = 5;
+    const initialDelay = 200; // 200ms
+    let payment: Payment | null = null;
 
-    if (!payment && bookingIdFromExtra) {
-      payment = await this.paymentRepo.findOne({
-        where: { booking: { id: bookingIdFromExtra } as any },
-        order: { id: 'DESC' as any },
-        relations: relations as any,
-      });
+    // Debug: Kiểm tra payment có tồn tại trong database không ngay từ đầu
+    // Sử dụng queryRunner với connection mới để đảm bảo thấy được committed data
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    
+    try {
+      const initialCheck = await queryRunner.query(
+        `SELECT id, booking_id, transaction_id, payment_status, payment_method, amount, created_at FROM payments WHERE id = ? LIMIT 1`,
+        [paymentId],
+      );
+      this.logger.debug(
+        `[MOMO][IPN] Initial database check for paymentId=${paymentId}: ${initialCheck && initialCheck.length > 0 ? `FOUND - ${JSON.stringify(initialCheck[0])}` : 'NOT FOUND'}`,
+      );
+      
+      // Debug: Kiểm tra tất cả payments có booking_id = bookingIdFromExtra để xem payment có tồn tại không
+      if (bookingIdFromExtra) {
+        const allPaymentsForBooking = await queryRunner.query(
+          `SELECT id, booking_id, transaction_id, payment_status, payment_method, amount, created_at FROM payments WHERE booking_id = ? ORDER BY id DESC`,
+          [bookingIdFromExtra],
+        );
+        this.logger.debug(
+          `[MOMO][IPN] All payments for bookingId=${bookingIdFromExtra}: ${allPaymentsForBooking.length} payment(s) - ${JSON.stringify(allPaymentsForBooking)}`,
+        );
+      }
+      
+      // Debug: Kiểm tra payments có transaction_id = orderId
+      const paymentsByOrderId = await queryRunner.query(
+        `SELECT id, booking_id, transaction_id, payment_status, payment_method, amount, created_at FROM payments WHERE transaction_id = ?`,
+        [orderId],
+      );
+      this.logger.debug(
+        `[MOMO][IPN] Payments with transaction_id=${orderId}: ${paymentsByOrderId.length} payment(s) - ${JSON.stringify(paymentsByOrderId)}`,
+      );
+      
+      // Debug: Kiểm tra booking có tồn tại không
+      if (bookingIdFromExtra) {
+        const bookingCheck = await queryRunner.query(
+          `SELECT id, user_id, showtime_id, total_price_movie, created_at FROM Bookings WHERE id = ? LIMIT 1`,
+          [bookingIdFromExtra],
+        );
+        this.logger.debug(
+          `[MOMO][IPN] Booking check for bookingId=${bookingIdFromExtra}: ${bookingCheck && bookingCheck.length > 0 ? `FOUND - ${JSON.stringify(bookingCheck[0])}` : 'NOT FOUND'}`,
+        );
+      }
+    } finally {
+      await queryRunner.release();
     }
 
-    if (!payment && bookingIdFromExtra) {
-      const booking = await this.bookingRepo.findOne({
-        where: { id: bookingIdFromExtra },
-        relations: ['bookingSeats', 'bookingSeats.seat', 'showtime'],
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      // Tìm payment bằng nhiều cách:
+      // 1. Tìm bằng paymentId (TypeORM)
+      payment = await this.paymentRepo.findOne({ 
+        where: { id: paymentId }, 
+        relations: relations as any 
       });
-      if (booking) {
-        // tránh tạo trùng nếu đã có payment completed
-        const existingCompleted = await this.paymentRepo.findOne({
-          where: {
-            booking: { id: bookingIdFromExtra } as any,
-            payment_status: PaymentStatus.COMPLETED,
-          },
+      
+      if (payment) {
+        this.logger.debug(`[MOMO][IPN] Found payment by id=${paymentId} on attempt ${attempt + 1} (TypeORM)`);
+        break;
+      }
+      
+      // 1b. Tìm bằng paymentId (Raw SQL với connection mới - bypass TypeORM cache/transaction)
+      if (!payment) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        try {
+          const rawPayment = await queryRunner.query(
+            `SELECT id, booking_id, transaction_id, payment_status, payment_method, amount, created_at FROM payments WHERE id = ? LIMIT 1`,
+            [paymentId],
+          );
+          if (rawPayment && rawPayment.length > 0) {
+            this.logger.debug(
+              `[MOMO][IPN] Found payment by id=${paymentId} using raw SQL on attempt ${attempt + 1}. Data: ${JSON.stringify(rawPayment[0])}`,
+            );
+            // Load with relations
+            payment = await this.paymentRepo.findOne({
+              where: { id: paymentId },
+              relations: relations as any,
+            });
+            if (payment) {
+              this.logger.debug(`[MOMO][IPN] Successfully loaded payment ${paymentId} with relations`);
+              break;
+            } else {
+              this.logger.warn(`[MOMO][IPN] Payment ${paymentId} found in raw SQL but TypeORM cannot load it with relations`);
+            }
+          } else {
+            this.logger.debug(`[MOMO][IPN] Payment ${paymentId} NOT found in database (raw SQL) on attempt ${attempt + 1}`);
+          }
+        } finally {
+          await queryRunner.release();
+        }
+      }
+      
+      // 2. Tìm bằng orderId (transaction_id có thể là orderId)
+      if (!payment) {
+        payment = await this.paymentRepo.findOne({ 
+          where: { transaction_id: orderId }, 
+          relations: relations as any 
         });
-        if (!existingCompleted) {
+        if (payment) {
+          this.logger.debug(`[MOMO][IPN] Found payment by transaction_id=${orderId} on attempt ${attempt + 1}`);
+          break;
+        }
+      }
+      
+      // 2b. Tìm bằng orderId (Raw SQL)
+      if (!payment) {
+        const rawPayment = await this.dataSource.query(
+          `SELECT * FROM payments WHERE transaction_id = ? LIMIT 1`,
+          [orderId],
+        );
+        if (rawPayment && rawPayment.length > 0) {
+          const foundId = rawPayment[0].id;
+          this.logger.debug(`[MOMO][IPN] Found payment by transaction_id=${orderId} using raw SQL, id=${foundId} on attempt ${attempt + 1}`);
+          payment = await this.paymentRepo.findOne({
+            where: { id: foundId },
+            relations: relations as any,
+          });
+          if (payment) break;
+        }
+      }
+      
+      // 3. Tìm bằng transactionId từ MoMo (transId)
+      if (!payment && transactionId && transactionId !== orderId) {
+        payment = await this.paymentRepo.findOne({ 
+          where: { transaction_id: transactionId }, 
+          relations: relations as any 
+        });
+        if (payment) {
+          this.logger.debug(`[MOMO][IPN] Found payment by transaction_id=${transactionId} on attempt ${attempt + 1}`);
+          break;
+        }
+      }
+
+      // 4. Tìm bằng booking_id sử dụng query builder
+      if (!payment && bookingIdFromExtra) {
+        payment = await this.paymentRepo
+          .createQueryBuilder('payment')
+          .leftJoinAndSelect('payment.booking', 'booking')
+          .leftJoinAndSelect('booking.showtime', 'showtime')
+          .leftJoinAndSelect('booking.bookingSeats', 'bookingSeats')
+          .leftJoinAndSelect('bookingSeats.seat', 'seat')
+          .where('payment.booking_id = :bookingId', { bookingId: bookingIdFromExtra })
+          .orderBy('payment.id', 'DESC')
+          .getOne();
+        if (payment) {
+          this.logger.debug(`[MOMO][IPN] Found payment by booking_id=${bookingIdFromExtra} on attempt ${attempt + 1}`);
+          break;
+        }
+      }
+
+      // 4b. Tìm bằng booking_id (Raw SQL)
+      if (!payment && bookingIdFromExtra) {
+        const rawPayment = await this.dataSource.query(
+          `SELECT * FROM payments WHERE booking_id = ? ORDER BY id DESC LIMIT 1`,
+          [bookingIdFromExtra],
+        );
+        if (rawPayment && rawPayment.length > 0) {
+          const foundId = rawPayment[0].id;
+          this.logger.debug(`[MOMO][IPN] Found payment by booking_id=${bookingIdFromExtra} using raw SQL, id=${foundId} on attempt ${attempt + 1}`);
+          payment = await this.paymentRepo.findOne({
+            where: { id: foundId },
+            relations: relations as any,
+          });
+          if (payment) break;
+        }
+      }
+
+      if (payment) {
+        break; // Found payment, exit retry loop
+      }
+
+      // Wait before retrying (exponential backoff)
+      if (attempt < maxRetries - 1) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        this.logger.debug(
+          `[MOMO][IPN] Payment not found on attempt ${attempt + 1}/${maxRetries} (paymentId=${paymentId}, orderId=${orderId}, bookingId=${bookingIdFromExtra}), retrying in ${delay}ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    // Fallback: tạo payment mới nếu vẫn không tìm thấy và có bookingId
+    if (!payment && bookingIdFromExtra) {
+      // Nếu bookingId trùng với paymentId, có thể là bug - thử lấy booking_id từ payment trước
+      if (bookingIdFromExtra === paymentId) {
+        this.logger.warn(
+          `[MOMO][IPN] bookingId (${bookingIdFromExtra}) equals paymentId (${paymentId}). Trying to get real booking_id from payment...`,
+        );
+        const rawPayment = await this.dataSource.query(
+          `SELECT booking_id FROM payments WHERE id = ? LIMIT 1`,
+          [paymentId],
+        );
+        if (rawPayment && rawPayment.length > 0 && rawPayment[0].booking_id) {
+          const realBookingId = rawPayment[0].booking_id;
+          this.logger.debug(`[MOMO][IPN] Found real booking_id=${realBookingId} from payment ${paymentId}`);
+          bookingIdFromExtra = realBookingId;
+        }
+      }
+      
+      this.logger.warn(
+        `[MOMO][IPN] Payment not found after all retries, attempting fallback creation for bookingId=${bookingIdFromExtra}`,
+      );
+      
+      // Try to find booking using raw SQL first
+      const rawBooking = await this.dataSource.query(
+        `SELECT * FROM Bookings WHERE id = ? LIMIT 1`,
+        [bookingIdFromExtra],
+      );
+      
+      let booking: Booking | null = null;
+      if (rawBooking && rawBooking.length > 0 && bookingIdFromExtra) {
+        // Booking exists, load with relations
+        booking = await this.bookingRepo.findOne({
+          where: { id: bookingIdFromExtra },
+          relations: ['bookingSeats', 'bookingSeats.seat', 'showtime'],
+        });
+      } else if (bookingIdFromExtra) {
+        // Try TypeORM query as fallback
+        booking = await this.bookingRepo.findOne({
+          where: { id: bookingIdFromExtra },
+          relations: ['bookingSeats', 'bookingSeats.seat', 'showtime'],
+        });
+      }
+      
+      if (!booking) {
+        this.logger.error(`[MOMO][IPN] Booking ${bookingIdFromExtra} not found for fallback payment creation (checked with raw SQL and TypeORM)`);
+      } else {
+        // Kiểm tra xem đã có payment completed chưa (sử dụng query builder)
+        const existingCompleted = await this.paymentRepo
+          .createQueryBuilder('payment')
+          .where('payment.booking_id = :bookingId', { bookingId: bookingIdFromExtra })
+          .andWhere('payment.payment_status = :status', { status: PaymentStatus.COMPLETED })
+          .getOne();
+          
+        if (existingCompleted) {
+          this.logger.warn(
+            `[MOMO][IPN] Booking ${bookingIdFromExtra} already has completed payment ${existingCompleted.id}, using existing payment`,
+          );
+          // Load full relations for existing payment
+          payment = await this.paymentRepo.findOne({
+            where: { id: existingCompleted.id },
+            relations: relations as any,
+          });
+        } else {
+          // Tạo payment mới
+          const bookingTotalPrice = (booking as any).totalPriceMovie || 0;
           const newPayment = this.paymentRepo.create({
             booking,
             payment_method: PaymentMethod.MOMO,
             payment_status: success ? PaymentStatus.COMPLETED : PaymentStatus.FAILED,
-            amount: Number(payload?.amount) || booking.totalPriceMovie,
+            amount: Number(payload?.amount) || bookingTotalPrice,
             transaction_id: transactionId || orderId,
             payment_time: new Date(),
           });
           payment = await this.paymentRepo.save(newPayment);
+          
+          // Load với relations
+          if (payment) {
+            payment = await this.paymentRepo.findOne({
+              where: { id: payment.id },
+              relations: relations as any,
+            });
+          }
+          
           const createdPaymentId = payment ? payment.id : 'unknown';
           this.logger.warn(
             `[MOMO][IPN] Created missing payment for booking ${bookingIdFromExtra} with id=${createdPaymentId} (fallback)`,
@@ -496,10 +972,16 @@ export class PaymentsService {
     }
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      this.logger.error(
+        `[MOMO][IPN] Payment not found after ${maxRetries} attempts: paymentId=${paymentId}, orderId=${orderId}, transactionId=${transactionId}, bookingId=${bookingIdFromExtra}`,
+      );
+      throw new NotFoundException(`Payment not found for orderId=${orderId}`);
     }
 
     const resolvedPaymentId = payment.id;
+    this.logger.log(
+      `[MOMO][IPN] Found payment: id=${resolvedPaymentId}, currentStatus=${payment.payment_status}`,
+    );
 
     try {
       await this.completePayment(resolvedPaymentId, transactionId, success);

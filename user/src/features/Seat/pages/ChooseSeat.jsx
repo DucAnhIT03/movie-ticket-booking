@@ -31,7 +31,6 @@ export default function ChooseSeat() {
   const [screenInfo, setScreenInfo] = useState(null);
   const [showtimeInfo, setShowtimeInfo] = useState(null);
   const [theaterInfo, setTheaterInfo] = useState(null);
-  const [priceCache, setPriceCache] = useState({}); 
   const [errorMessage, setErrorMessage] = useState(""); 
 
   
@@ -327,13 +326,6 @@ export default function ChooseSeat() {
   }, [showtimeId, fetchSeats]);
 
   const toggleSeat = (seatId, seatCode) => {
-
-    const cacheKeys = Object.keys(priceCacheRef.current);
-    cacheKeys.forEach(key => {
-      delete priceCacheRef.current[key];
-    });
-    setPriceCache({});
-    
     setSelected((prev) => {
       const seatKey = `${seatId}-${seatCode}`;
       
@@ -342,11 +334,9 @@ export default function ChooseSeat() {
         return prev.filter((s) => s !== seatKey);
       } 
       
-    
       const validation = validateSeatSelection(prev, seatCode, seats);
       
       if (!validation.valid) {
-     
         setErrorMessage(validation.message);
         
         const timeoutId = setTimeout(() => {
@@ -356,29 +346,30 @@ export default function ChooseSeat() {
         return prev;
       }
       
-      
       setErrorMessage("");
       return [...prev, seatKey];
     });
   };
 
  
-  const priceCacheRef = useRef({});
+  // Cache để lưu giá theo cache key
+  const priceCacheRef = useRef(new Map());
   
+  // Tạo cache key từ các tham số
+  const createCacheKey = useCallback((seatType, movieId, movieType, date, time, theaterId) => {
+    return `${seatType}_${movieId || 'null'}_${movieType}_${date}_${time || 'null'}_${theaterId || 'null'}`;
+  }, []);
 
   const movieId = useMemo(() => movie?.id ? parseInt(movie.id) : null, [movie?.id]);
   const movieType = useMemo(() => movie?.type || '2D', [movie?.type]);
   
- 
   const getSeatPriceRef = useRef(null);
   
+  // Hàm lấy giá với cache
   const getSeatPrice = useCallback(async (seatType, movieIdParam = null) => {
- 
     const movieIdToUse = movieIdParam || movieId;
     const movieTypeToUse = movieType;
-    
     const theaterIdToUse = screenInfo?.theaterId || showtimeInfo?.screen?.theaterId || showtimeInfo?.theaterId || null;
-    
 
     if (!selectedDate || !showtime) {
       const defaultPrices = {
@@ -389,144 +380,112 @@ export default function ChooseSeat() {
       return defaultPrices[seatType] || 90000;
     }
 
-    try {
-      
-      let apiDate;
-      if (selectedDate.includes("-")) {
-        const parts = selectedDate.split("-");
-        if (parts.length === 3) {
-         
-          if (parts[0].length === 4) {
-          
-            apiDate = selectedDate;
-          } else {
-           
-            const [day, month, year] = parts;
-            apiDate = `${year}-${month}-${day}`;
-          }
+    // Tạo cache key
+    let apiDate;
+    if (selectedDate.includes("-")) {
+      const parts = selectedDate.split("-");
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          apiDate = selectedDate;
         } else {
-          console.error("Invalid date format:", selectedDate);
-          throw new Error("Invalid date format");
+          const [day, month, year] = parts;
+          apiDate = `${year}-${month}-${day}`;
         }
       } else {
-        console.error("Invalid date format:", selectedDate);
-        throw new Error("Invalid date format");
+        apiDate = selectedDate;
       }
-      
-      console.log('🔍 [USER] Getting price for:', {
-        seatType,
-        movieType: movieTypeToUse,
-        movieId: movieIdToUse,
-        theaterId: theaterIdToUse,
-        date: apiDate,
-        time: showtime,
-        selectedDate,
-        showtime,
-        screenInfo: screenInfo ? { id: screenInfo.id, theaterId: screenInfo.theaterId } : null,
-        showtimeInfo: showtimeInfo ? { id: showtimeInfo.id } : null
-      });
-      
-    
-      const response = await ticketPriceService.getPrice(
-        seatType,
-        movieTypeToUse,
-        apiDate,
-        showtime,
-        movieIdToUse,
-        theaterIdToUse
-      );
-      
-      console.log('📥 [USER] Price API response:', {
-        status: response.status,
-        data: response.data,
-        dataType: typeof response.data,
-        seatType,
-        theaterId: theaterIdToUse,
-        date: apiDate,
-        time: showtime,
-        fullResponse: JSON.stringify(response.data)
-      });
-
-      if (response.status === 200) {
-        
-        let price = null;
-        
-        if (typeof response.data === 'number') {
-          price = response.data;
-        } else if (typeof response.data === 'string' && response.data.trim() !== '') {
-          
-          const parsed = parseFloat(response.data);
-          if (!isNaN(parsed)) {
-            price = parsed;
-          } else {
-            console.warn(`⚠️ Cannot parse price from string:`, response.data);
-          }
-        } else if (typeof response.data === 'object' && response.data !== null) {
-          
-          price = response.data.price || response.data.value || response.data.amount || null;
-        }
-        
-        
-        const priceNum = typeof price === 'number' ? price : (price ? parseFloat(price) : null);
-        
-        if (priceNum !== null && !isNaN(priceNum) && priceNum > 0) {
-          console.log(`✅ Got price for ${seatType}: ${priceNum} VND (theaterId: ${theaterIdToUse}, date: ${apiDate}, time: ${showtime})`);
-          return priceNum;
-        } else {
-          console.warn(`⚠️ Invalid price for ${seatType}:`, {
-            priceNum,
-            originalData: response.data,
-            dataType: typeof response.data,
-            seatType,
-            date: apiDate,
-            time: showtime
-          });
-        }
-      } else {
-        console.warn(`⚠️ API returned status ${response.status} for price request:`, {
-          status: response.status,
-          data: response.data,
-          seatType,
-          date: apiDate,
-          time: showtime
-        });
-      }
-      
-      console.warn(`⚠️ [USER] No valid price found for ${seatType}, using default price`, {
-        seatType,
-        movieId: movieIdToUse,
-        movieType: movieTypeToUse,
-        theaterId: theaterIdToUse,
-        date: apiDate,
-        time: showtime,
-        responseStatus: response?.status,
-        responseData: response?.data
-      });
-    } catch (error) {
-      console.error("❌ [USER] Error fetching ticket price:", {
-        error: error.message,
-        stack: error.stack,
-        seatType,
-        movieId: movieIdToUse,
-        movieType: movieTypeToUse,
-        theaterId: theaterIdToUse,
-        date: selectedDate,
-        time: showtime,
-        response: error.response?.data
-      });
+    } else {
+      apiDate = selectedDate;
     }
 
-    const defaultPrices = {
-      STANDARD: 90000,
-      VIP: 120000,
-      SWEETBOX: 150000
-    };
-    const defaultPrice = defaultPrices[seatType] || 90000;
-    console.log(`💰 [USER] Using default price for ${seatType}: ${defaultPrice} VND`);
-    return defaultPrice;
-  }, [movieId, movieType, selectedDate, showtime, screenInfo, showtimeInfo]);
+    const cacheKey = createCacheKey(seatType, movieIdToUse, movieTypeToUse, apiDate, showtime, theaterIdToUse);
+    
+    // Kiểm tra cache trước
+    if (priceCacheRef.current.has(cacheKey)) {
+      const cachedPrice = priceCacheRef.current.get(cacheKey);
+      if (cachedPrice && cachedPrice.promise) {
+        // Đang fetch, đợi kết quả
+        return await cachedPrice.promise;
+      }
+      if (cachedPrice && cachedPrice.price) {
+        return cachedPrice.price;
+      }
+    }
+
+    // Tạo promise để cache
+    const pricePromise = (async () => {
+      try {
+        const response = await ticketPriceService.getPrice(
+          seatType,
+          movieTypeToUse,
+          apiDate,
+          showtime,
+          movieIdToUse,
+          theaterIdToUse
+        );
+
+        if (response.status === 200) {
+          let price = null;
+          
+          if (typeof response.data === 'number') {
+            price = response.data;
+          } else if (typeof response.data === 'string' && response.data.trim() !== '') {
+            const parsed = parseFloat(response.data);
+            if (!isNaN(parsed)) {
+              price = parsed;
+            }
+          } else if (typeof response.data === 'object' && response.data !== null) {
+            price = response.data.price || response.data.value || response.data.amount || null;
+          }
+          
+          const priceNum = typeof price === 'number' ? price : (price ? parseFloat(price) : null);
+          
+          if (priceNum !== null && !isNaN(priceNum) && priceNum > 0) {
+            // Lưu vào cache
+            priceCacheRef.current.set(cacheKey, { price: priceNum, timestamp: Date.now() });
+            return priceNum;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching ticket price:", error);
+      }
+
+      // Fallback về giá mặc định
+      const defaultPrices = {
+        STANDARD: 90000,
+        VIP: 120000,
+        SWEETBOX: 150000
+      };
+      const defaultPrice = defaultPrices[seatType] || 90000;
+      priceCacheRef.current.set(cacheKey, { price: defaultPrice, timestamp: Date.now() });
+      return defaultPrice;
+    })();
+
+    // Lưu promise vào cache để tránh duplicate requests
+    priceCacheRef.current.set(cacheKey, { promise: pricePromise });
+    
+    try {
+      const result = await pricePromise;
+      // Cập nhật cache với giá thực tế
+      if (priceCacheRef.current.has(cacheKey)) {
+        const cached = priceCacheRef.current.get(cacheKey);
+        if (cached && cached.promise) {
+          priceCacheRef.current.set(cacheKey, { price: result, timestamp: Date.now() });
+        }
+      }
+      return result;
+    } catch (error) {
+      // Xóa promise khỏi cache nếu lỗi
+      priceCacheRef.current.delete(cacheKey);
+      const defaultPrices = {
+        STANDARD: 90000,
+        VIP: 120000,
+        SWEETBOX: 150000
+      };
+      return defaultPrices[seatType] || 90000;
+    }
+  }, [movieId, movieType, selectedDate, showtime, screenInfo, showtimeInfo, createCacheKey]);
   
- 
   useEffect(() => {
     getSeatPriceRef.current = getSeatPrice;
   }, [getSeatPrice]);
@@ -555,11 +514,10 @@ export default function ChooseSeat() {
     seatsLength: 0
   });
   const isCalculatingRef = useRef(false);
+  const calculationTimeoutRef = useRef(null);
   
   useEffect(() => {
-   
     const currentSelected = selectedRef.current;
-    
     
     if (currentSelected.length === 0) {
       setTotalPrice(0);
@@ -572,6 +530,10 @@ export default function ChooseSeat() {
         seatsLength: 0
       };
       isCalculatingRef.current = false;
+      if (calculationTimeoutRef.current) {
+        clearTimeout(calculationTimeoutRef.current);
+        calculationTimeoutRef.current = null;
+      }
       return;
     }
 
@@ -581,7 +543,6 @@ export default function ChooseSeat() {
       return;
     }
 
-   
     const currentDeps = {
       selectedHash,
       movieId,
@@ -601,34 +562,65 @@ export default function ChooseSeat() {
       return;
     }
     
-  
-    if (isCalculatingRef.current) {
-      return;
-    }
-    
     prevDepsRef.current = currentDeps;
 
-    const calculateTotal = async () => {
+    // Clear timeout cũ nếu có
+    if (calculationTimeoutRef.current) {
+      clearTimeout(calculationTimeoutRef.current);
+    }
+
+    // Debounce nhẹ để tránh tính toán quá nhiều khi click nhanh
+    calculationTimeoutRef.current = setTimeout(async () => {
+      if (isCalculatingRef.current) {
+        return;
+      }
+
       isCalculatingRef.current = true;
       setIsCalculatingPrice(true);
-      let total = 0;
       
       try {
-        
         const flatSeats = seats.flat();
+        const seatPriceMap = new Map(); // Map để group seats theo type
         
+        // Group seats theo type để giảm số lượng API calls
+        const seatsByType = new Map();
         for (const seatKey of selectedRef.current) {
           const [seatId, seatCode] = seatKey.split('-');
           const seat = flatSeats.find(s => s.id === parseInt(seatId));
           const seatType = seat?.type || "STANDARD";
           
+          if (!seatsByType.has(seatType)) {
+            seatsByType.set(seatType, []);
+          }
+          seatsByType.get(seatType).push({ seatKey, seatId, seatCode, seat });
+        }
+        
+        // Fetch tất cả prices song song theo từng type
+        const pricePromises = Array.from(seatsByType.entries()).map(async ([seatType, seatList]) => {
           if (getSeatPriceRef.current) {
             const price = await getSeatPriceRef.current(seatType, movieId);
-          
             const validPrice = (price && !isNaN(price) && price > 0) ? price : 0;
-            total += validPrice;
+            
+            // Lưu giá cho tất cả seats cùng type
+            seatList.forEach(({ seatKey }) => {
+              seatPriceMap.set(seatKey, validPrice);
+            });
+            
+            return { seatType, price: validPrice, count: seatList.length };
           }
+          return null;
+        });
+        
+        // Đợi tất cả prices được fetch
+        await Promise.all(pricePromises);
+        
+        // Tính tổng từ map
+        let total = 0;
+        for (const seatKey of selectedRef.current) {
+          const price = seatPriceMap.get(seatKey) || 0;
+          total += price;
         }
+        
         setTotalPrice(total);
       } catch (error) {
         console.error("Error calculating total price:", error);
@@ -636,11 +628,15 @@ export default function ChooseSeat() {
       } finally {
         setIsCalculatingPrice(false);
         isCalculatingRef.current = false;
+        calculationTimeoutRef.current = null;
+      }
+    }, 100); // Debounce 100ms
+    
+    return () => {
+      if (calculationTimeoutRef.current) {
+        clearTimeout(calculationTimeoutRef.current);
       }
     };
-
-    calculateTotal();
-   
   }, [selectedHash, movieId, selectedDate, showtime, seats.length]);
   const selectedSeatCodes = selected.map(s => s.split('-')[1]);
 

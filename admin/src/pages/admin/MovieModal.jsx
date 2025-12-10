@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, Trash2, Clock, Calendar } from 'lucide-react';
+import { toast } from 'react-toastify';
+import locationService from '../../services/locations/locationService';
 import './MovieModal.css';
 
 export default function MovieModal({ title, onClose, onSave, initialData, fields, isSaving = false, saveProgress = "" }) {
   const [formData, setFormData] = useState({});
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
   
 
   const getFieldByName = (name) => fields.find(f => f.name === name);
@@ -26,6 +31,102 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
       }
       return false;
     });
+  };
+
+  const composeLocationText = (data) => {
+    const detail = data.addressDetail || "";
+    const wardName = data.wardName || "";
+    const districtName = data.districtName || "";
+    const provinceName = data.provinceName || "";
+    return [detail, wardName, districtName, provinceName].filter(Boolean).join(", ");
+  };
+
+  const setAddressData = (patch) => {
+    setFormData((prev) => {
+      const next = { ...prev, ...patch };
+      next.location = composeLocationText(next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const hasAddressField = fields.some((f) => f.type === 'addressVN');
+    if (!hasAddressField) return;
+
+    const loadProvinces = async () => {
+      try {
+        const data = await locationService.getProvinces();
+        setProvinces(
+          data.map((item) => ({
+            code: item.code,
+            name: item.name,
+          }))
+        );
+      } catch (error) {
+        console.error("Error loading provinces", error);
+        toast.error("Không thể tải danh sách tỉnh/thành");
+      }
+    };
+
+    loadProvinces();
+  }, [fields]);
+
+  const handleProvinceChange = async (provinceCode) => {
+    setAddressData({
+      provinceCode,
+      districtCode: "",
+      wardCode: "",
+      districtName: "",
+      wardName: "",
+      provinceName: provinces.find((p) => `${p.code}` === `${provinceCode}`)?.name || "",
+    });
+
+    if (!provinceCode) {
+      setDistricts([]);
+      setWards([]);
+      return;
+    }
+
+    try {
+      const ds = await locationService.getDistricts(provinceCode);
+      setDistricts(
+        ds.map((d) => ({
+          code: d.code,
+          name: d.name,
+        }))
+      );
+      setWards([]);
+    } catch (error) {
+      console.error("Error loading districts", error);
+      toast.error("Không thể tải danh sách quận/huyện");
+    }
+  };
+
+  const handleDistrictChange = async (districtCode) => {
+    setAddressData({
+      districtCode,
+      wardCode: "",
+      wardName: "",
+      districtName: districts.find((d) => `${d.code}` === `${districtCode}`)?.name || "",
+    });
+
+    if (!districtCode) {
+      setWards([]);
+      return;
+    }
+
+    try {
+      const ws = await locationService.getWards(districtCode);
+      setWards(
+        ws.map((w) => ({
+          code: w.code,
+          name: w.name,
+        }))
+      );
+    } catch (error) {
+      console.error("Error loading wards", error);
+      toast.error("Không thể tải danh sách phường/xã");
+    }
   };
   
  
@@ -65,6 +166,17 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
           ? initialData.releaseDate.split("T")[0] 
           : ""
       };
+
+      if (fields.some((f) => f.type === 'addressVN')) {
+        mappedData.addressDetail = mappedData.addressDetail ?? mappedData.location ?? "";
+        mappedData.provinceCode = mappedData.provinceCode ?? "";
+        mappedData.districtCode = mappedData.districtCode ?? "";
+        mappedData.wardCode = mappedData.wardCode ?? "";
+        mappedData.provinceName = mappedData.provinceName ?? "";
+        mappedData.districtName = mappedData.districtName ?? "";
+        mappedData.wardName = mappedData.wardName ?? "";
+        mappedData.location = composeLocationText(mappedData);
+      }
   
     fields.forEach(field => {
       if (mappedData[field.name] === undefined) {
@@ -89,6 +201,15 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
         } else {
           acc[field.name] = [];
         }
+        } else if (field.type === 'addressVN') {
+          acc.addressDetail = '';
+          acc.provinceCode = '';
+          acc.districtCode = '';
+          acc.wardCode = '';
+          acc.provinceName = '';
+          acc.districtName = '';
+          acc.wardName = '';
+          acc.location = '';
         } else {
         acc[field.name] = field.defaultValue ?? '';
         }
@@ -220,9 +341,17 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
       
    
       const fieldNames = fields.map(f => f.name);
+      const hasAddressField = fields.some(f => f.type === 'addressVN');
       const hasShowtimesField = fields.some(f => f.type === 'showtimes');
       if (hasShowtimesField && !fieldNames.includes('showtimesByDate')) {
         fieldNames.push('showtimesByDate');
+      }
+      if (hasAddressField) {
+        ['addressDetail', 'provinceCode', 'provinceName', 'districtCode', 'districtName', 'wardCode', 'wardName', 'location'].forEach((key) => {
+          if (!fieldNames.includes(key)) {
+            fieldNames.push(key);
+          }
+        });
       }
       
  
@@ -327,6 +456,65 @@ export default function MovieModal({ title, onClose, onSave, initialData, fields
                     );
                   })}
                 </select>
+              ) : field.type === 'addressVN' ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                    <select
+                      value={formData.provinceCode || ''}
+                      onChange={(e) => handleProvinceChange(e.target.value)}
+                      style={{ flex: 1, minWidth: "160px" }}
+                      required
+                    >
+                      <option value="">-- Chọn tỉnh/thành --</option>
+                      {provinces.map((p) => (
+                        <option key={p.code} value={p.code}>{p.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={formData.districtCode || ''}
+                      onChange={(e) => handleDistrictChange(e.target.value)}
+                      style={{ flex: 1, minWidth: "160px" }}
+                      disabled={!formData.provinceCode}
+                      required
+                    >
+                      <option value="">{formData.provinceCode ? "-- Chọn quận/huyện --" : "Chọn tỉnh trước"}</option>
+                      {districts.map((d) => (
+                        <option key={d.code} value={d.code}>{d.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={formData.wardCode || ''}
+                      onChange={(e) => {
+                        const wardCode = e.target.value;
+                        const wardName = wards.find((w) => `${w.code}` === `${wardCode}`)?.name || "";
+                        setAddressData({
+                          wardCode,
+                          wardName,
+                        });
+                      }}
+                      style={{ flex: 1, minWidth: "160px" }}
+                      disabled={!formData.districtCode}
+                      required
+                    >
+                      <option value="">{formData.districtCode ? "-- Chọn phường/xã --" : "Chọn quận trước"}</option>
+                      {wards.map((w) => (
+                        <option key={w.code} value={w.code}>{w.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Số nhà, tên đường..."
+                    value={formData.addressDetail || ''}
+                    onChange={(e) => {
+                      setAddressData({ addressDetail: e.target.value });
+                    }}
+                    required
+                  />
+                  <div style={{ fontSize: "13px", color: "#a0aec0" }}>
+                    Địa chỉ đầy đủ: {composeLocationText(formData) || "Chưa chọn"}
+                  </div>
+                </div>
               ) : field.type === 'multiselect' && field.options ? (() => {
                 
                 const displayOptions = field.name === 'screenIds' 
