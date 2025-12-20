@@ -90,7 +90,7 @@ export class BannerService {
           };
         }
       },
-      RedisCacheService.TTL.LONG // 30 minutes - banners rarely change
+      RedisCacheService.TTL.LONG 
     );
   }
 
