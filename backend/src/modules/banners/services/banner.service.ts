@@ -40,7 +40,7 @@ export class BannerService {
     const banner = await this.bannersRepo.findOne({ where: { id } });
     if (!banner) throw new NotFoundException('Banner not found');
     await this.bannersRepo.remove(banner);
-    // Invalidate cache after delete
+   
     await this.cacheService.invalidateBanners();
     return { success: true };
   }
