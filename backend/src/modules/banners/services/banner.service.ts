@@ -31,7 +31,7 @@ export class BannerService {
     if (!banner) throw new NotFoundException('Banner not found');
     Object.assign(banner, dto);
     const result = await this.bannersRepo.save(banner);
-    // Invalidate cache after update
+    
     await this.cacheService.invalidateBanners();
     return result;
   }
