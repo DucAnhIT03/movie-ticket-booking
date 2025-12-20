@@ -65,7 +65,7 @@ export class BannerService {
           };
 
           if (search && search.trim()) {
-            // Chỉ search trong url vì position là enum
+         
             queryOptions.where = {
               url: Like(`%${search.trim()}%`),
             };
