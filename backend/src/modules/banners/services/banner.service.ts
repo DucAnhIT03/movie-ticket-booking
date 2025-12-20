@@ -120,7 +120,7 @@ export class BannerService {
           return result || [];
         } catch (error) {
           console.error('Error in findAllNoPaging:', error);
-          // Trả về empty array thay vì throw error
+          
           return [];
         }
       },
