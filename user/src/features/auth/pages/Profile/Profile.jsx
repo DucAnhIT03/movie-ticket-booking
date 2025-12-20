@@ -343,11 +343,11 @@ export default function Profile() {
       return;
     }
 
-    // Tạo URL Google Maps với địa chỉ
+    
     const address = encodeURIComponent(theater.location);
     const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${address}`;
     
-    // Mở trong tab mới
+    
     window.open(googleMapsUrl, '_blank');
   };
 
