@@ -265,14 +265,14 @@ export default function LoginPage() {
     googleScript.defer = true;
     document.body.appendChild(googleScript);
 
-    // Load Apple Sign-In
+    
     const appleScript = document.createElement('script');
     appleScript.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
     appleScript.async = true;
     document.body.appendChild(appleScript);
 
     return () => {
-      // Cleanup
+      
       if (document.body.contains(googleScript)) {
         document.body.removeChild(googleScript);
       }
