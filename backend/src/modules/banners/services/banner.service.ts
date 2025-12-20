@@ -83,7 +83,7 @@ export class BannerService {
           };
         } catch (error) {
           console.error('Error in searchAndPaginate:', error);
-          // Trả về empty result thay vì throw error
+          
           return {
             items: [],
             meta: { total: 0, page: page || 1, limit: limit || 10, pageCount: 0 },
