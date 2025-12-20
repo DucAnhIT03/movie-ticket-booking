@@ -1031,7 +1031,22 @@ export default function EmailNotificationManagement() {
               {selectedLog.metadata && (
                 <div className="detail-item">
                   <strong>Metadata:</strong>
-                  <pre>{JSON.stringify(selectedLog.metadata, null, 2)}</pre>
+                  <pre className="metadata-pre">
+                    {(() => {
+                      try {
+                        // Nếu metadata là string, parse nó
+                        const metadataObj = typeof selectedLog.metadata === 'string' 
+                          ? JSON.parse(selectedLog.metadata) 
+                          : selectedLog.metadata;
+                        return JSON.stringify(metadataObj, null, 2);
+                      } catch (error) {
+                        // Nếu không parse được, hiển thị như string
+                        return typeof selectedLog.metadata === 'string' 
+                          ? selectedLog.metadata 
+                          : JSON.stringify(selectedLog.metadata, null, 2);
+                      }
+                    })()}
+                  </pre>
                 </div>
               )}
             </div>

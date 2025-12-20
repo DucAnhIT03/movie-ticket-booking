@@ -107,7 +107,7 @@ export default function Profile() {
         return;
       }
       
-      // Kiểm tra kích thước file (tối đa 5MB)
+      
       if (file.size > 5 * 1024 * 1024) {
         alert("Kích thước ảnh không được vượt quá 5MB");
         if (fileInputRef.current) {
@@ -116,7 +116,7 @@ export default function Profile() {
         return;
       }
 
-      // Hiển thị preview
+     
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result);
@@ -143,15 +143,14 @@ export default function Profile() {
       if (phone) formData.append("phone", phone);
       if (address) formData.append("address", address);
  
-      // Upload file ảnh mới nếu có
+      
       const fileInput = fileInputRef.current;
       if (fileInput && fileInput.files && fileInput.files[0]) {
         formData.append("file", fileInput.files[0]);
       } else if (avatarPreview && avatarPreview.startsWith('data:')) {
-        // Nếu là base64 từ preview, không gửi (chờ user chọn file mới)
-        // Hoặc có thể convert base64 thành file nếu cần
+      
       } else if (avatarPreview && !avatarPreview.startsWith('data:')) {
-        // Nếu là URL từ server, giữ nguyên
+        
         formData.append("avatar", avatarPreview);
       }
 
@@ -163,7 +162,7 @@ export default function Profile() {
       });
 
       if (res.status === 200 || res.status === 201) {
-        // Cập nhật thông tin user trong localStorage
+       
         const savedUser = localStorage.getItem("infoState");
         if (savedUser) {
           const userData = JSON.parse(savedUser);
@@ -171,14 +170,14 @@ export default function Profile() {
           localStorage.setItem("infoState", JSON.stringify(userData));
           dispatch(updateInfo(userData));
           
-          // Cập nhật avatar preview
+          
           if (res.data.avatar) {
             setAvatar(res.data.avatar);
             setAvatarPreview(res.data.avatar);
           }
         }
 
-        // Reset file input sau khi upload thành công
+        
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }

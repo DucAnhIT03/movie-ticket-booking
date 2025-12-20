@@ -65,7 +65,7 @@ class SocketService {
     }
   }
 
-  sendMessage(theaterId, message) {
+  sendMessage(theaterId, message, targetUserId = null, imageUrl = null) {
     // Kiểm tra và đợi socket kết nối
     if (!this.socket) {
       return Promise.reject(new Error('Socket not initialized. Please connect first.'));
@@ -77,7 +77,7 @@ class SocketService {
         // Đợi socket kết nối
         const checkConnection = () => {
           if (this.socket?.connected) {
-            this.socket.emit('send_message', { theaterId, message }, (response) => {
+            this.socket.emit('send_message', { theaterId, message, targetUserId, imageUrl }, (response) => {
               if (response.error) {
                 reject(new Error(response.error));
               } else {
@@ -88,7 +88,7 @@ class SocketService {
             // Thử lại sau 500ms
             setTimeout(() => {
               if (this.socket?.connected) {
-                this.socket.emit('send_message', { theaterId, message }, (response) => {
+            this.socket.emit('send_message', { theaterId, message, targetUserId, imageUrl }, (response) => {
                   if (response.error) {
                     reject(new Error(response.error));
                   } else {
@@ -104,7 +104,7 @@ class SocketService {
 
         // Nếu đang kết nối, đợi event connect
         this.socket.once('connect', () => {
-          this.socket.emit('send_message', { theaterId, message }, (response) => {
+          this.socket.emit('send_message', { theaterId, message, targetUserId, imageUrl }, (response) => {
             if (response.error) {
               reject(new Error(response.error));
             } else {
@@ -124,7 +124,7 @@ class SocketService {
 
     // Socket đã kết nối, gửi ngay
     return new Promise((resolve, reject) => {
-      this.socket.emit('send_message', { theaterId, message }, (response) => {
+      this.socket.emit('send_message', { theaterId, message, targetUserId, imageUrl }, (response) => {
         if (response.error) {
           reject(new Error(response.error));
         } else {

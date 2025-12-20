@@ -13,8 +13,32 @@ const authService = {
     });
   },
 
-  verifyOtp(email, otpCode) {
-    return axiosClient.post("/auth/verify-otp", { email, otpCode }, {
+  verifyOtp(email, otpCode, purpose) {
+    return axiosClient.post("/auth/verify-otp", { email, otpCode, purpose }, {
+      validateStatus: () => true,
+    });
+  },
+
+  forgotPassword(email) {
+    return axiosClient.post("/auth/forgot-password", { email }, {
+      validateStatus: () => true,
+    });
+  },
+
+  resetPassword(email, otpCode, newPassword) {
+    return axiosClient.post("/auth/reset-password", { email, otpCode, newPassword }, {
+      validateStatus: () => true,
+    });
+  },
+
+  verifyResetOtp(email, otpCode) {
+    return axiosClient.post("/auth/verify-reset-otp", { email, otpCode }, {
+      validateStatus: () => true,
+    });
+  },
+
+  resetWithCode(email, resetCode, newPassword) {
+    return axiosClient.post("/auth/reset-with-code", { email, resetCode, newPassword }, {
       validateStatus: () => true,
     });
   },

@@ -3,8 +3,9 @@ import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 // import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
-import { clearInfo } from "./redux/counterSlice/userSlice";
+import { clearInfo, updateInfo } from "./redux/counterSlice/userSlice";
 import Login from "./auth/Login";
+import ForgotPassword from "./auth/ForgotPassword";
 // import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./pages/admin/AdminLayout";
 import MovieManagement from "./pages/admin/MovieManagement";
@@ -28,6 +29,7 @@ import EventManagement from "./pages/admin/EventManagement";
 import Profile from "./pages/admin/Profile";
 import ChatManagement from "./pages/admin/ChatManagement";
 import ChatWidget from "./components/ChatWidget";
+import userService from "./services/users/userService";
 import "./App.css";
 
 function App() {
@@ -51,9 +53,35 @@ function App() {
   useEffect(() => {
     const loggedIn = localStorage.getItem("adminIsLoggedIn");
     const token = localStorage.getItem("adminAccessToken");
-    if (loggedIn && token) {
-      // no-op: just ensuring state persists after refresh
-    }
+    // Nếu đã đăng nhập, luôn làm mới thông tin user để cập nhật theaterId mới nhất
+    const refreshCurrentUser = async () => {
+      if (!loggedIn || !token) return;
+      try {
+        const res = await userService.getMe();
+        if (res.status === 200 && res.data) {
+          const user = res.data;
+          const roleList = Array.isArray(user?.roles) ? user.roles : [];
+          if (!hasBackofficeRole(roleList)) {
+            throw new Error("Tài khoản không có quyền backoffice");
+          }
+
+          // Chuẩn hóa theaterId (ưu tiên field theaterId)
+          const userWithTheaterId = {
+            ...user,
+            theaterId: user.theaterId || user.theater_id || null,
+          };
+
+          localStorage.setItem("adminUser", JSON.stringify(userWithTheaterId));
+          dispatch(updateInfo({ token, profile: userWithTheaterId }));
+        } else if (res.status === 401) {
+          handleLogout();
+        }
+      } catch (error) {
+        console.error("Failed to refresh user info:", error);
+      }
+    };
+
+    refreshCurrentUser();
   }, []);
 
   const handleLogout = () => {
@@ -135,6 +163,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route 
             path="/admin" 
             element={

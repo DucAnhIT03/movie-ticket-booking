@@ -140,7 +140,7 @@ export default function Register() {
   };
 
   return (
-    <div className="loginBackground">
+    <div className="loginBackground register-page">
       <div className="loginForm">
         <div className="credentialForm">
 
@@ -159,11 +159,11 @@ export default function Register() {
             <button
               onClick={redirectTo}
               className="signIn"
-              style={{ backgroundColor: "white", color: "gray" }}
+              style={{ background: 'transparent', color: '#555' }}
             >
               Đăng nhập
             </button>
-            <button className="signUp" style={{ color: "white" }}>
+            <button className="signUp" style={{ background: '#2d4ef5', color: '#fff' }}>
               Đăng ký
             </button>
           </div>

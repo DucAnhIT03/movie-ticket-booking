@@ -13,6 +13,7 @@ import { Showtime } from '../../../shared/schemas/showtime.entity';
 import { Booking } from '../../../shared/schemas/booking.entity';
 import { DataSource } from 'typeorm';
 import { Brackets } from 'typeorm';
+import { RedisCacheService } from '../../../providers/redis-cache';
 
 @Injectable()
 export class MovieService {
@@ -25,6 +26,7 @@ export class MovieService {
     private readonly showtimeRepo: Repository<Showtime>,
     @InjectRepository(Booking)
     private readonly bookingRepo: Repository<Booking>,
+    private readonly cacheService: RedisCacheService,
   ) {}
 
   async create(dto: CreateMovieDto) {
@@ -70,7 +72,10 @@ export class MovieService {
       startDate: startDate,
       endDate: endDate,
     });
-    return this.movieRepo.save(m);
+    const result = await this.movieRepo.save(m);
+    // Invalidate movies cache after creating new movie
+    await this.cacheService.invalidateMovies();
+    return result;
   }
 
   async createMany(dtos: CreateMovieDto[]) {
@@ -119,7 +124,10 @@ export class MovieService {
         endDate: endDate,
       });
     });
-    return this.movieRepo.save(entities);
+    const result = await this.movieRepo.save(entities);
+    // Invalidate movies cache after creating new movies
+    await this.cacheService.invalidateMovies();
+    return result;
   }
 
   async addGenre(movieId: number, genre: number | string) {
@@ -156,6 +164,8 @@ export class MovieService {
       mapping.movie = movie;
       mapping.genre = genreEntity;
       await this.movieGenreRepo.save(mapping);
+      // Invalidate cache after adding genre
+      await this.cacheService.invalidateMovies(movieId);
     }
     return { success: true };
   }
@@ -166,6 +176,8 @@ export class MovieService {
     });
     if (!mapping) return { success: true };
     await this.movieGenreRepo.remove(mapping);
+    // Invalidate cache after removing genre
+    await this.cacheService.invalidateMovies(movieId);
     return { success: true };
   }
 
@@ -192,89 +204,114 @@ export class MovieService {
     const limit = Math.min(100, Math.max(1, Number(params?.limit) || 10));
     const skip = (page - 1) * limit;
 
-    const query = this.movieRepo.createQueryBuilder('movie');
-    query.leftJoinAndSelect('movie.movieGenres', 'movieGenres');
-    query.leftJoinAndSelect('movieGenres.genre', 'genre');
+    // Generate cache key based on params
+    const cacheKey = this.cacheService.generateKey(
+      RedisCacheService.KEYS.MOVIES,
+      'list',
+      `p${page}`,
+      `l${limit}`,
+      `s${params?.search || ''}`,
+      `g${params?.genreId || ''}`
+    );
 
-    if (params?.search) {
-      const searchId = Number(params.search);
-      const isValidId = !isNaN(searchId) && searchId > 0;
-      
-      query.where(
-        new Brackets((qb) => {
-          if (isValidId) {
-            qb.where('movie.id = :searchId', { searchId })
-              .orWhere('movie.title LIKE :search', { search: `%${params.search}%` })
-              .orWhere('movie.author LIKE :search', { search: `%${params.search}%` });
-          } else {
-            qb.where('movie.title LIKE :search', { search: `%${params.search}%` })
-              .orWhere('movie.author LIKE :search', { search: `%${params.search}%` });
-          }
-        }),
-      );
-    }
+    // Try to get from cache
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const query = this.movieRepo.createQueryBuilder('movie');
+        query.leftJoinAndSelect('movie.movieGenres', 'movieGenres');
+        query.leftJoinAndSelect('movieGenres.genre', 'genre');
 
-    if (params?.genreId) {
-      query.andWhere('genre.id = :genreId', { genreId: params.genreId });
-    }
+        if (params?.search) {
+          const searchId = Number(params.search);
+          const isValidId = !isNaN(searchId) && searchId > 0;
+          
+          query.where(
+            new Brackets((qb) => {
+              if (isValidId) {
+                qb.where('movie.id = :searchId', { searchId })
+                  .orWhere('movie.title LIKE :search', { search: `%${params.search}%` })
+                  .orWhere('movie.author LIKE :search', { search: `%${params.search}%` });
+              } else {
+                qb.where('movie.title LIKE :search', { search: `%${params.search}%` })
+                  .orWhere('movie.author LIKE :search', { search: `%${params.search}%` });
+              }
+            }),
+          );
+        }
 
-    query.orderBy('movie.releaseDate', 'DESC');
-    query.skip(skip).take(limit);
+        if (params?.genreId) {
+          query.andWhere('genre.id = :genreId', { genreId: params.genreId });
+        }
 
-    const [movies, total] = await query.getManyAndCount();
+        query.orderBy('movie.releaseDate', 'DESC');
+        query.skip(skip).take(limit);
 
-    return {
-      items: (movies || []).map((m) => ({
-        id: m.id,
-        title: m.title,
-        description: m.description,
-        author: m.author,
-        country: m.country,
-        image: m.image,
-        trailer: m.trailer,
-        type: m.type,
-        duration: m.duration,
-        releaseDate: m.releaseDate,
-        startDate: m.startDate,
-        endDate: m.endDate,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-        genres: (m.movieGenres || [])
-          .map((mg) => mg.genre?.genreName)
-          .filter(Boolean),
-      })),
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+        const [movies, total] = await query.getManyAndCount();
+
+        return {
+          items: (movies || []).map((m) => ({
+            id: m.id,
+            title: m.title,
+            description: m.description,
+            author: m.author,
+            country: m.country,
+            image: m.image,
+            trailer: m.trailer,
+            type: m.type,
+            duration: m.duration,
+            releaseDate: m.releaseDate,
+            startDate: m.startDate,
+            endDate: m.endDate,
+            createdAt: m.createdAt,
+            updatedAt: m.updatedAt,
+            genres: (m.movieGenres || [])
+              .map((mg) => mg.genre?.genreName)
+              .filter(Boolean),
+          })),
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        };
+      },
+      RedisCacheService.TTL.MEDIUM // 5 minutes cache
+    );
   }
 
   async findOne(id: number) {
-    const m = await this.movieRepo.findOne({
-      where: { id },
-      relations: ['movieGenres', 'movieGenres.genre'],
-    });
-    if (!m) throw new NotFoundException('Movie not found');
-    return {
-      id: m.id,
-      title: m.title,
-      description: m.description,
-      author: m.author,
-      country: m.country,
-      image: m.image,
-      trailer: m.trailer,
-      type: m.type,
-      duration: m.duration,
-      releaseDate: m.releaseDate,
-      startDate: m.startDate,
-      endDate: m.endDate,
-      createdAt: m.createdAt,
-      updatedAt: m.updatedAt,
-      genres: (m.movieGenres || [])
-        .map((mg) => mg.genre?.genreName)
-        .filter(Boolean),
-    };
+    const cacheKey = this.cacheService.generateKey(RedisCacheService.KEYS.MOVIE, id);
+    
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const m = await this.movieRepo.findOne({
+          where: { id },
+          relations: ['movieGenres', 'movieGenres.genre'],
+        });
+        if (!m) throw new NotFoundException('Movie not found');
+        return {
+          id: m.id,
+          title: m.title,
+          description: m.description,
+          author: m.author,
+          country: m.country,
+          image: m.image,
+          trailer: m.trailer,
+          type: m.type,
+          duration: m.duration,
+          releaseDate: m.releaseDate,
+          startDate: m.startDate,
+          endDate: m.endDate,
+          createdAt: m.createdAt,
+          updatedAt: m.updatedAt,
+          genres: (m.movieGenres || [])
+            .map((mg) => mg.genre?.genreName)
+            .filter(Boolean),
+        };
+      },
+      RedisCacheService.TTL.LONG // 30 minutes cache for individual movie
+    );
   }
 
   async update(id: number, dto: UpdateMovieDto) {
@@ -352,7 +389,10 @@ export class MovieService {
       await this.movieRepo.update(id, updateData);
     }
 
-    // Trả về thông tin phim đã cập nhật
+    // Invalidate cache after update
+    await this.cacheService.invalidateMovies(id);
+
+    // Trả về thông tin phim đã cập nhật (this will re-cache the movie)
     return this.findOne(id);
   }
 
@@ -394,6 +434,8 @@ export class MovieService {
       }
       
       await this.movieRepo.remove(entity);
+      // Invalidate cache after delete
+      await this.cacheService.invalidateMovies(id);
       return { success: true };
     } catch (error) {
       // Nếu đã là BadRequestException hoặc NotFoundException thì throw lại
@@ -443,6 +485,9 @@ export class MovieService {
       }
 
       await queryRunner.commitTransaction();
+      
+      // Invalidate cache after genre update
+      await this.cacheService.invalidateMovies(movieId);
      
       return this.findOne(movieId);
     } catch (err) {

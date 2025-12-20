@@ -11,6 +11,7 @@ import {
   BookingInvoiceEmailDto,
   RegistrationEmailDto,
   PasswordResetEmailDto,
+  PasswordResetCodeEmailDto,
   PasswordChangedEmailDto,
   WelcomeEmailDto,
   BookingCancelledEmailDto,
@@ -172,6 +173,9 @@ export class MailService {
       case EmailType.PASSWORD_CHANGED:
         return EmailTemplates.getPasswordChangedEmail(data as PasswordChangedEmailDto);
       
+      case EmailType.PASSWORD_RESET_CODE:
+        return EmailTemplates.getPasswordResetCodeEmail(data as PasswordResetCodeEmailDto);
+      
       case EmailType.BOOKING_CANCELLED:
         return EmailTemplates.getBookingCancelledEmail(data as BookingCancelledEmailDto);
       
@@ -274,6 +278,15 @@ export class MailService {
       to: data.to,
       subject: EMAIL_TEMPLATES[EmailType.SHOWTIME_REMINDER].subject,
       type: EmailType.SHOWTIME_REMINDER,
+      data,
+    });
+  }
+
+  async sendPasswordResetCodeEmail(data: PasswordResetCodeEmailDto): Promise<void> {
+    await this.send({
+      to: data.to,
+      subject: EMAIL_TEMPLATES[EmailType.PASSWORD_RESET_CODE].subject,
+      type: EmailType.PASSWORD_RESET_CODE,
       data,
     });
   }

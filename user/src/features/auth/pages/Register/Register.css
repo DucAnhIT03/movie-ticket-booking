@@ -59,17 +59,7 @@
     margin-bottom: 20px;
 }
 
-.switchMode .signUp {
-    background-color: rgb(22, 112, 245);
-    border-radius: 20px;
-    text-align: center;
-    font-size: 12px;
-    padding: 5px 10px;
-    width: 50%;
-}
-
-.signIn,
-.signUp {
+.switchMode button {
     flex: 1;
     border: none;
     padding: 10px;
@@ -79,14 +69,15 @@
     transition: 0.3s;
 }
 
-.signIn {
-    background: transparent;
-    color: #444;
-}
-
-.signUp {
-    background: #2d4ef5;
-    color: white;
+.switchMode .signIn,
+.switchMode .signUp {
+    flex: 1;
+    border: none;
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.3s;
 }
 
 form {

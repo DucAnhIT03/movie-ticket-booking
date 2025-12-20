@@ -310,6 +310,53 @@ export class EmailTemplates {
     `;
   }
 
+  static getPasswordResetCodeEmail(data: { userName: string; resetCode: string; expiresIn: number }): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #0f172a; color: white; padding: 28px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .code-box { background: #fff; padding: 30px; text-align: center; margin: 20px 0; border: 2px dashed #0f172a; border-radius: 10px; }
+            .code { font-size: 28px; font-weight: bold; color: #0f172a; letter-spacing: 4px; font-family: 'Courier New', monospace; }
+            .warning { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; border-radius: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Mã khôi phục mật khẩu</h1>
+            </div>
+            <div class="content">
+              <h2>Xin chào, ${data.userName}!</h2>
+              <p>Quản trị viên đã phê duyệt yêu cầu đặt lại mật khẩu của bạn. Vui lòng dùng mã khôi phục bên dưới để tạo mật khẩu mới:</p>
+              
+              <div class="code-box">
+                <div style="margin-bottom: 10px; color: #666;">Mã khôi phục của bạn:</div>
+                <div class="code">${data.resetCode}</div>
+              </div>
+
+              <div class="warning">
+                <strong>⚠ Lưu ý:</strong>
+                <ul style="text-align: left; margin: 10px 0;">
+                  <li>Mã này có hiệu lực trong <strong>${data.expiresIn} phút</strong></li>
+                  <li>Không chia sẻ mã này với bất kỳ ai</li>
+                </ul>
+              </div>
+
+              <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+              <p>Trân trọng,<br>Đội ngũ hỗ trợ</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
   static getPasswordChangedEmail(data: { userName: string; changedAt: Date }): string {
     const changedAt = new Date(data.changedAt).toLocaleString('vi-VN');
     

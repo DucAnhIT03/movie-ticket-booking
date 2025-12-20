@@ -4,6 +4,8 @@ import { TheatersService } from '../services/theaters.service';
 import { CreateTheaterRequestDto, UpdateTheaterRequestDto } from '../dtos/request/theaters.request.dto';
 import { TheaterResponseDto } from '../dtos/response/theaters.response.dto';
 import { AdminGuard } from '../../../common/guards/admin.guard';
+import { CacheResponse, InvalidateCache } from '../../../providers/redis-cache';
+import { RedisCacheService } from '../../../providers/redis-cache/redis-cache.service';
 
 @ApiTags('Rạp chiếu (Theaters)')
 @Controller('theaters')
@@ -13,6 +15,7 @@ export class TheatersController {
   @Post()
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.THEATERS, RedisCacheService.KEYS.THEATER)
   @ApiOperation({ summary: 'Tạo rạp chiếu mới - Chỉ admin' })
   @ApiCreatedResponse({ description: 'Tạo rạp chiếu thành công', type: TheaterResponseDto })
   @ApiBadRequestResponse({ description: 'Dữ liệu không hợp lệ' })
@@ -22,6 +25,7 @@ export class TheatersController {
   }
 
   @Get()
+  @CacheResponse(RedisCacheService.KEYS.THEATERS, RedisCacheService.TTL.THEATERS)
   @ApiOperation({ summary: 'Lấy danh sách rạp chiếu (phân trang, tìm kiếm)' })
   @ApiOkResponse({ 
     description: 'Danh sách rạp chiếu (phân trang, tìm kiếm)', 
@@ -84,6 +88,7 @@ export class TheatersController {
   @Patch(':id')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.THEATERS, RedisCacheService.KEYS.THEATER)
   @ApiOperation({ summary: 'Cập nhật thông tin rạp chiếu - Chỉ admin' })
   @ApiParam({ name: 'id', description: 'ID của rạp chiếu' })
   @ApiOkResponse({ description: 'Cập nhật rạp chiếu thành công', type: TheaterResponseDto })
@@ -96,6 +101,7 @@ export class TheatersController {
   @Delete(':id')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.THEATERS, RedisCacheService.KEYS.THEATER)
   @ApiOperation({ summary: 'Xóa một rạp chiếu - Chỉ admin' })
   @ApiParam({ name: 'id', description: 'ID của rạp chiếu cần xóa' })
   @ApiOkResponse({ description: 'Xóa rạp chiếu thành công' })

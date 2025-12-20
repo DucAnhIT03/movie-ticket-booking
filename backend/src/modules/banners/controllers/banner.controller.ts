@@ -18,6 +18,8 @@ import { AdminGuard } from '../../../common/guards/admin.guard';
 import { ApiTags, ApiQuery, ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiParam, ApiConsumes } from '@nestjs/swagger';
 import { CreateBannerDto } from '../dtos/request/create-banner.dto';
 import { UpdateBannerDto } from '../dtos/request/update-banner.dto';
+import { CacheResponse, InvalidateCache } from '../../../providers/redis-cache';
+import { RedisCacheService } from '../../../providers/redis-cache/redis-cache.service';
 import { QueryBannerDto } from '../dtos/request/query-banner.dto';
 import { BannerType, Position } from 'src/common/constants/enums';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -59,6 +61,7 @@ export class BannerController {
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
   @Post()
+  @InvalidateCache(RedisCacheService.KEYS.BANNERS)
   @ApiOperation({ summary: 'Tạo banner mới - Chỉ admin' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Banner được tạo thành công' })
@@ -109,6 +112,7 @@ export class BannerController {
   }
 
   @Get()
+  @CacheResponse(RedisCacheService.KEYS.BANNERS, RedisCacheService.TTL.BANNERS)
   @ApiOperation({ 
     summary: 'Lấy danh sách banner (có phân trang và tìm kiếm)',
     description: 'Lấy danh sách banner với tìm kiếm và phân trang. Có thể tìm kiếm theo từ khóa và phân trang với page và limit.'
@@ -150,6 +154,7 @@ export class BannerController {
   }
 
   @Get('all')
+  @CacheResponse(`${RedisCacheService.KEYS.BANNERS}:all`, RedisCacheService.TTL.BANNERS)
   @ApiOperation({ summary: 'Lấy tất cả banner (không phân trang)' })
   @ApiResponse({ status: 200, description: 'Danh sách tất cả banner' })
   async findAllNoPaging(@Query('search') search?: string) {
@@ -173,6 +178,7 @@ export class BannerController {
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
   @Put(':id')
+  @InvalidateCache(RedisCacheService.KEYS.BANNERS)
   @ApiOperation({ summary: 'Cập nhật banner - Chỉ admin' })
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', description: 'ID của banner' })
@@ -225,6 +231,7 @@ export class BannerController {
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
   @Delete(':id')
+  @InvalidateCache(RedisCacheService.KEYS.BANNERS)
   @ApiOperation({ summary: 'Xóa banner - Chỉ admin' })
   @ApiParam({ name: 'id', description: 'ID của banner cần xóa' })
   @ApiResponse({ status: 200, description: 'Xóa thành công' })

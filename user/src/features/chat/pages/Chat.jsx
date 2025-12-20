@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FaPlus, FaPaperPlane } from 'react-icons/fa';
 import chatService from '../../../services/chat';
 import socketService from '../../../services/socketService';
 import './Chat.css';
@@ -12,8 +13,10 @@ function Chat() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTheater, setSearchTheater] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -22,10 +25,10 @@ function Chat() {
       return;
     }
 
-    // Kết nối socket
+ 
     socketService.connect(token);
 
-    // Lắng nghe tin nhắn mới
+  
     const handleNewMessage = (message) => {
       if (selectedTheater && message.theaterId === selectedTheater.id) {
         setMessages((prev) => [...prev, message]);
@@ -35,7 +38,7 @@ function Chat() {
 
     socketService.onNewMessage(handleNewMessage);
 
-    // Load danh sách rạp
+    
     loadTheaters();
 
     return () => {
@@ -71,7 +74,7 @@ function Chat() {
       const response = await chatService.getMessages(selectedTheater.id);
       setMessages(response.data || []);
       
-      // Đánh dấu đã đọc
+     
       await chatService.markAsRead(selectedTheater.id);
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -85,16 +88,70 @@ function Chat() {
     setMessages([]);
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedTheater) return;
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
 
-    const messageText = newMessage.trim();
-    setNewMessage('');
+  const handleSendImage = async () => {
+    if (!selectedFile || !selectedTheater) return;
 
     try {
-      await socketService.sendMessage(selectedTheater.id, messageText);
-      // Tin nhắn sẽ được thêm qua socket event
+      
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('folder', 'chat');
+
+      const uploadResponse = await fetch('/api/uploads/single', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const uploadData = await uploadResponse.json();
+      const imageUrl = uploadData.url;
+
+      
+      await socketService.sendMessage(selectedTheater.id, '', imageUrl);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('Error sending image:', error);
+      alert('Không thể gửi ảnh. Vui lòng thử lại.');
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if ((!newMessage.trim() && !selectedFile) || !selectedTheater) return;
+
+    const messageText = newMessage.trim();
+    const file = selectedFile;
+    setNewMessage('');
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    try {
+      if (file) {
+        
+        await handleSendImage();
+      } else {
+       
+        await socketService.sendMessage(selectedTheater.id, messageText);
+      }
+      
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Không thể gửi tin nhắn. Vui lòng thử lại.');
@@ -188,7 +245,11 @@ function Chat() {
                       className={`message ${message.isFromStaff ? 'staff' : 'user'}`}
                     >
                       <div className="message-content">
-                        <div className="message-text">{message.message}</div>
+                        {message.imageUrl ? (
+                          <img src={message.imageUrl} alt="Chat image" className="message-image" />
+                        ) : (
+                          <div className="message-text">{message.message}</div>
+                        )}
                         <div className="message-time">
                           {formatTime(message.created_at)}
                         </div>
@@ -202,14 +263,34 @@ function Chat() {
 
             <form className="chat-input-form" onSubmit={handleSendMessage}>
               <input
-                type="text"
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                className="upload-button"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FaPlus />
+              </button>
+              <textarea
                 placeholder="Nhập tin nhắn..."
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
                 className="chat-input"
+                rows="1"
               />
               <button type="submit" className="send-button">
-                Gửi
+                <FaPaperPlane />
               </button>
             </form>
           </>

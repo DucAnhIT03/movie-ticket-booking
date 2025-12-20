@@ -5,6 +5,8 @@ import { CreateShowtimeDto } from '../dtos/request/create-showtime.dto';
 import { ShowtimeResponseDto } from '../dtos/response/showtimes.response.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../../common/guards/admin.guard';
+import { CacheResponse, InvalidateCache } from '../../../providers/redis-cache';
+import { RedisCacheService } from '../../../providers/redis-cache/redis-cache.service';
 
 @ApiTags('🎭 Suất chiếu')
 @Controller('showtimes')
@@ -12,6 +14,7 @@ export class ShowtimesController {
   constructor(private readonly showtimesService: ShowtimesService) {}
 
   @Get()
+  @CacheResponse(RedisCacheService.KEYS.SHOWTIMES, RedisCacheService.TTL.SHOWTIMES)
   @ApiOperation({ 
     summary: 'Lấy danh sách suất chiếu (có tìm kiếm và phân trang)',
     description: 'Lấy danh sách suất chiếu với tìm kiếm, phân trang và sắp xếp'
@@ -158,6 +161,7 @@ export class ShowtimesController {
   @Post()
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.SHOWTIMES, RedisCacheService.KEYS.SHOWTIMES_BY_MOVIE, RedisCacheService.KEYS.SHOWTIMES_BY_DATE)
   @ApiOperation({ 
     summary: 'Tạo suất chiếu mới - Chỉ admin',
     description: 'Tạo một suất chiếu mới cho phim'
@@ -201,6 +205,7 @@ export class ShowtimesController {
   @Put(':id')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.SHOWTIMES, RedisCacheService.KEYS.SHOWTIMES_BY_MOVIE, RedisCacheService.KEYS.SHOWTIMES_BY_DATE)
   @ApiOperation({ 
     summary: 'Cập nhật suất chiếu - Chỉ admin',
     description: 'Cập nhật thông tin suất chiếu'
@@ -270,6 +275,7 @@ export class ShowtimesController {
   @Delete(':id')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.SHOWTIMES, RedisCacheService.KEYS.SHOWTIMES_BY_MOVIE, RedisCacheService.KEYS.SHOWTIMES_BY_DATE)
   @ApiOperation({ 
     summary: 'Xóa suất chiếu - Chỉ admin',
     description: 'Xóa một suất chiếu khỏi hệ thống (chỉ khi chưa có booking)'

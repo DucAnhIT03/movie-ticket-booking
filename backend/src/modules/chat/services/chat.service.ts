@@ -19,6 +19,7 @@ export class ChatService {
     message: string;
     isFromStaff: boolean;
     staffId?: number | null;
+    imageUrl?: string;
   }) {
     // Tìm hoặc tạo conversation
     const conversation = await this.chatRepo.findOrCreateConversation(
@@ -45,6 +46,7 @@ export class ChatService {
       theaterId: data.theaterId,
       message: data.message,
       isFromStaff: data.isFromStaff,
+      imageUrl: data.imageUrl,
     });
 
     // Cập nhật conversation
@@ -88,6 +90,16 @@ export class ChatService {
   }
 
   async getStaffConversations(staffId: number) {
+    // Lấy thông tin staff để biết theaterId
+    const staff = await this.userService.findById(staffId);
+    const theaterId = (staff as any)?.theaterId || (staff as any)?.theater?.id;
+
+    // Nếu có theaterId, trả về toàn bộ cuộc trò chuyện của rạp (để mọi nhân viên cùng rạp đều thấy)
+    if (theaterId) {
+      return await this.chatRepo.findTheaterConversations(theaterId);
+    }
+
+    // Fallback: theo staffId
     return await this.chatRepo.findStaffConversations(staffId);
   }
 
@@ -101,7 +113,9 @@ export class ChatService {
     const allUsers = await this.userService.findAll();
     return allUsers
       .filter((user: any) => {
-        const hasEmployeeRole = (user.roles || []).includes('ROLE_EMPLOYEE');
+        const roles = user.roles || [];
+        const hasEmployeeRole =
+          roles.includes('ROLE_EMPLOYEE') || roles.includes('EMPLOYEE');
         return hasEmployeeRole && user.theaterId === theaterId;
       });
   }

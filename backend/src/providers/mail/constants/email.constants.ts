@@ -14,6 +14,7 @@ export enum EmailType {
   PROMOTION_NOTIFICATION = 'PROMOTION_NOTIFICATION',
   FESTIVAL_NOTIFICATION = 'FESTIVAL_NOTIFICATION',
   ADMIN_NOTIFICATION = 'ADMIN_NOTIFICATION',
+  PASSWORD_RESET_CODE = 'PASSWORD_RESET_CODE',
 }
 
 export enum EmailPriority {
@@ -82,6 +83,10 @@ export const EMAIL_TEMPLATES: Record<EmailType, { subject: string; template: str
   [EmailType.FESTIVAL_NOTIFICATION]: {
     subject: 'Thông báo sự kiện lễ hội phim',
     template: 'festival-notification',
+  },
+  [EmailType.PASSWORD_RESET_CODE]: {
+    subject: 'Mã khôi phục mật khẩu',
+    template: 'password-reset-code',
   },
 };
 

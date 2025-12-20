@@ -74,4 +74,13 @@ export class UpdatePromotionDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Nếu bật: mã khuyến mãi sẽ được gợi ý ở màn thanh toán cho user nhập',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
 }

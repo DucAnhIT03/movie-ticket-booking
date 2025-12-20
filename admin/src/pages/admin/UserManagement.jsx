@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, User, Lock, Unlock, ChevronLeft, ChevronRight, Building, Settings } from "lucide-react";
+import { Search, User, Lock, Unlock, ChevronLeft, ChevronRight, RefreshCw, CheckCircle, Clock } from "lucide-react";
 import { toast } from "react-toastify";
 import userService from "../../services/users/userService";
 import theaterService from "../../services/theaters/theaterService";
+import passwordResetService from "../../services/auth/passwordResetService";
 
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,11 +24,18 @@ export default function UserManagement() {
   const [theaters, setTheaters] = useState([]);
   const [assigningTheater, setAssigningTheater] = useState(null);
   const [selectedTheaterForUser, setSelectedTheaterForUser] = useState({});
+  const [resetRequests, setResetRequests] = useState([]);
+  const [isLoadingResets, setIsLoadingResets] = useState(true);
+  const [approvingId, setApprovingId] = useState(null);
+  const [resetStatusFilter, setResetStatusFilter] = useState("PENDING");
+  const [resetPage, setResetPage] = useState(1);
+  const RESET_PAGE_SIZE = 5;
 
   
   useEffect(() => {
     loadUsers();
     loadTheaters();
+    loadResetRequests("PENDING");
   }, []);
 
   const loadTheaters = async () => {
@@ -62,6 +70,26 @@ export default function UserManagement() {
     }
   };
 
+  const loadResetRequests = async (status = resetStatusFilter) => {
+    setResetPage(1);
+    setIsLoadingResets(true);
+    try {
+      const res = await passwordResetService.list(status === "ALL" ? "" : status);
+      if (res.status === 200) {
+        setResetRequests(res.data || []);
+      } else if (res.status === 401) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+      } else {
+        toast.error(res.data?.message || "Không thể tải yêu cầu khôi phục mật khẩu");
+      }
+    } catch (error) {
+      console.error("Error loading reset requests:", error);
+      toast.error("Lỗi kết nối đến server!");
+    } finally {
+      setIsLoadingResets(false);
+    }
+  };
+
   const handleEmployeeInputChange = (field, value) => {
     setEmployeeForm((prev) => ({
       ...prev,
@@ -83,9 +111,17 @@ export default function UserManagement() {
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
     const { firstName, email, password, accountType } = employeeForm;
-    if (!firstName.trim() || !email.trim() || !password.trim()) {
+    const normalizedEmail = (email || "").trim();
+    const isValidEmail = (value) =>
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test((value || "").trim());
+
+    if (!firstName.trim() || !normalizedEmail || !password.trim()) {
       const accountTypeText = accountType === "admin" ? "admin" : "nhân viên";
       toast.warning(`Vui lòng nhập đầy đủ Họ tên, Email và Mật khẩu cho ${accountTypeText}!`);
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      toast.warning("Email không hợp lệ. Vui lòng nhập đúng định dạng (ví dụ: name@gmail.com).");
       return;
     }
 
@@ -94,7 +130,7 @@ export default function UserManagement() {
       const payload = {
         firstName: employeeForm.firstName.trim(),
         lastName: employeeForm.lastName.trim() || undefined,
-        email: employeeForm.email.trim(),
+        email: normalizedEmail,
         phone: employeeForm.phone.trim() || undefined,
         password: employeeForm.password,
       };
@@ -185,6 +221,27 @@ export default function UserManagement() {
     }
   };
 
+  const handleApproveReset = async (id) => {
+    if (!window.confirm("Gửi mã khôi phục 8 ký tự đến email nhân viên?")) {
+      return;
+    }
+    setApprovingId(id);
+    try {
+      const res = await passwordResetService.approve(id);
+      if (res.status === 200) {
+        toast.success("Đã gửi mã khôi phục tới nhân viên");
+        loadResetRequests();
+      } else {
+        toast.error(res.data?.message || "Không thể gửi mã khôi phục");
+      }
+    } catch (error) {
+      console.error("Error approving reset:", error);
+      toast.error("Lỗi kết nối đến server!");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   const handleAssignTheater = async (userId, theaterId) => {
     setAssigningTheater(userId);
     try {
@@ -212,6 +269,11 @@ export default function UserManagement() {
     if (!theaterId) return "—";
     const theater = theaters.find(t => t.id === theaterId);
     return theater ? theater.name : "—";
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return "—";
+    return new Date(value).toLocaleString("vi-VN");
   };
 
   
@@ -267,6 +329,201 @@ export default function UserManagement() {
         <User /> Quản Lý Người Dùng
       </h1>
 
+      <div
+        style={{
+          background: "rgba(0,0,0,0.3)",
+          padding: "16px",
+          borderRadius: "12px",
+          marginBottom: "20px",
+          overflow: "hidden",           // tránh tràn
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#cbd5f5" }}>
+            <Clock size={18} />
+            <div>
+              <div style={{ fontWeight: 600 }}>Yêu cầu khôi phục mật khẩu nhân viên</div>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>
+                Nhân viên nhập đúng OTP sẽ tạo yêu cầu. Admin bấm "Gửi mã" để cấp mã 8 ký tự qua email.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <select
+              value={resetStatusFilter}
+              onChange={(e) => {
+                const value = e.target.value;
+                setResetStatusFilter(value);
+                loadResetRequests(value);
+              }}
+              style={{
+                background: "#1a1f29",
+                color: "#fff",
+                border: "1px solid #333",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                minWidth: "160px",
+                cursor: "pointer",
+              }}
+            >
+              <option value="PENDING">Chờ duyệt</option>
+              <option value="APPROVED">Đã gửi mã</option>
+              <option value="COMPLETED">Đã đặt lại</option>
+              <option value="ALL">Tất cả</option>
+            </select>
+            <button
+              onClick={() => loadResetRequests()}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "8px 12px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <RefreshCw size={16} /> Làm mới
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: "12px", overflowX: "auto" }}>
+          {isLoadingResets ? (
+            <div style={{ color: "#cbd5f5" }}>Đang tải yêu cầu...</div>
+          ) : resetRequests.length === 0 ? (
+            <div style={{ color: "#94a3b8" }}>Chưa có yêu cầu khôi phục nào</div>
+          ) : (
+            <>
+            <table
+              style={{
+                width: "100%",
+                minWidth: "800px",       // đảm bảo bảng không bóp méo
+                borderCollapse: "collapse",
+                background: "#111827",
+                color: "#fff",
+                borderRadius: "8px",
+                overflow: "hidden",
+              }}
+            >
+              <thead style={{ background: "#1f2937" }}>
+                <tr>
+                  <th style={{ padding: "10px", textAlign: "left" }}>Email</th>
+                  <th style={{ padding: "10px", textAlign: "left" }}>Trạng thái</th>
+                  <th style={{ padding: "10px", textAlign: "left" }}>Mã khôi phục</th>
+                  <th style={{ padding: "10px", textAlign: "left" }}>Hết hạn</th>
+                  <th style={{ padding: "10px", textAlign: "left" }}>Tạo lúc</th>
+                  <th style={{ padding: "10px", textAlign: "center" }}>Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resetRequests
+                  .slice((resetPage - 1) * RESET_PAGE_SIZE, resetPage * RESET_PAGE_SIZE)
+                  .map((item) => (
+                  <tr key={item.id} style={{ borderBottom: "1px solid #1f2937" }}>
+                    <td
+                      style={{
+                        padding: "10px",
+                        wordBreak: "break-all",
+                        overflowWrap: "anywhere",
+                        maxWidth: "260px",
+                      }}
+                    >
+                      {item.email}
+                    </td>
+                    <td style={{ padding: "10px" }}>
+                      <span
+                        style={{
+                          background:
+                            item.status === "PENDING"
+                              ? "#f59e0b"
+                              : item.status === "APPROVED"
+                                ? "#3b82f6"
+                                : "#22c55e",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                        }}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px" }}>{item.resetCode || "—"}</td>
+                    <td style={{ padding: "10px" }}>{item.expiresAt ? formatDateTime(item.expiresAt) : "—"}</td>
+                    <td style={{ padding: "10px" }}>{formatDateTime(item.createdAt)}</td>
+                    <td style={{ padding: "10px", textAlign: "center" }}>
+                      {item.status === "PENDING" ? (
+                        <button
+                          onClick={() => handleApproveReset(item.id)}
+                          disabled={approvingId === item.id}
+                          style={{
+                            background: approvingId === item.id ? "#4b5563" : "#10b981",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "8px 12px",
+                            cursor: approvingId === item.id ? "not-allowed" : "pointer",
+                            display: "inline-flex",
+                            gap: "6px",
+                            alignItems: "center",
+                          }}
+                        >
+                          <CheckCircle size={16} />
+                          {approvingId === item.id ? "Đang gửi..." : "Gửi mã"}
+                        </button>
+                      ) : (
+                        <span style={{ color: "#9ca3af", fontSize: "13px" }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px", color: "#cbd5f5" }}>
+              <div>
+                {`Hiển thị ${Math.min((resetPage - 1) * RESET_PAGE_SIZE + 1, resetRequests.length)}-${Math.min(resetPage * RESET_PAGE_SIZE, resetRequests.length)} trong ${resetRequests.length} yêu cầu`}
+              </div>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <button
+                  onClick={() => setResetPage((p) => Math.max(1, p - 1))}
+                  disabled={resetPage === 1}
+                  style={{
+                    background: "#1f2937",
+                    color: "#fff",
+                    border: "1px solid #374151",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    cursor: resetPage === 1 ? "not-allowed" : "pointer",
+                    opacity: resetPage === 1 ? 0.5 : 1,
+                  }}
+                >
+                  Trước
+                </button>
+                <span>Trang {resetPage}/{Math.max(1, Math.ceil(resetRequests.length / RESET_PAGE_SIZE))}</span>
+                <button
+                  onClick={() => setResetPage((p) => Math.min(Math.ceil(resetRequests.length / RESET_PAGE_SIZE), p + 1))}
+                  disabled={resetPage >= Math.ceil(resetRequests.length / RESET_PAGE_SIZE)}
+                  style={{
+                    background: "#1f2937",
+                    color: "#fff",
+                    border: "1px solid #374151",
+                    borderRadius: "6px",
+                    padding: "6px 12px",
+                    cursor: resetPage >= Math.ceil(resetRequests.length / RESET_PAGE_SIZE) ? "not-allowed" : "pointer",
+                    opacity: resetPage >= Math.ceil(resetRequests.length / RESET_PAGE_SIZE) ? 0.5 : 1,
+                  }}
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Form tạo tài khoản */}
       <div
         style={{
@@ -309,10 +566,10 @@ export default function UserManagement() {
           </div>
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              display: "flex",
               gap: "12px",
-              marginBottom: "15px",
+              alignItems: "flex-end",
+              flexWrap: "wrap",
             }}
           >
             <input
@@ -326,6 +583,10 @@ export default function UserManagement() {
                 color: "#fff",
                 border: "1px solid #333",
                 borderRadius: "6px",
+                flex: "1",
+                minWidth: "120px",
+                height: "42px",
+                boxSizing: "border-box",
               }}
               required
             />
@@ -340,10 +601,16 @@ export default function UserManagement() {
                 color: "#fff",
                 border: "1px solid #333",
                 borderRadius: "6px",
+                flex: "1",
+                minWidth: "120px",
+                height: "42px",
+                boxSizing: "border-box",
               }}
             />
             <input
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
               placeholder="Email"
               value={employeeForm.email}
               onChange={(e) => handleEmployeeInputChange("email", e.target.value)}
@@ -353,6 +620,10 @@ export default function UserManagement() {
                 color: "#fff",
                 border: "1px solid #333",
                 borderRadius: "6px",
+                flex: "1",
+                minWidth: "150px",
+                height: "42px",
+                boxSizing: "border-box",
               }}
               required
             />
@@ -367,6 +638,10 @@ export default function UserManagement() {
                 color: "#fff",
                 border: "1px solid #333",
                 borderRadius: "6px",
+                flex: "1",
+                minWidth: "140px",
+                height: "42px",
+                boxSizing: "border-box",
               }}
             />
             <input
@@ -380,26 +655,33 @@ export default function UserManagement() {
                 color: "#fff",
                 border: "1px solid #333",
                 borderRadius: "6px",
+                flex: "1",
+                minWidth: "120px",
+                height: "42px",
+                boxSizing: "border-box",
               }}
               required
               minLength={6}
             />
-          </div>
-          <button
-            type="submit"
-            disabled={isCreatingEmployee}
-            style={{
-              padding: "10px 20px",
-              background: isCreatingEmployee 
-                ? "#555" 
-                : employeeForm.accountType === "admin" 
-                  ? "#d32f2f" 
-                  : "#1976d2",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              cursor: isCreatingEmployee ? "not-allowed" : "pointer",
-            }}
+            <button
+              type="submit"
+              disabled={isCreatingEmployee}
+              style={{
+                padding: "10px 20px",
+                background: isCreatingEmployee 
+                  ? "#555" 
+                  : employeeForm.accountType === "admin" 
+                    ? "#d32f2f" 
+                    : "#1976d2",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                cursor: isCreatingEmployee ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                height: "42px",
+                boxSizing: "border-box",
+              }}
             >
               {isCreatingEmployee 
                 ? "Đang tạo..." 
@@ -407,6 +689,7 @@ export default function UserManagement() {
                   ? "Tạo tài khoản admin" 
                   : "Tạo tài khoản nhân viên"}
             </button>
+          </div>
         </form>
       </div>
 

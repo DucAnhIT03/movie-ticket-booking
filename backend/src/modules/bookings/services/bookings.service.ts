@@ -775,7 +775,11 @@ export class BookingsService {
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 10));
     const skip = (pageNum - 1) * limitNum;
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    // Optimize: Only select user phone, not entire user entity
+    const user = await this.userRepo.findOne({ 
+      where: { id: userId },
+      select: ['id', 'phone'] // Only select needed fields
+    });
     if (!user) {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
@@ -783,14 +787,30 @@ export class BookingsService {
 
     const query = this.bookingRepo.createQueryBuilder('booking');
 
+    // Optimize: Reduce N+1 queries and unnecessary relations
+    // Strategy: Only load relations that are actually needed, use leftJoin for optional data
     query
+      // Essential relations - load full entities for core data
       .leftJoinAndSelect('booking.showtime', 'showtime')
       .leftJoinAndSelect('showtime.movie', 'movie')
       .leftJoinAndSelect('showtime.screen', 'screen')
-      .leftJoinAndSelect('screen.theater', 'theater')
+      // Payments - needed for status resolution (only payment_status is critical)
       .leftJoinAndSelect('booking.payments', 'payment')
+      // BookingSeats - needed for seat information
       .leftJoinAndSelect('booking.bookingSeats', 'bookingSeats')
-      .leftJoinAndSelect('bookingSeats.seat', 'seat');
+      // Optional relations - use leftJoin (not leftJoinAndSelect) to avoid loading unless needed
+      .leftJoin('screen.theater', 'theater') // Theater name can be lazy loaded if needed
+      .leftJoin('bookingSeats.seat', 'seat'); // Seat details can be lazy loaded
+    
+    // Select only necessary fields from optional joins to reduce payload size
+    // This prevents loading entire theater/seat entities when only name/number is needed
+    query.addSelect([
+      'theater.id',
+      'theater.name',
+      'seat.id',
+      'seat.seatNumber',
+      'seat.type', // Note: field name is 'type', not 'seatType' (see Seat entity)
+    ]);
 
     query.where(
       new Brackets((qb) => {

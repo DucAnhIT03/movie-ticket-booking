@@ -6,7 +6,8 @@ import { VerificationOtpEmailDto } from '../../../providers/mail/dto/email.dto';
 
 @Injectable()
 export class OtpService {
-  private readonly OTP_EXPIRY_MINUTES = 10; 
+  private readonly OTP_EXPIRY_MINUTES = 10;
+  private readonly RESET_PASSWORD_EXPIRY_MINUTES = 1;
   constructor(
     private otpRepo: OtpVerificationRepository,
     private queueService: QueueService,
@@ -28,7 +29,8 @@ export class OtpService {
     
     const otpCode = this.generateOtpCode();
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
+    const expiryMinutes = purpose === OtpPurpose.RESET_PASSWORD ? this.RESET_PASSWORD_EXPIRY_MINUTES : this.OTP_EXPIRY_MINUTES;
+    expiresAt.setMinutes(expiresAt.getMinutes() + expiryMinutes);
 
     const otp = this.otpRepo.create({
       email,
@@ -45,7 +47,7 @@ export class OtpService {
       to: email,
       userName: email.split('@')[0], 
       otpCode,
-      expiresIn: this.OTP_EXPIRY_MINUTES,
+      expiresIn: expiryMinutes,
     };
 
     await this.queueService.enqueueVerificationOtpEmail(emailData);

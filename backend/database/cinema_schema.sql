@@ -315,6 +315,7 @@ CREATE TABLE IF NOT EXISTS `promotions` (
   `channelInApp` BIT(1) NOT NULL DEFAULT b'1',
   `usageLimit` INT NULL,
   `perUserLimit` INT NULL,
+  `isPublic` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Mã công khai, hiển thị gợi ý ở màn thanh toán',
   `active` BIT(1) NOT NULL DEFAULT b'1',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NULL,
@@ -359,6 +360,44 @@ CREATE TABLE IF NOT EXISTS `user_promotions` (
   INDEX `idx_user_promotions_promotion_id` (`promotion_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 20) OTP Verifications
+CREATE TABLE IF NOT EXISTS `otp_verifications` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `email` VARCHAR(255) NOT NULL,
+  `otp_code` VARCHAR(12) NOT NULL,
+  `purpose` ENUM('REGISTER', 'RESET_PASSWORD', 'CHANGE_EMAIL', 'ADMIN_RESET_CODE') NOT NULL DEFAULT 'REGISTER',
+  `expires_at` DATETIME NOT NULL,
+  `is_used` BIT(1) NOT NULL DEFAULT b'0',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_otp_email` (`email`),
+  INDEX `idx_otp_code` (`otp_code`),
+  INDEX `idx_otp_purpose` (`purpose`),
+  INDEX `idx_otp_expires_at` (`expires_at`),
+  INDEX `idx_otp_is_used` (`is_used`),
+  INDEX `idx_otp_email_purpose` (`email`, `purpose`, `is_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 21) Password Reset Requests (for employee password reset with admin approval)
+CREATE TABLE IF NOT EXISTS `password_reset_requests` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `email` VARCHAR(255) NOT NULL,
+  `status` ENUM('PENDING', 'APPROVED', 'COMPLETED') NOT NULL DEFAULT 'PENDING',
+  `reset_code` VARCHAR(12) NULL COMMENT 'Mã 8 ký tự được gửi khi admin duyệt',
+  `expires_at` DATETIME NULL COMMENT 'Thời gian hết hạn của reset_code',
+  `approved_by` INT NULL COMMENT 'ID admin đã duyệt yêu cầu',
+  `approved_at` DATETIME NULL COMMENT 'Thời gian admin duyệt',
+  `completed_at` DATETIME NULL COMMENT 'Thời gian nhân viên hoàn tất đặt lại mật khẩu',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_reset_email` (`email`),
+  INDEX `idx_reset_status` (`status`),
+  INDEX `idx_reset_code` (`reset_code`),
+  INDEX `idx_reset_expires_at` (`expires_at`),
+  INDEX `idx_reset_approved_by` (`approved_by`),
+  INDEX `idx_reset_created_at` (`created_at`),
+  INDEX `idx_reset_email_status` (`email`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- Thêm foreign key constraint cho users.theater_id (phải thêm sau khi bảng Theaters đã được tạo)
@@ -379,38 +418,6 @@ SET @sql = IF(@constraint_exists = 0,
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
-
--- 20) OTP Verifications
-CREATE TABLE IF NOT EXISTS `otp_verifications` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `email` VARCHAR(255) NOT NULL,
-  `otp_code` VARCHAR(6) NOT NULL,
-  `purpose` ENUM('REGISTER','RESET_PASSWORD','CHANGE_EMAIL') NOT NULL DEFAULT 'REGISTER',
-  `expires_at` DATETIME NOT NULL,
-  `is_used` BIT(1) NOT NULL DEFAULT b'0',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_otp_email` (`email`),
-  INDEX `idx_otp_code` (`otp_code`),
-  INDEX `idx_otp_expires_at` (`expires_at`),
-  INDEX `idx_otp_is_used` (`is_used`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Email Logs (for tracking sent emails)
-CREATE TABLE IF NOT EXISTS `email_logs` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `to` VARCHAR(255) NOT NULL,
-  `subject` VARCHAR(500) NOT NULL,
-  `type` VARCHAR(50) NULL,
-  `status` ENUM('PENDING', 'SENT', 'FAILED') NOT NULL DEFAULT 'PENDING',
-  `error` TEXT NULL,
-  `message_id` VARCHAR(255) NULL,
-  `sent_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `metadata` JSON NULL,
-  INDEX `idx_to` (`to`),
-  INDEX `idx_status` (`status`),
-  INDEX `idx_type` (`type`),
-  INDEX `idx_sent_at` (`sent_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 21) Chat Conversations
 CREATE TABLE IF NOT EXISTS `chat_conversations` (
@@ -442,6 +449,7 @@ CREATE TABLE IF NOT EXISTS `chat_messages` (
   `staff_id` INT NULL COMMENT 'ID nhân viên (nếu tin nhắn từ staff)',
   `theater_id` INT NOT NULL,
   `message` TEXT NOT NULL,
+  `image_url` VARCHAR(500) NULL,
   `is_from_staff` BOOLEAN NOT NULL DEFAULT FALSE,
   `is_read` BOOLEAN NOT NULL DEFAULT FALSE,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -453,6 +461,23 @@ CREATE TABLE IF NOT EXISTS `chat_messages` (
   CONSTRAINT `fk_message_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_message_staff` FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_message_theater` FOREIGN KEY (`theater_id`) REFERENCES `Theaters`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 23) Email Logs (for tracking sent emails)
+CREATE TABLE IF NOT EXISTS `email_logs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `to` VARCHAR(255) NOT NULL,
+  `subject` VARCHAR(500) NOT NULL,
+  `type` VARCHAR(50) NULL,
+  `status` ENUM('PENDING', 'SENT', 'FAILED') NOT NULL DEFAULT 'PENDING',
+  `error` TEXT NULL,
+  `message_id` VARCHAR(255) NULL,
+  `sent_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `metadata` JSON NULL,
+  INDEX `idx_to` (`to`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_type` (`type`),
+  INDEX `idx_sent_at` (`sent_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

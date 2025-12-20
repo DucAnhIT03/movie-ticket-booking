@@ -6,6 +6,8 @@ import { UpdateTicketPriceDto } from '../dtos/request/update-ticket-price.dto';
 import { BatchCreateTicketPriceDto } from '../dtos/request/batch-create-ticket-price.dto';
 import { TicketPriceResponseDto } from '../dtos/response/ticket-prices.response.dto';
 import { AdminGuard } from '../../../common/guards/admin.guard';
+import { CacheResponse, InvalidateCache } from '../../../providers/redis-cache';
+import { RedisCacheService } from '../../../providers/redis-cache/redis-cache.service';
 
 @ApiTags('🎫 Vé')
 @Controller('ticket-prices')
@@ -13,6 +15,7 @@ export class TicketPricesController {
   constructor(private readonly ticketPricesService: TicketPricesService) {}
 
   @Get()
+  @CacheResponse(RedisCacheService.KEYS.TICKET_PRICES, RedisCacheService.TTL.TICKET_PRICES)
   @ApiOperation({ 
     summary: 'Lấy giá vé hoặc danh sách giá vé',
     description: 'Nếu có typeSeat, typeMovie, date: lấy giá vé cụ thể. Nếu không: lấy danh sách tất cả giá vé'
@@ -116,6 +119,7 @@ export class TicketPricesController {
   @Post('batch')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.TICKET_PRICES)
   @ApiOperation({ 
     summary: 'Tạo nhiều giá vé cùng lúc - Chỉ admin',
     description: 'Thêm nhiều mức giá vé vào hệ thống cùng lúc (setup đồng loạt)'
@@ -196,6 +200,7 @@ export class TicketPricesController {
   @Delete(':id')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.TICKET_PRICES)
   @ApiOperation({ 
     summary: 'Xóa giá vé - Chỉ admin',
     description: 'Xóa một mức giá vé khỏi hệ thống'

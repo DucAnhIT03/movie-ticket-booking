@@ -6,12 +6,14 @@ import { UpdateNewsDto } from '../dtos/request/update-news.dto';
 import { NewsRepository } from '../repositories/news.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FestivalOrmEntity } from '../../../shared/schemas/festival.orm-entity';
+import { RedisCacheService } from '../../../providers/redis-cache';
 
 @Injectable()
 export class NewsService {
   constructor(
     private readonly newsRepo: NewsRepository,
     @InjectRepository(FestivalOrmEntity) private readonly festivalRepo: Repository<FestivalOrmEntity>,
+    private readonly cacheService: RedisCacheService,
   ) {}
 
   async create(dto: CreateNewsDto) {
@@ -25,11 +27,20 @@ export class NewsService {
       image: dto.image ?? null,
       festivalId: dto.festivalId ?? null,
     } as Partial<News>);
-    return this.newsRepo.save(entity);
+    const result = await this.newsRepo.save(entity);
+    // Invalidate cache after creating
+    await this.cacheService.invalidateNews();
+    return result;
   }
 
   async findOne(id: number) {
-    return this.newsRepo.findOne({ where: { id } });
+    const cacheKey = this.cacheService.generateKey(RedisCacheService.KEYS.NEWS_ITEM, id);
+    
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => this.newsRepo.findOne({ where: { id } }),
+      RedisCacheService.TTL.LONG
+    );
   }
 
   async update(id: number, dto: UpdateNewsDto) {
@@ -43,36 +54,60 @@ export class NewsService {
       image: dto.image,
       festivalId: dto.festivalId,
     });
+    // Invalidate cache after update
+    await this.cacheService.invalidateNews(id);
     return this.findOne(id);
   }
 
   async remove(id: number) {
     const res = await this.newsRepo.delete(id);
+    // Invalidate cache after delete
+    await this.cacheService.invalidateNews(id);
     return res.affected && res.affected > 0;
   }
 
   async searchAndPaginate(search?: string, page = 1, limit = 2) {
-    const where = search
-      ? [{ title: Like(`%${search}%`) }, { content: Like(`%${search}%`) }]
-      : {};
+    const cacheKey = this.cacheService.generateKey(
+      RedisCacheService.KEYS.NEWS,
+      'list',
+      `p${page}`,
+      `l${limit}`,
+      `s${search || ''}`
+    );
 
-    const [items, total] = await this.newsRepo.findAndCount({
-      where,
-      order: { createdAt: 'ASC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where = search
+          ? [{ title: Like(`%${search}%`) }, { content: Like(`%${search}%`) }]
+          : {};
 
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 0,
-    };
+        const [items, total] = await this.newsRepo.findAndCount({
+          where,
+          order: { createdAt: 'ASC' },
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+
+        return {
+          items,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 0,
+        };
+      },
+      RedisCacheService.TTL.MEDIUM // 5 minutes
+    );
   }
 
   async findAll() {
-    return this.newsRepo.find({ order: { createdAt: 'ASC' } });
+    const cacheKey = this.cacheService.generateKey(RedisCacheService.KEYS.NEWS, 'all');
+    
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => this.newsRepo.find({ order: { createdAt: 'ASC' } }),
+      RedisCacheService.TTL.MEDIUM
+    );
   }
 }

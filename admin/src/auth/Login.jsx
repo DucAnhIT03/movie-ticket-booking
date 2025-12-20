@@ -140,7 +140,7 @@ export default function Login() {
                 <p>Ghi nhớ tôi</p>
               </div>
 
-              <Link to="#">Bạn quên mật khẩu?</Link>
+              <Link to="/forgot-password">Bạn quên mật khẩu?</Link>
             </div>
 
             <button className="mainLogin" type="submit" disabled={isLoading}>

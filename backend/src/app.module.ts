@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MailModule } from './providers/mail/mail.module';
 import { QueueModule } from './providers/queue/queue.module';
+import { RedisCacheModule } from './providers/redis-cache';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TheatersModule } from './modules/theaters/theaters.module';
@@ -45,6 +46,9 @@ import { ChatModule } from './modules/chat/chat.module';
       synchronize: false,
     }),
   
+    // Redis Cache Module - Global
+    RedisCacheModule,
+    
     MailModule,
     QueueModule,
    

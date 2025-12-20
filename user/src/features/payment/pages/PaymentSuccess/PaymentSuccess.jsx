@@ -15,13 +15,13 @@ export default function PaymentSuccessPage() {
     const finalizePayment = async () => {
       try {
         const params = new URLSearchParams(location.search);
-        // MoMo redirect không gửi paymentId, nên fallback sang orderId/localStorage
+       
         const rawPaymentId =
           params.get("paymentId") ||
           params.get("orderId") ||
           localStorage.getItem("currentPaymentId");
 
-        // orderId format: PAY{paymentId}_{timestamp}
+       
         const paymentIdMatch = rawPaymentId?.match(/^PAY(\d+)_/);
         const paymentId = paymentIdMatch ? paymentIdMatch[1] : rawPaymentId;
         const resultCode = params.get("resultCode");

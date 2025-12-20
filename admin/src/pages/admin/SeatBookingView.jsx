@@ -17,6 +17,7 @@ export default function SeatBookingView() {
   const [selectedTheaterId, setSelectedTheaterId] = useState("");
   const [selectedScreenId, setSelectedScreenId] = useState("");
   const [selectedShowtimeId, setSelectedShowtimeId] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [customerName, setCustomerName] = useState("");
@@ -173,6 +174,14 @@ export default function SeatBookingView() {
       setSeats([]);
     }
   }, [selectedScreenId]);
+
+  useEffect(() => {
+    // Reset suất chiếu khi thay đổi ngày
+    if (selectedDate) {
+      setSelectedShowtimeId("");
+      setSeats([]);
+    }
+  }, [selectedDate]);
 
   useEffect(() => {
     if (selectedShowtimeId) {
@@ -590,11 +599,11 @@ export default function SeatBookingView() {
           display: "flex",
           gap: "15px",
           flexWrap: "wrap",
-          alignItems: "flex-start",
+          alignItems: "flex-end",
         }}
       >
-        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column" }}>
-          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", minHeight: "20px" }}>
+        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", height: "100%" }}>
+          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", height: "20px", lineHeight: "20px" }}>
             Chọn rạp
           </label>
           <select
@@ -615,6 +624,7 @@ export default function SeatBookingView() {
               cursor: isEmployee ? "not-allowed" : "pointer",
               opacity: isEmployee ? 0.6 : 1,
               height: "42px",
+              boxSizing: "border-box",
             }}
           >
             <option value="">-- Chọn rạp --</option>
@@ -624,15 +634,17 @@ export default function SeatBookingView() {
               </option>
             ))}
           </select>
-          {isEmployee && currentUserTheaterId && (
-            <div style={{ fontSize: "12px", color: "#888", marginTop: "4px", minHeight: "16px" }}>
-              Bạn chỉ có thể chọn phòng chiếu của rạp được gán
-            </div>
-          )}
+          <div style={{ height: "20px", marginTop: "4px" }}>
+            {isEmployee && currentUserTheaterId && (
+              <div style={{ fontSize: "12px", color: "#888", lineHeight: "16px" }}>
+                Bạn chỉ có thể chọn phòng chiếu của rạp được gán
+              </div>
+            )}
+          </div>
         </div>
 
-        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column" }}>
-          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", minHeight: "20px" }}>
+        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", height: "100%" }}>
+          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", height: "20px", lineHeight: "20px" }}>
             Chọn phòng chiếu
           </label>
           <select
@@ -651,6 +663,7 @@ export default function SeatBookingView() {
               borderRadius: "6px",
               opacity: selectedTheaterId ? 1 : 0.5,
               height: "42px",
+              boxSizing: "border-box",
             }}
           >
             <option value="">-- Chọn phòng --</option>
@@ -660,10 +673,36 @@ export default function SeatBookingView() {
               </option>
             ))}
           </select>
+          <div style={{ height: "20px", marginTop: "4px" }}></div>
         </div>
 
-        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column" }}>
-          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", minHeight: "20px" }}>
+        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", height: "100%" }}>
+          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", height: "20px", lineHeight: "20px" }}>
+            Lọc theo ngày
+          </label>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            disabled={!selectedScreenId}
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: "#1a1f29",
+              color: "#fff",
+              border: "1px solid #333",
+              borderRadius: "6px",
+              opacity: selectedScreenId ? 1 : 0.5,
+              height: "42px",
+              cursor: selectedScreenId ? "pointer" : "not-allowed",
+              boxSizing: "border-box",
+            }}
+          />
+          <div style={{ height: "20px", marginTop: "4px" }}></div>
+        </div>
+
+        <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", height: "100%" }}>
+          <label style={{ display: "block", marginBottom: "8px", color: "#aaa", height: "20px", lineHeight: "20px" }}>
             Chọn suất chiếu
           </label>
           <select
@@ -679,18 +718,33 @@ export default function SeatBookingView() {
               borderRadius: "6px",
               opacity: selectedScreenId ? 1 : 0.5,
               height: "42px",
+              boxSizing: "border-box",
             }}
           >
             <option value="">-- Chọn suất chiếu --</option>
-            {showtimes.map((showtime) => {
-              const startTime = showtime.startTime || showtime.start_time;
-              return (
-                <option key={showtime.id} value={showtime.id}>
-                  {startTime ? new Date(startTime).toLocaleString("vi-VN") : `Suất chiếu #${showtime.id}`}
-                </option>
-              );
-            })}
+            {showtimes
+              .filter((showtime) => {
+                if (!selectedDate) return true;
+                const startTime = showtime.startTime || showtime.start_time;
+                if (!startTime) return false;
+                const showtimeDate = new Date(startTime);
+                const selectedDateObj = new Date(selectedDate);
+                return (
+                  showtimeDate.getFullYear() === selectedDateObj.getFullYear() &&
+                  showtimeDate.getMonth() === selectedDateObj.getMonth() &&
+                  showtimeDate.getDate() === selectedDateObj.getDate()
+                );
+              })
+              .map((showtime) => {
+                const startTime = showtime.startTime || showtime.start_time;
+                return (
+                  <option key={showtime.id} value={showtime.id}>
+                    {startTime ? new Date(startTime).toLocaleString("vi-VN") : `Suất chiếu #${showtime.id}`}
+                  </option>
+                );
+              })}
           </select>
+          <div style={{ height: "20px", marginTop: "4px" }}></div>
         </div>
 
         {/* Đã bỏ nút tải lại vì đã có cập nhật realtime qua WebSocket */}

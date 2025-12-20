@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import chatService from '../services/chat/chatService';
 import socketService from '../services/chat/socketService';
+import uploadService from '../services/uploads/uploadService';
 import './ChatWidget.css';
 
 function ChatWidget() {
@@ -9,9 +10,12 @@ function ChatWidget() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem('adminAccessToken');
@@ -167,18 +171,65 @@ function ChatWidget() {
     setUnreadCount(0);
   };
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Vui lòng chọn file ảnh');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Kích thước ảnh không được vượt quá 10MB');
+        return;
+      }
+      setSelectedImage(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedConversation) return;
+    const hasText = !!newMessage.trim();
+    const hasImage = !!selectedImage;
+    if ((!hasText && !hasImage) || !selectedConversation) return;
 
-    const messageText = newMessage.trim();
+    const messageText = newMessage.trim() || '';
     setNewMessage('');
+    let imageUrl = null;
 
     // Đảm bảo socket đã được kết nối
     const token = localStorage.getItem('adminAccessToken');
     if (!token) {
       alert('Vui lòng đăng nhập để gửi tin nhắn');
       return;
+    }
+
+    // Upload ảnh nếu có
+    if (hasImage) {
+      setUploading(true);
+      try {
+        const uploadRes = await uploadService.uploadSingle(selectedImage, 'chat', 'chat_message');
+        if (uploadRes.status >= 200 && uploadRes.status < 300 && uploadRes.data?.url) {
+          imageUrl = uploadRes.data.url;
+        } else {
+          throw new Error(uploadRes.data?.message || 'Upload ảnh thất bại');
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert(`Không thể upload ảnh: ${error.message}`);
+        setUploading(false);
+        return;
+      }
+      setSelectedImage(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
 
     // Kiểm tra và kết nối socket nếu chưa kết nối
@@ -211,10 +262,16 @@ function ChatWidget() {
     }
 
     try {
-      console.log('📤 Sending message:', messageText);
+      console.log('📤 Sending message:', messageText, 'Image:', imageUrl);
       console.log('📍 Theater ID:', selectedConversation.theaterId);
+      console.log('📍 Target userId:', selectedConversation.userId);
       
-      const response = await socketService.sendMessage(selectedConversation.theaterId, messageText);
+      const response = await socketService.sendMessage(
+        selectedConversation.theaterId,
+        messageText,
+        selectedConversation.userId,
+        imageUrl
+      );
       console.log('📥 Send message response:', response);
       
       // Tin nhắn sẽ được thêm qua socket event 'new_message' (realtime)
@@ -240,6 +297,8 @@ function ChatWidget() {
     } catch (error) {
       console.error('❌ Error sending message:', error);
       alert(`Không thể gửi tin nhắn: ${error.message}`);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -345,7 +404,17 @@ function ChatWidget() {
                         className={`message-widget ${message.isFromStaff ? 'staff' : 'user'}`}
                       >
                         <div className="message-content-widget">
-                          <div className="message-text-widget">{message.message}</div>
+                          {message.imageUrl && (
+                            <img
+                              src={message.imageUrl}
+                              alt="attachment"
+                              className="message-image-widget"
+                              onClick={() => window.open(message.imageUrl, '_blank')}
+                            />
+                          )}
+                          {message.message && (
+                            <div className="message-text-widget">{message.message}</div>
+                          )}
                           <div className="message-time-widget">
                             {message.isTemp ? 'Đang gửi...' : formatTime(message.created_at)}
                           </div>
@@ -358,16 +427,51 @@ function ChatWidget() {
               </div>
 
               <form className="chat-widget-input-form" onSubmit={handleSendMessage}>
-                <input
-                  type="text"
-                  placeholder="Nhập tin nhắn..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="chat-widget-input"
-                />
-                <button type="submit" className="send-button-widget">
-                  Gửi
-                </button>
+                {selectedImage && (
+                  <div className="chat-widget-image-preview">
+                    <img src={URL.createObjectURL(selectedImage)} alt="Preview" />
+                    <button type="button" onClick={handleRemoveImage} className="remove-image-btn">×</button>
+                  </div>
+                )}
+                <div className="chat-widget-input-wrapper">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleImageSelect}
+                  />
+                  <button 
+                    type="button" 
+                    className="attach-button-widget" 
+                    aria-label="Đính kèm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    +
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="Hỏi bất kì điều gì"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    className="chat-widget-input"
+                  />
+                  <button 
+                    type="submit" 
+                    className="send-button-widget" 
+                    aria-label="Gửi"
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <div className="loading-spinner"></div>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 2L11 13"/>
+                        <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </form>
             </>
           )}

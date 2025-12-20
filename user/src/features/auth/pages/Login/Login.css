@@ -70,14 +70,15 @@
   transition: .3s;
 }
 
-.switchMode .signIn {
-  background: #2d4ef5;
-  color: #fff;
-}
-
+.switchMode .signIn,
 .switchMode .signUp {
-  background: transparent;
-  color: #555;
+  flex: 1;
+  border: none;
+  padding: 10px;
+  font-size: 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.3s;
 }
 
 

@@ -237,6 +237,7 @@ export class QueueService {
   private getEmailPriority(type: EmailType): EmailPriority {
     const priorityMap: Record<EmailType, EmailPriority> = {
       [EmailType.PASSWORD_RESET]: EmailPriority.HIGH,
+      [EmailType.PASSWORD_RESET_CODE]: EmailPriority.HIGH,
       [EmailType.BOOKING_CONFIRMATION]: EmailPriority.HIGH,
       [EmailType.BOOKING_INVOICE]: EmailPriority.HIGH,
       [EmailType.PAYMENT_RECEIPT]: EmailPriority.HIGH,

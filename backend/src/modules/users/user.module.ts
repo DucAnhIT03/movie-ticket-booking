@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { UserService } from './services/user.service';
 import { UsersRepository } from './repositories/users.repository';
 import { RoleRepository } from './repositories/role.repository';
@@ -11,9 +11,14 @@ import { UserRole } from '../../shared/schemas/user-role.entity';
 import { RolesSeeder } from './seeds/roles.seed';
 import { AdminSeeder } from './seeds/admin.seed';
 import { CloudinaryModule } from '../../providers/cloudinary/cloudinary.module';
+import { ChatModule } from '../chat/chat.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Users, Role, UserRole]), CloudinaryModule],
+  imports: [
+    TypeOrmModule.forFeature([Users, Role, UserRole]),
+    CloudinaryModule,
+    forwardRef(() => ChatModule),
+  ],
   providers: [
     UserService,
     RolesSeeder,

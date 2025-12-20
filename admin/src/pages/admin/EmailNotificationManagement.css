@@ -842,6 +842,20 @@
   border-radius: 5px;
   overflow-x: auto;
   font-size: 12px;
+  color: #fff;
+  margin: 8px 0 0 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.detail-item pre.metadata-pre {
+  background: #1f2633;
+  border: 1px solid #2a303d;
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  line-height: 1.5;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .error-message {

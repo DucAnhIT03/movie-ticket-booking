@@ -90,8 +90,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         .map((ur) => ur.role?.roleName)
         .filter(Boolean);
 
+      // Ưu tiên gán đúng vai trò nhân viên nếu user có nhiều role
+      const hasEmployeeRole = roleNames.includes('ROLE_EMPLOYEE');
+      const hasAdminRole = roleNames.includes('ROLE_ADMIN');
+      const primaryRole = hasEmployeeRole
+        ? 'ROLE_EMPLOYEE'
+        : hasAdminRole
+          ? 'ROLE_ADMIN'
+          : roleNames[0] || 'ROLE_USER';
+
       client.userId = userId;
-      client.userRole = roleNames[0] || 'ROLE_USER';
+      client.userRole = primaryRole;
       client.theaterId = user.theaterId || undefined;
 
       // Lưu thông tin socket
@@ -137,6 +146,39 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  /**
+   * Emit event để thông báo user bị khóa tài khoản
+   * @param userId ID của user bị khóa
+   */
+  notifyAccountBlocked(userId: number) {
+    const userSockets = this.connectedUsers.get(userId);
+    if (userSockets && userSockets.size > 0) {
+      // Emit đến room của user
+      this.server.to(`user:${userId}`).emit('account_blocked', {
+        message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+        timestamp: new Date().toISOString(),
+      });
+      
+      // Disconnect tất cả sockets của user này
+      userSockets.forEach((socketId) => {
+        const socket = this.server.sockets.sockets.get(socketId);
+        if (socket) {
+          socket.disconnect(true);
+        }
+      });
+
+      // Clean up
+      this.connectedUsers.delete(userId);
+      userSockets.forEach((socketId) => {
+        this.socketToUser.delete(socketId);
+      });
+
+      this.logger.log(`User ${userId} has been blocked and disconnected from all sessions`);
+    } else {
+      this.logger.log(`User ${userId} was blocked but has no active connections`);
+    }
+  }
+
   @SubscribeMessage('join_theater')
   async handleJoinTheater(
     @ConnectedSocket() client: AuthenticatedSocket,
@@ -159,7 +201,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('send_message')
   async handleSendMessage(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { theaterId: number; message: string },
+    @MessageBody() data: { theaterId: number; message: string; imageUrl?: string },
   ) {
     // Nếu client.userId không có, thử authenticate lại
     if (!client.userId) {
@@ -194,8 +236,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           .map((ur) => ur.role?.roleName)
           .filter(Boolean);
 
+        const hasEmployeeRole = roleNames.includes('ROLE_EMPLOYEE');
+        const hasAdminRole = roleNames.includes('ROLE_ADMIN');
+        const primaryRole = hasEmployeeRole
+          ? 'ROLE_EMPLOYEE'
+          : hasAdminRole
+            ? 'ROLE_ADMIN'
+            : roleNames[0] || 'ROLE_USER';
+
         client.userId = userId;
-        client.userRole = roleNames[0] || 'ROLE_USER';
+        client.userRole = primaryRole;
         client.theaterId = user.theaterId || undefined;
 
         this.logger.log(`Re-authenticated client ${client.id} as user ${userId}`);
@@ -214,7 +264,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const currentUserId = client.userId; // Lưu vào biến để TypeScript hiểu
 
     try {
-      const isStaff = client.userRole === 'ROLE_EMPLOYEE';
+      const isStaff =
+        client.userRole === 'ROLE_EMPLOYEE' || client.userRole === 'ROLE_ADMIN';
       const staffId = isStaff ? currentUserId : null;
 
       // Nếu là staff, cần tìm conversation để lấy userId
@@ -233,6 +284,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         message: data.message,
         isFromStaff: isStaff,
         staffId,
+        imageUrl: data.imageUrl,
       });
 
       // Load message với relations
@@ -241,21 +293,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         relations: ['user', 'staff', 'theater'],
       } as any);
 
-      // Gửi message đến user
+      // Gửi message đến user/staff - tránh duplicate:
+      // - User nhận qua room user:<id>
+      // - Staff nhận qua room theater:<theaterId> (đã join khi connect)
       if (!isStaff) {
         this.server.to(`user:${targetUserId}`).emit('new_message', fullMessage);
-        
-        // Tìm staff của theater và gửi cho họ
-        const staffList = await this.chatService.getStaffByTheater(data.theaterId);
-        if (staffList && staffList.length > 0) {
-          const staff = staffList[0];
-          this.server.to(`user:${staff.id}`).emit('new_message', fullMessage);
-        }
         this.server.to(`theater:${data.theaterId}`).emit('new_message', fullMessage);
       } else {
-        // Nếu là staff gửi, gửi cho user và cho chính staff đó
+        // Staff gửi: user nhận ở room user:<id>, các staff (kể cả người gửi) nhận ở room theater:<id>
         this.server.to(`user:${targetUserId}`).emit('new_message', fullMessage);
-        this.server.to(`user:${client.userId}`).emit('new_message', fullMessage);
         this.server.to(`theater:${data.theaterId}`).emit('new_message', fullMessage);
       }
 

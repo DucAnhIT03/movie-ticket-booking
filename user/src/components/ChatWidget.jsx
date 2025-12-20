@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import chatService from '../services/chat';
 import socketService from '../services/socketService';
+import uploadService from '../services/uploads/uploadService';
 import './ChatWidget.css';
 
 function ChatWidget() {
@@ -9,20 +10,23 @@ function ChatWidget() {
   const [selectedTheater, setSelectedTheater] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchTheater, setSearchTheater] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef(null);
   const widgetRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      // Nếu không có token, không kết nối socket nhưng vẫn hiển thị widget
+    
       return;
     }
 
-    // Kết nối socket và đợi kết nối thành công
+   
     const socket = socketService.connect(token);
     
     if (socket) {
@@ -38,14 +42,14 @@ function ChatWidget() {
       }
     }
 
-    // Load danh sách rạp
+   
     loadTheaters();
 
-    // Load conversations để đếm unread
+    
     loadConversations();
   }, []);
 
-  // Đăng ký socket listener - sử dụng ref để luôn có giá trị mới nhất
+  
   const selectedTheaterRef = useRef(selectedTheater);
   const isOpenRef = useRef(isOpen);
 
@@ -67,7 +71,7 @@ function ChatWidget() {
       if (currentTheater && message.theaterId === currentTheater.id && currentIsOpen) {
         console.log('✅ User: Message belongs to current theater, adding to state');
         setMessages((prev) => {
-          // Kiểm tra duplicate
+          
           const exists = prev.some(m => m.id === message.id);
           if (exists) {
             console.log('⚠️ User: Message already exists');
@@ -183,18 +187,65 @@ function ChatWidget() {
     setUnreadCount(0);
   };
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Vui lòng chọn file ảnh');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Kích thước ảnh không được vượt quá 10MB');
+        return;
+      }
+      setSelectedImage(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedTheater) return;
+    const hasText = !!newMessage.trim();
+    const hasImage = !!selectedImage;
+    if ((!hasText && !hasImage) || !selectedTheater) return;
 
-    const messageText = newMessage.trim();
+    const messageText = newMessage.trim() || '';
     setNewMessage('');
+    let imageUrl = null;
 
     // Đảm bảo socket đã được kết nối
     const token = localStorage.getItem('accessToken');
     if (!token) {
       alert('Vui lòng đăng nhập để gửi tin nhắn');
       return;
+    }
+
+    // Upload ảnh nếu có
+    if (hasImage) {
+      setUploading(true);
+      try {
+        const uploadRes = await uploadService.uploadSingle(selectedImage, 'chat', 'chat_message');
+        if (uploadRes.status >= 200 && uploadRes.status < 300 && uploadRes.data?.url) {
+          imageUrl = uploadRes.data.url;
+        } else {
+          throw new Error(uploadRes.data?.message || 'Upload ảnh thất bại');
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert(`Không thể upload ảnh: ${error.message}`);
+        setUploading(false);
+        return;
+      }
+      setSelectedImage(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
 
     // Kiểm tra và kết nối socket nếu chưa kết nối
@@ -227,11 +278,13 @@ function ChatWidget() {
     }
 
     try {
-      console.log('Sending message:', messageText);
-      await socketService.sendMessage(selectedTheater.id, messageText);
+      console.log('Sending message:', messageText, 'Image:', imageUrl);
+      await socketService.sendMessage(selectedTheater.id, messageText, imageUrl);
     } catch (error) {
       console.error('Error sending message:', error);
       alert(`Không thể gửi tin nhắn: ${error.message}`);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -328,7 +381,17 @@ function ChatWidget() {
                         className={`message-widget ${message.isFromStaff ? 'staff' : 'user'}`}
                       >
                         <div className="message-content-widget">
-                          <div className="message-text-widget">{message.message}</div>
+                          {message.imageUrl && (
+                            <img
+                              src={message.imageUrl}
+                              alt="attachment"
+                              className="message-image-widget"
+                              onClick={() => window.open(message.imageUrl, '_blank')}
+                            />
+                          )}
+                          {message.message && (
+                            <div className="message-text-widget">{message.message}</div>
+                          )}
                           <div className="message-time-widget">
                             {formatTime(message.created_at)}
                           </div>
@@ -341,16 +404,51 @@ function ChatWidget() {
               </div>
 
               <form className="chat-widget-input-form" onSubmit={handleSendMessage}>
-                <input
-                  type="text"
-                  placeholder="Nhập tin nhắn..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="chat-widget-input"
-                />
-                <button type="submit" className="send-button-widget">
-                  Gửi
-                </button>
+                {selectedImage && (
+                  <div className="chat-widget-image-preview">
+                    <img src={URL.createObjectURL(selectedImage)} alt="Preview" />
+                    <button type="button" onClick={handleRemoveImage} className="remove-image-btn">×</button>
+                  </div>
+                )}
+                <div className="chat-widget-input-wrapper">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleImageSelect}
+                  />
+                  <button 
+                    type="button" 
+                    className="attach-button-widget" 
+                    aria-label="Đính kèm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    +
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="Hỏi bất kì điều gì"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    className="chat-widget-input"
+                  />
+                  <button 
+                    type="submit" 
+                    className="send-button-widget" 
+                    aria-label="Gửi"
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <div className="loading-spinner"></div>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 2L11 13"/>
+                        <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </form>
             </>
           )}

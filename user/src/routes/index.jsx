@@ -17,6 +17,7 @@ import EventDetail from "../features/events/pages/EventDetail.jsx";
 import Login from "../features/auth/pages/Login/Login.jsx";
 import Register from "../features/auth/pages/Register/Register.jsx";
 import Profile from "../features/auth/pages/Profile/Profile.jsx";
+import ForgotPassword from "../features/auth/pages/ForgotPassword/ForgotPassword.jsx";
 import FestivalDetail from "../features/festival/pages/FestivalDetail.jsx";
 import Chat from "../features/chat/pages/Chat.jsx";
 
@@ -46,6 +47,7 @@ function AppRouter() {
         {/* USER AUTH */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/chat" element={<Chat />} />
       </Routes>

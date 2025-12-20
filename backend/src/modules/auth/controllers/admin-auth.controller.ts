@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UnauthorizedException, Req } from '@nestjs/common';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from '../services/auth.service';
 import { LoginDto } from '../dtos/request/login.dto';
@@ -50,8 +50,9 @@ export class AdminAuthController {
       },
     },
   })
-  async adminLogin(@Body() dto: LoginDto) {
-    const result = await this.authService.login(dto, { allowAdmin: true });
+  async adminLogin(@Body() dto: LoginDto, @Req() req: any) {
+    const ip = this.getIpAddress(req);
+    const result = await this.authService.login(dto, { allowAdmin: true, ip });
     
    
     const userRoles = result.user?.roles || [];
@@ -66,6 +67,17 @@ export class AdminAuthController {
     }
 
     return result;
+  }
+
+  private getIpAddress(req: any): string {
+    return (
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.headers['x-real-ip'] ||
+      req.connection?.remoteAddress ||
+      req.socket?.remoteAddress ||
+      req.ip ||
+      '127.0.0.1'
+    );
   }
 }
 

@@ -30,6 +30,7 @@ export default function PromotionManagement() {
     discountValue: 0,
     channelEmail: false,
     channelInApp: true,
+    isPublic: false,
     startAt: "",
     endAt: "",
     usageLimit: null,
@@ -75,6 +76,7 @@ export default function PromotionManagement() {
         discountValue: promotion.discountValue || 0,
         channelEmail: promotion.channelEmail || false,
         channelInApp: promotion.channelInApp !== undefined ? promotion.channelInApp : true,
+        isPublic: promotion.isPublic !== undefined ? promotion.isPublic : false,
         startAt: promotion.startAt ? new Date(promotion.startAt).toISOString().slice(0, 16) : "",
         endAt: promotion.endAt ? new Date(promotion.endAt).toISOString().slice(0, 16) : "",
         usageLimit: promotion.usageLimit || null,
@@ -94,6 +96,7 @@ export default function PromotionManagement() {
         discountValue: 0,
         channelEmail: false,
         channelInApp: true,
+        isPublic: false,
         startAt: "",
         endAt: "",
         usageLimit: null,
@@ -120,6 +123,7 @@ export default function PromotionManagement() {
       discountValue: 0,
       channelEmail: false,
       channelInApp: true,
+      isPublic: false,
       startAt: "",
       endAt: "",
       usageLimit: null,
@@ -217,6 +221,7 @@ export default function PromotionManagement() {
         discountValue: Number(formData.discountValue), // Đảm bảo là number
         channelEmail: Boolean(formData.channelEmail),
         channelInApp: formData.channelInApp !== undefined ? Boolean(formData.channelInApp) : true,
+        isPublic: Boolean(formData.isPublic),
         startAt: formData.startAt ? new Date(formData.startAt).toISOString() : undefined,
         endAt: formData.endAt ? new Date(formData.endAt).toISOString() : undefined,
         // Chỉ gửi usageLimit và perUserLimit nếu có giá trị (không phải null, undefined, hoặc empty string)
@@ -272,6 +277,7 @@ export default function PromotionManagement() {
           discountValue: 0,
           channelEmail: false,
           channelInApp: true,
+          isPublic: false,
           startAt: "",
           endAt: "",
           usageLimit: null,
@@ -508,7 +514,7 @@ export default function PromotionManagement() {
               <th style={{ padding: "10px", textAlign: "center" }}>Giá trị</th>
               <th style={{ padding: "10px", textAlign: "center" }}>Thời gian</th>
               <th style={{ padding: "10px", textAlign: "center" }}>Trạng thái</th>
-              <th style={{ padding: "10px", textAlign: "center" }}>Hành động</th>
+              <th style={{ padding: "10px", textAlign: "center" }}>Số lượt đã sử dụng</th>
             </tr>
           </thead>
 
@@ -522,60 +528,24 @@ export default function PromotionManagement() {
                 <td style={{ padding: "10px", textAlign: "center" }}>
                   {promo.discountType === "PERCENT" ? "Phần trăm" : "Số tiền"}
                 </td>
+                {/* Giá trị */}
                 <td style={{ padding: "10px", textAlign: "center" }}>
                   {promo.discountType === "PERCENT"
                     ? `${promo.discountValue}%`
                     : `${promo.discountValue.toLocaleString("vi-VN")} VND`}
-                  <div style={{ fontSize: "12px", color: "#aaa", marginTop: "4px" }}>
+                </td>
+                {/* Thời gian */}
+                <td style={{ padding: "10px", textAlign: "center" }}>
+                  <div style={{ fontSize: "12px", color: "#aaa" }}>
                     Bắt đầu: {formatDate(promo.startAt)} <br />
                     Kết thúc: {formatDate(promo.endAt)}
                   </div>
                 </td>
+                {/* Trạng thái */}
                 <td style={{ padding: "10px", textAlign: "center" }}>{getStatusBadge(promo)}</td>
+                {/* Số lượt đã sử dụng */}
                 <td style={{ padding: "10px", textAlign: "center" }}>
-                  <button
-                    onClick={() => handleOpenModal(promo)}
-                    style={{
-                      background: "#1976d2",
-                      border: "none",
-                      borderRadius: "5px",
-                      padding: "6px 10px",
-                      marginRight: "6px",
-                      cursor: "pointer",
-                    }}
-                    title="Sửa khuyến mãi"
-                  >
-                    <Edit size={16} color="#fff" />
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(promo.id)}
-                    style={{
-                      background: "#d32f2f",
-                      border: "none",
-                      borderRadius: "5px",
-                      padding: "6px 10px",
-                      marginRight: "6px",
-                      cursor: "pointer",
-                    }}
-                    title="Xóa khuyến mãi"
-                  >
-                    <Trash2 size={16} color="#fff" />
-                  </button>
-
-                  <button
-                    onClick={() => handleOpenSendModal(promo)}
-                    style={{
-                      background: "#4caf50",
-                      border: "none",
-                      borderRadius: "5px",
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                    }}
-                    title="Gửi khuyến mãi"
-                  >
-                    <Send size={16} color="#fff" />
-                  </button>
+                  {typeof promo.usedCountTotal === "number" ? promo.usedCountTotal : 0}
                 </td>
               </tr>
             ))}
@@ -803,6 +773,15 @@ export default function PromotionManagement() {
                       style={{ cursor: "pointer" }}
                     />
                     Gửi trong App
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.isPublic}
+                      onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
+                      style={{ cursor: "pointer" }}
+                    />
+                    Công khai (gợi ý ở thanh toán)
                   </label>
                   <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                     <input

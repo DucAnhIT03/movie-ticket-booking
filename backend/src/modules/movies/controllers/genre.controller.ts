@@ -17,6 +17,8 @@ import { BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../../common/guards/admin.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { CacheResponse, InvalidateCache } from '../../../providers/redis-cache';
+import { RedisCacheService } from '../../../providers/redis-cache/redis-cache.service';
 
 @ApiTags('Genres')
 @Controller('genres')
@@ -26,6 +28,7 @@ export class GenreController {
   @Post()
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.GENRES)
   @ApiOperation({ summary: 'Tạo thể loại mới (có thể tạo 1 hoặc nhiều thể loại)' })
   @ApiResponse({ status: 201, description: 'Thể loại được tạo thành công' })
   @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
@@ -59,6 +62,7 @@ export class GenreController {
   }
 
   @Get()
+  @CacheResponse(RedisCacheService.KEYS.GENRES, RedisCacheService.TTL.GENRES)
   @ApiOperation({ 
     summary: 'Lấy danh sách thể loại (có tìm kiếm và phân trang)',
     description: 'Lấy danh sách thể loại với tìm kiếm và phân trang'
@@ -123,6 +127,7 @@ export class GenreController {
   @Delete(':id')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.GENRES)
   @ApiOperation({ summary: 'Xóa một thể loại' })
   @ApiParam({ name: 'id', description: 'ID của thể loại cần xóa' })
   @ApiResponse({ status: 200, description: 'Xóa thành công' })

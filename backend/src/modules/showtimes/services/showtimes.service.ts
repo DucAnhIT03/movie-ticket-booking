@@ -7,6 +7,7 @@ import { Screen } from 'src/shared/schemas/screen.entity';
 import { CreateShowtimeDto } from 'src/modules/showtimes/dtos/request/create-showtime.dto';
 import { PaymentStatus } from 'src/common/constrants/enums';
 import { ShowtimeRepository } from '../repositories/showtime.repository';
+import { RedisCacheService } from '../../../providers/redis-cache';
 
 @Injectable()
 export class ShowtimesService {
@@ -16,6 +17,7 @@ export class ShowtimesService {
     private readonly movieRepo: Repository<Movie>,
     @InjectRepository(Screen)
     private readonly screenRepo: Repository<Screen>,
+    private readonly cacheService: RedisCacheService,
   ) {}
 
   async findAll(params?: {
@@ -31,62 +33,76 @@ export class ShowtimesService {
     const limit = Math.min(100, Math.max(1, Number(params?.limit) || 10)); // Max 100 items per page
     const skip = (page - 1) * limit;
 
-    const query = this.showtimeRepo.createQueryBuilder('showtime');
+    // Generate cache key
+    const cacheKey = this.cacheService.generateKey(
+      RedisCacheService.KEYS.SHOWTIMES,
+      'list',
+      `p${page}`,
+      `l${limit}`,
+      `s${params?.search || ''}`,
+      `sb${params?.sortBy || 'startTime'}`,
+      `so${params?.sortOrder || 'asc'}`,
+      `m${params?.movieId || ''}`,
+      `sc${params?.screenId || ''}`
+    );
 
- 
-    query
-      .leftJoinAndSelect('showtime.screen', 'screen')
-      .leftJoinAndSelect('showtime.movie', 'movie');
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const query = this.showtimeRepo.createQueryBuilder('showtime');
 
-    
-    if (params?.search) {
-      const searchId = Number(params.search);
-      const isValidId = !isNaN(searchId) && searchId > 0;
-      
-      query.andWhere(
-        new Brackets((qb) => {
-          if (isValidId) {
-            qb.where('showtime.id = :searchId', { searchId })
-              .orWhere('movie.title LIKE :search', { search: `%${params.search}%` })
-              .orWhere('screen.name LIKE :search', { search: `%${params.search}%` });
-          } else {
-            qb.where('movie.title LIKE :search', { search: `%${params.search}%` })
-              .orWhere('screen.name LIKE :search', { search: `%${params.search}%` });
-          }
-        }),
-      );
-    }
+        query
+          .leftJoinAndSelect('showtime.screen', 'screen')
+          .leftJoinAndSelect('showtime.movie', 'movie');
 
+        if (params?.search) {
+          const searchId = Number(params.search);
+          const isValidId = !isNaN(searchId) && searchId > 0;
+          
+          query.andWhere(
+            new Brackets((qb) => {
+              if (isValidId) {
+                qb.where('showtime.id = :searchId', { searchId })
+                  .orWhere('movie.title LIKE :search', { search: `%${params.search}%` })
+                  .orWhere('screen.name LIKE :search', { search: `%${params.search}%` });
+              } else {
+                qb.where('movie.title LIKE :search', { search: `%${params.search}%` })
+                  .orWhere('screen.name LIKE :search', { search: `%${params.search}%` });
+              }
+            }),
+          );
+        }
 
-    if (params?.movieId) {
-      query.andWhere('showtime.movieId = :movieId', { movieId: params.movieId });
-    }
+        if (params?.movieId) {
+          query.andWhere('showtime.movieId = :movieId', { movieId: params.movieId });
+        }
 
-  
-    if (params?.screenId) {
-      query.andWhere('showtime.screenId = :screenId', { screenId: params.screenId });
-    }
+        if (params?.screenId) {
+          query.andWhere('showtime.screenId = :screenId', { screenId: params.screenId });
+        }
 
+        const sortBy = params?.sortBy || 'startTime';
+        const sortOrder = params?.sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+        query.orderBy(`showtime.${sortBy}`, sortOrder);
 
-    const sortBy = params?.sortBy || 'startTime';
-    const sortOrder = params?.sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-    query.orderBy(`showtime.${sortBy}`, sortOrder);
+        query.skip(skip).take(limit);
 
- 
-    query.skip(skip).take(limit);
+        const [items, total] = await query.getManyAndCount();
 
-    const [items, total] = await query.getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+        return {
+          items,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        };
+      },
+      RedisCacheService.TTL.SHORT // 1 minute - showtimes data changes frequently
+    );
   }
 
   async findOne(id: number) {
+    // Note: Don't cache this as it includes bookings which change frequently
     const showtime = await this.showtimeRepo.findOne({
       where: { id },
       relations: ['screen', 'screen.theater', 'movie', 'bookings', 'bookings.payments'],
@@ -98,11 +114,22 @@ export class ShowtimesService {
   }
 
   findByMovie(movieId: number) {
-    return this.showtimeRepo.find({
-      where: { movieId },
-      relations: ['screen'],
-      order: { startTime: 'ASC' },
-    });
+    const cacheKey = this.cacheService.generateKey(
+      RedisCacheService.KEYS.SHOWTIMES_BY_MOVIE, 
+      movieId
+    );
+    
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        return this.showtimeRepo.find({
+          where: { movieId },
+          relations: ['screen'],
+          order: { startTime: 'ASC' },
+        });
+      },
+      RedisCacheService.TTL.SHORT // 1 minute
+    );
   }
 
   async findByDate(date: string, timezoneOffset?: number) {
@@ -114,25 +141,36 @@ export class ShowtimesService {
     const offsetMinutes =
       typeof timezoneOffset === 'number' && !isNaN(timezoneOffset) ? timezoneOffset : 0;
 
-    const offsetSign = offsetMinutes <= 0 ? '+' : '-';
-    const absOffset = Math.abs(offsetMinutes);
-    const offsetHours = String(Math.floor(absOffset / 60)).padStart(2, '0');
-    const offsetMins = String(absOffset % 60).padStart(2, '0');
-    const offsetStr = `${offsetSign}${offsetHours}:${offsetMins}`;
+    const cacheKey = this.cacheService.generateKey(
+      RedisCacheService.KEYS.SHOWTIMES_BY_DATE,
+      date,
+      `tz${offsetMinutes}`
+    );
 
-    const start = new Date(`${date}T00:00:00.000${offsetStr}`);
-    const end = new Date(`${date}T23:59:59.999${offsetStr}`);
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const offsetSign = offsetMinutes <= 0 ? '+' : '-';
+        const absOffset = Math.abs(offsetMinutes);
+        const offsetHours = String(Math.floor(absOffset / 60)).padStart(2, '0');
+        const offsetMins = String(absOffset % 60).padStart(2, '0');
+        const offsetStr = `${offsetSign}${offsetHours}:${offsetMins}`;
 
-    
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      throw new BadRequestException('Ngày không hợp lệ');
-    }
+        const start = new Date(`${date}T00:00:00.000${offsetStr}`);
+        const end = new Date(`${date}T23:59:59.999${offsetStr}`);
 
-    return this.showtimeRepo.find({
-      where: { startTime: Between(start, end) },
-      relations: ['screen', 'screen.theater', 'movie'],
-      order: { startTime: 'ASC' },
-    });
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          throw new BadRequestException('Ngày không hợp lệ');
+        }
+
+        return this.showtimeRepo.find({
+          where: { startTime: Between(start, end) },
+          relations: ['screen', 'screen.theater', 'movie'],
+          order: { startTime: 'ASC' },
+        });
+      },
+      RedisCacheService.TTL.SHORT // 1 minute - very frequently accessed
+    );
   }
 
 
@@ -493,7 +531,12 @@ export class ShowtimesService {
       startTime: startTime,
       endTime: endTime,
     });
-    return this.showtimeRepo.save(showtime);
+    const result = await this.showtimeRepo.save(showtime);
+    
+    // Invalidate cache after creating showtime
+    await this.cacheService.invalidateShowtimes();
+    
+    return result;
   }
 
   async update(id: number, dto: Partial<CreateShowtimeDto>) {
@@ -647,7 +690,12 @@ export class ShowtimesService {
     showtime.startTime = newStartTime;
     showtime.endTime = newEndTime;
 
-    return this.showtimeRepo.save(showtime);
+    const result = await this.showtimeRepo.save(showtime);
+    
+    // Invalidate cache after update
+    await this.cacheService.invalidateShowtimes(id);
+    
+    return result;
   }
 
   async remove(id: number) {
@@ -677,6 +725,10 @@ export class ShowtimesService {
     }
 
     await this.showtimeRepo.remove(showtime);
+    
+    // Invalidate cache after delete
+    await this.cacheService.invalidateShowtimes(id);
+    
     return { message: 'Xóa suất chiếu thành công' };
   }
 }

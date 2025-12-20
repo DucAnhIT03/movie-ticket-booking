@@ -19,6 +19,10 @@ axiosClient.interceptors.request.use((config) => {
   if (token) {
     config.headers["Authorization"] = `Bearer ${token}`;
   }
+  // Nếu gửi FormData, để trình duyệt tự set boundary
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
   return config;
 });
 

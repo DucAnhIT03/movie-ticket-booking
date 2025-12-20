@@ -30,6 +30,7 @@ export default function PaymentPage() {
   const [appliedPromotion, setAppliedPromotion] = useState(null);
   const [promoError, setPromoError] = useState("");
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [publicPromoSuggestions, setPublicPromoSuggestions] = useState([]);
   const [sepayCheckoutData, setSepayCheckoutData] = useState(null);
   const sepayStatusTimerRef = useRef(null);
   const sepayFormRef = useRef(null);
@@ -238,6 +239,21 @@ export default function PaymentPage() {
     };
 
     loadBookingData();
+  }, []);
+
+  // Load promo code suggestions (public promotions) for autocomplete
+  useEffect(() => {
+    const loadPublicPromos = async () => {
+      try {
+        const res = await promotionService.getPublic(20);
+        const items = Array.isArray(res?.data) ? res.data : (res?.data?.items || []);
+        setPublicPromoSuggestions(items || []);
+      } catch (e) {
+        // Silent fail (gợi ý là optional)
+        setPublicPromoSuggestions([]);
+      }
+    };
+    loadPublicPromos();
   }, []);
 
   useEffect(() => {
@@ -943,47 +959,106 @@ export default function PaymentPage() {
               <div className="promo-section" style={{ marginBottom: "20px" }}>
                 <h4 style={{ fontSize: "14px", marginBottom: "10px", color: "#ccc" }}>Mã khuyến mãi</h4>
                 {!appliedPromotion ? (
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <input
-                      type="text"
-                      value={promoCode}
-                      onChange={(e) => {
-                        setPromoCode(e.target.value.toUpperCase());
-                        setPromoError("");
-                      }}
-                      placeholder="Nhập mã khuyến mãi"
-                      style={{
-                        flex: 1,
-                        padding: "10px",
-                        background: "#242b36",
-                        color: "#fff",
-                        border: promoError ? "1px solid #f44336" : "1px solid #333",
-                        borderRadius: "5px",
-                        fontSize: "14px",
-                        outline: "none",
-                      }}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          handleApplyPromoCode();
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={handleApplyPromoCode}
-                      disabled={isApplyingPromo || !promoCode.trim()}
-                      style={{
-                        padding: "10px 20px",
-                        background: isApplyingPromo || !promoCode.trim() ? "#666" : "#e53935",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "5px",
-                        cursor: isApplyingPromo || !promoCode.trim() ? "not-allowed" : "pointer",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {isApplyingPromo ? "Đang kiểm tra..." : "Áp dụng"}
-                    </button>
+                  <div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => {
+                          setPromoCode(e.target.value.toUpperCase());
+                          setPromoError("");
+                        }}
+                        placeholder="Nhập mã khuyến mãi"
+                        style={{
+                          flex: 1,
+                          padding: "10px",
+                          background: "#242b36",
+                          color: "#fff",
+                          border: promoError ? "1px solid #f44336" : "1px solid #333",
+                          borderRadius: "5px",
+                          fontSize: "14px",
+                          outline: "none",
+                        }}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            handleApplyPromoCode();
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={handleApplyPromoCode}
+                        disabled={isApplyingPromo || !promoCode.trim()}
+                        style={{
+                          padding: "10px 20px",
+                          background: isApplyingPromo || !promoCode.trim() ? "#666" : "#e53935",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: isApplyingPromo || !promoCode.trim() ? "not-allowed" : "pointer",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {isApplyingPromo ? "Đang kiểm tra..." : "Áp dụng"}
+                      </button>
+                    </div>
+
+                    {publicPromoSuggestions?.length > 0 && (
+                      <div style={{ marginTop: "10px" }}>
+                        <div style={{ color: "#9ca3af", fontSize: "12px", marginBottom: "6px" }}>
+                          Gợi ý mã công khai:
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                          {publicPromoSuggestions
+                            .filter((p) => {
+                              const code = (p?.code || "").toUpperCase();
+                              const q = (promoCode || "").trim().toUpperCase();
+                              if (!code) return false;
+                              if (!q) return true;
+                              return code.includes(q);
+                            })
+                            .slice(0, 6)
+                            .map((p) => (
+                              <button
+                                key={p.id || p.code}
+                                type="button"
+                                onClick={() => {
+                                  setPromoCode(String(p.code || "").toUpperCase());
+                                  setPromoError("");
+                                }}
+                                style={{
+                                  padding: "6px 10px",
+                                  background: "rgba(255,255,255,0.06)",
+                                  color: "#fff",
+                                  border: "1px solid rgba(255,255,255,0.12)",
+                                  borderRadius: "999px",
+                                  cursor: "pointer",
+                                  fontSize: "12px",
+                                }}
+                                title={p.title || p.description || p.code}
+                              >
+                                <span style={{ fontWeight: 600 }}>{p.code}</span>
+                                <span style={{ marginLeft: 6 }}>
+                                  {p.discountType === "PERCENT"
+                                    ? `- ${p.discountValue}%`
+                                    : `- ${Number(p.discountValue || 0).toLocaleString("vi-VN")}₫`}
+                                </span>
+                                {typeof p.percentUsed === "number" && (
+                                  <span style={{ marginLeft: 6, opacity: 0.85 }}>
+                                    ({p.percentUsed}% đã dùng)
+                                  </span>
+                                )}
+                                {p.endAt && (
+                                  <span style={{ marginLeft: 6, opacity: 0.8 }}>
+                                    HSD:{" "}
+                                    {new Date(p.endAt).toLocaleDateString("vi-VN")}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{

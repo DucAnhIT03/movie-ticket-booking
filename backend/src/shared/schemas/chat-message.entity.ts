@@ -26,6 +26,9 @@ export class ChatMessage {
   @Column({ type: 'text' })
   message: string;
 
+  @Column({ name: 'image_url', nullable: true })
+  imageUrl?: string;
+
   @Column({ name: 'is_from_staff', type: 'boolean', default: false })
   isFromStaff: boolean;
 

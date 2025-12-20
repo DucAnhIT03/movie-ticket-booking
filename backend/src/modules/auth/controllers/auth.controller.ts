@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, Get, Query, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from '../services/auth.service';
 import { OtpService } from '../services/otp.service';
@@ -9,6 +9,12 @@ import { VerifyOtpDto } from '../dtos/request/verify-otp.dto';
 import { OtpPurpose } from '../../../shared/schemas/otp-verification.entity';
 import { GoogleLoginDto } from '../dtos/request/google-login.dto';
 import { AppleLoginDto } from '../dtos/request/apple-login.dto';
+import { ResetPasswordDto } from '../dtos/request/reset-password.dto';
+import { VerifyResetOtpDto } from '../dtos/request/verify-reset-otp.dto';
+import { ResetWithCodeDto } from '../dtos/request/reset-with-code.dto';
+import { AdminGuard } from '../../../common/guards/admin.guard';
+import { PasswordResetStatus } from '../../../shared/schemas/password-reset-request.entity';
+
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -62,7 +68,7 @@ export class AuthController {
     description: 'OTP không hợp lệ hoặc đã hết hạn',
   })
   async verifyOtp(@Body() dto: VerifyOtpDto) {
-    await this.otpService.verifyOtp(dto.email, dto.otpCode, OtpPurpose.REGISTER);
+    await this.otpService.verifyOtp(dto.email, dto.otpCode, dto.purpose || OtpPurpose.REGISTER);
     return { message: 'OTP hợp lệ' };
   }
 
@@ -154,8 +160,20 @@ export class AuthController {
       },
     },
   })
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Req() req: any) {
+    const ip = this.getIpAddress(req);
+    return this.authService.login(dto, { ip });
+  }
+
+  private getIpAddress(req: any): string {
+    return (
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.headers['x-real-ip'] ||
+      req.connection?.remoteAddress ||
+      req.socket?.remoteAddress ||
+      req.ip ||
+      '127.0.0.1'
+    );
   }
 
   @Post('login/google')
@@ -240,5 +258,102 @@ export class AuthController {
   })
   async loginWithApple(@Body() dto: AppleLoginDto) {
     return this.authService.loginWithApple(dto);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(200)
+  @ApiOperation({ 
+    summary: 'Quên mật khẩu',
+    description: 'Gửi mã OTP đến email để đặt lại mật khẩu'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'OTP đã được gửi thành công',
+    schema: {
+      example: {
+        message: 'OTP đã được gửi đến email của bạn'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Email không tồn tại',
+  })
+  async forgotPassword(@Body() dto: SendOtpDto) {
+    await this.authService.forgotPassword(dto.email);
+    return { message: 'OTP đã được gửi đến email của bạn' };
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  @ApiOperation({ 
+    summary: 'Đặt lại mật khẩu',
+    description: 'Đặt lại mật khẩu mới sau khi xác thực OTP'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Mật khẩu đã được đặt lại thành công',
+    schema: {
+      example: {
+        message: 'Mật khẩu đã được đặt lại thành công'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'OTP không hợp lệ hoặc đã hết hạn',
+  })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto);
+    return { message: 'Mật khẩu đã được đặt lại thành công' };
+  }
+
+  @Post('verify-reset-otp')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Nhân viên xác thực OTP quên mật khẩu',
+    description: 'Xác thực OTP (6 số) và tạo yêu cầu chờ admin duyệt để gửi mã 8 ký tự',
+  })
+  async verifyResetOtp(@Body() dto: VerifyResetOtpDto) {
+    const req = await this.authService.verifyResetOtp(dto.email, dto.otpCode);
+    return { message: 'OTP hợp lệ, chờ admin duyệt', requestId: req.id };
+  }
+
+  @Get('reset-request-status')
+  @ApiOperation({
+    summary: 'Nhân viên kiểm tra trạng thái yêu cầu khôi phục mật khẩu',
+  })
+  async getResetRequestStatus(@Query('email') email: string) {
+    const result = await this.authService.getResetRequestStatus(email);
+    return result;
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('admin/password-resets')
+  @ApiOperation({ summary: 'Admin xem danh sách yêu cầu khôi phục mật khẩu' })
+  async listResetRequests(@Query('status') status?: PasswordResetStatus) {
+    return this.authService.listResetRequests(status);
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('admin/password-resets/:id/approve')
+  @ApiOperation({ summary: 'Admin duyệt và gửi mã khôi phục 8 ký tự cho nhân viên' })
+  async approveReset(
+    @Param('id') id: number,
+    @Req() req: any,
+  ) {
+    const adminId = req.user?.sub;
+    const result = await this.authService.adminApproveReset(Number(id), adminId);
+    return { message: 'Đã gửi mã khôi phục tới email nhân viên', requestId: result.id };
+  }
+
+  @Post('reset-with-code')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Nhân viên nhập mã 8 ký tự để đặt lại mật khẩu',
+  })
+  async resetWithCode(@Body() dto: ResetWithCodeDto) {
+    await this.authService.resetWithCode(dto.email, dto.resetCode, dto.newPassword);
+    return { message: 'Đổi mật khẩu thành công' };
   }
 }

@@ -88,6 +88,17 @@ export class PasswordResetEmailDto extends BaseEmailDto {
   expiresIn: number;
 }
 
+export class PasswordResetCodeEmailDto extends BaseEmailDto {
+  @IsString()
+  userName: string;
+
+  @IsString()
+  resetCode: string;
+
+  @IsNumber()
+  expiresIn: number;
+}
+
 export class PasswordChangedEmailDto extends BaseEmailDto {
   @IsString()
   userName: string;

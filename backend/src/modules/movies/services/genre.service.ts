@@ -4,6 +4,7 @@ import { UpdateGenreDto } from '../dtos/request/update-genre.dto';
 import { GenreRepository } from '../repositories/genre.repository';
 import { MovieGenreRepository } from '../repositories/movie-genre.repository';
 import { Brackets } from 'typeorm';
+import { Genre } from '../../../shared/schemas/genres.entity';
 
 @Injectable()
 export class GenreService {
@@ -13,16 +14,81 @@ export class GenreService {
   ) {}
 
   async create(dto: CreateGenreDto) {
-    const g = this.repo.create({ genreName: dto.genreName });
-    return this.repo.save(g);
+    const name = (dto.genreName || '').trim();
+    if (!name) {
+      throw new BadRequestException('genreName is required');
+    }
+
+    // Nếu đã tồn tại thì báo lỗi rõ ràng để UI hiển thị cho người dùng
+    const existing = await this.repo
+      .createQueryBuilder('genre')
+      .where('LOWER(genre.genreName) = LOWER(:name)', { name })
+      .getOne();
+    if (existing) {
+      throw new BadRequestException(`Thể loại "${name}" đã tồn tại`);
+    }
+
+    const g = this.repo.create({ genreName: name });
+    try {
+      return await this.repo.save(g);
+    } catch (e: any) {
+      // Fallback an toàn nếu race-condition insert trùng
+      const again = await this.repo
+        .createQueryBuilder('genre')
+        .where('LOWER(genre.genreName) = LOWER(:name)', { name })
+        .getOne();
+      if (again) {
+        throw new BadRequestException(`Thể loại "${name}" đã tồn tại`);
+      }
+      throw e;
+    }
   }
 
   async createMany(dtos: CreateGenreDto[]) {
     if (!dtos || dtos.length === 0) return [];
-    const entities = dtos.map((d) =>
-      this.repo.create({ genreName: d.genreName }),
-    );
-    return this.repo.save(entities);
+
+    // Normalize + unique theo lowercase để tránh tạo trùng ("Tình cảm" vs "tình cảm")
+    const normalized = (dtos || [])
+      .map((d) => (d?.genreName || '').trim())
+      .filter(Boolean);
+
+    if (normalized.length === 0) return [];
+
+    const uniqueByLower = new Map<string, string>();
+    for (const n of normalized) {
+      const key = n.toLowerCase();
+      if (!uniqueByLower.has(key)) uniqueByLower.set(key, n);
+    }
+
+    const namesLower = Array.from(uniqueByLower.keys());
+
+    const existing = await this.repo
+      .createQueryBuilder('genre')
+      .where('LOWER(genre.genreName) IN (:...namesLower)', { namesLower })
+      .getMany();
+
+    const existingLower = new Set(existing.map((g) => (g.genreName || '').toLowerCase()));
+    const missing = Array.from(uniqueByLower.entries())
+      .filter(([lower]) => !existingLower.has(lower))
+      .map(([, original]) => ({ genreName: original }));
+
+    if (missing.length > 0) {
+      // MySQL: INSERT IGNORE để không crash nếu có trùng do race-condition
+      await this.repo
+        .createQueryBuilder('genre')
+        .insert()
+        .into(Genre)
+        .values(missing)
+        .orIgnore()
+        .execute();
+    }
+
+    // Trả về danh sách đầy đủ theo input (unique)
+    return this.repo
+      .createQueryBuilder('genre')
+      .where('LOWER(genre.genreName) IN (:...namesLower)', { namesLower })
+      .orderBy('genre.genreName', 'ASC')
+      .getMany();
   }
 
   async findAll(params?: {

@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { UpdateProfileDto } from '../../auth/dtos/request/update-profile.dto';
@@ -11,6 +13,7 @@ import { RoleRepository } from '../repositories/role.repository';
 import { UserRoleRepository } from '../repositories/user-role.repository';
 import { Roles, Status } from '../../../common/constants/enums';
 import { CreateEmployeeDto } from '../dtos/request/create-employee.dto';
+import { ChatGateway } from '../../chat/gateways/chat.gateway';
 
 @Injectable()
 export class UserService {
@@ -18,6 +21,8 @@ export class UserService {
     private usersRepo: UsersRepository,
     private rolesRepo: RoleRepository,
     private userRolesRepo: UserRoleRepository,
+    @Inject(forwardRef(() => ChatGateway))
+    private chatGateway: ChatGateway,
   ) {}
 
   async findById(id: number) {
@@ -155,6 +160,27 @@ export class UserService {
     });
   }
 
+  /**
+   * Dùng cho màn hình "Quản lý người dùng": không trả về tài khoản admin.
+   * Chỉ trả về ROLE_USER và ROLE_EMPLOYEE.
+   */
+  async findAllNonAdmin() {
+    const users = await this.usersRepo.find({
+      relations: ['roles', 'roles.role'],
+    });
+
+    return users
+      .map((user) => {
+        const roleNames = (user.roles || [])
+          .map((ur) => ur.role?.roleName)
+          .filter(Boolean);
+
+        const { password, ...profile } = user as any;
+        return { ...profile, roles: roleNames };
+      })
+      .filter((u: any) => !(u.roles || []).includes(Roles.ROLE_ADMIN));
+  }
+
   async blockUser(userId: number) {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
@@ -165,6 +191,14 @@ export class UserService {
     
     user.status = Status.BLOCKED;
     await this.usersRepo.save(user);
+    
+    // Thông báo user bị khóa qua WebSocket để đăng xuất ngay lập tức
+    try {
+      this.chatGateway.notifyAccountBlocked(userId);
+    } catch (error) {
+      // Log error nhưng không throw để không ảnh hưởng đến việc khóa tài khoản
+      console.error('Error notifying user about account block:', error);
+    }
     
     return { 
       success: true, 

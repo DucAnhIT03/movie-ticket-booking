@@ -40,6 +40,12 @@ const userService = {
       validateStatus: () => true,
     });
   },
+
+  getMe() {
+    return axiosClient.get("/users/me", {
+      validateStatus: () => true,
+    });
+  },
 };
 
 export default userService;

@@ -1,7 +1,7 @@
 import axiosClient from "../axiosClient";
 
 const paymentService = {
-  // Tạo payment mới
+ 
   createPayment: async (data) => {
     try {
       const response = await axiosClient.post("/payments", data);
@@ -12,7 +12,7 @@ const paymentService = {
     }
   },
 
-  // Lấy thông tin payment
+  
   getPayment: async (paymentId) => {
     try {
       const response = await axiosClient.get(`/payments/${paymentId}`);
@@ -23,7 +23,7 @@ const paymentService = {
     }
   },
 
-  // Hoàn thành payment
+  
   completePayment: async (paymentId, transactionId, success = true) => {
     try {
       const response = await axiosClient.patch(`/payments/${paymentId}/complete`, {
@@ -37,7 +37,7 @@ const paymentService = {
     }
   },
 
-  // Tạo VNPAY payment URL
+  
   createVnpayUrl: async (paymentId, returnUrl) => {
     try {
       const response = await axiosClient.post(`/payments/${paymentId}/vnpay/url`, {
@@ -50,7 +50,7 @@ const paymentService = {
     }
   },
 
-  // Tạo MoMo payment URL
+  
   createMomoUrl: async (paymentId, returnUrl, ipnUrl) => {
     try {
       const response = await axiosClient.post(`/payments/${paymentId}/momo/url`, {
@@ -64,7 +64,7 @@ const paymentService = {
     }
   },
 
-  // Tạo phiên thanh toán SePay
+  
   createSepayCheckout: async (paymentId) => {
     try {
       const response = await axiosClient.post(`/payments/${paymentId}/sepay/checkout`);
@@ -75,7 +75,7 @@ const paymentService = {
     }
   },
 
-  // Lấy trạng thái đơn hàng SePay
+  
   getSepayStatus: async (paymentId) => {
     try {
       const response = await axiosClient.get(`/payments/${paymentId}/sepay/status`);

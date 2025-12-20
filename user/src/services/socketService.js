@@ -65,7 +65,7 @@ class SocketService {
     }
   }
 
-  sendMessage(theaterId, message) {
+  sendMessage(theaterId, message, imageUrl = null) {
     // Kiểm tra và đợi socket kết nối
     if (!this.socket) {
       return Promise.reject(new Error('Socket not initialized. Please connect first.'));
@@ -76,7 +76,7 @@ class SocketService {
       return new Promise((resolve, reject) => {
         // Đợi socket kết nối
         this.socket.once('connect', () => {
-          this.socket.emit('send_message', { theaterId, message }, (response) => {
+          this.socket.emit('send_message', { theaterId, message, imageUrl }, (response) => {
             if (response.error) {
               reject(new Error(response.error));
             } else {
@@ -96,7 +96,7 @@ class SocketService {
 
     // Socket đã kết nối, gửi ngay
     return new Promise((resolve, reject) => {
-      this.socket.emit('send_message', { theaterId, message }, (response) => {
+      this.socket.emit('send_message', { theaterId, message, imageUrl }, (response) => {
         if (response.error) {
           reject(new Error(response.error));
         } else {
@@ -123,6 +123,20 @@ class SocketService {
     if (this.socket) {
       this.socket.off('new_message', callback);
       console.log('Socket: new_message listener removed');
+    }
+  }
+
+  onAccountBlocked(callback) {
+    if (this.socket) {
+      this.socket.on('account_blocked', callback);
+      console.log('Socket: account_blocked listener registered');
+    }
+  }
+
+  offAccountBlocked(callback) {
+    if (this.socket) {
+      this.socket.off('account_blocked', callback);
+      console.log('Socket: account_blocked listener removed');
     }
   }
 }

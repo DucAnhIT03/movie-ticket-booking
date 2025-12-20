@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   Put,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { PromotionService } from '../services/promotion.service';
 import { CreatePromotionDto } from '../dtos/request/create-promotion.dto';
@@ -23,6 +24,15 @@ import { ApiTags, ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiParam } 
 @Controller('promotions')
 export class PromotionController {
   constructor(private readonly service: PromotionService) {}
+
+  @Get('public')
+  @ApiOperation({
+    summary: 'Lấy danh sách mã khuyến mãi công khai để gợi ý ở màn thanh toán',
+  })
+  @ApiResponse({ status: 200, description: 'Danh sách mã công khai còn hiệu lực' })
+  getPublic(@Query('limit') limit?: string) {
+    return this.service.getPublicSuggestions(limit ? Number(limit) : 20);
+  }
 
   @Post()
   @UseGuards(AdminGuard)
@@ -43,6 +53,7 @@ export class PromotionController {
           discountValue: 10,
           channelEmail: true,
           channelInApp: true,
+          isPublic: true,
         },
       },
       amount: {
@@ -55,6 +66,7 @@ export class PromotionController {
           discountValue: 50000,
           channelEmail: false,
           channelInApp: true,
+          isPublic: false,
         },
       },
     },

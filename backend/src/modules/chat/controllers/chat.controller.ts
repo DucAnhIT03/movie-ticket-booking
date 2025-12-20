@@ -64,13 +64,15 @@ export class ChatController {
     @Query('targetUserId') targetUserId?: number,
   ) {
     const userId = req.user.userId || req.user.sub;
+    const theaterIdNumber = Number(theaterId);
+    const targetUserIdNumber = targetUserId ? Number(targetUserId) : undefined;
     const user = await this.chatService['userService'].findById(userId);
     const isStaff = (user.roles || []).includes('ROLE_EMPLOYEE') || 
                     (user.roles || []).includes('ROLE_ADMIN');
     
     // Nếu là staff và có targetUserId, lấy messages của user đó
-    const actualUserId = (isStaff && targetUserId) ? targetUserId : userId;
-    return await this.chatService.getMessages(actualUserId, theaterId, page, limit);
+    const actualUserId = (isStaff && targetUserIdNumber) ? targetUserIdNumber : userId;
+    return await this.chatService.getMessages(actualUserId, theaterIdNumber, page, limit);
   }
 
   @Post('messages/:theaterId/read')
@@ -83,7 +85,7 @@ export class ChatController {
     const user = await this.chatService['userService'].findById(userId);
     
     const isStaff = (user.roles || []).includes('ROLE_EMPLOYEE');
-    await this.chatService.markAsRead(userId, theaterId, isStaff);
+    await this.chatService.markAsRead(userId, Number(theaterId), isStaff);
     return { success: true };
   }
 

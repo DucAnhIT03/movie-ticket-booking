@@ -27,35 +27,40 @@ export class Promotion {
   image?: string;
 
   @Column({
+    name: 'discountType',
     type: 'enum',
     enum: PromotionDiscountType,
     default: PromotionDiscountType.PERCENT,
   })
   discountType: PromotionDiscountType;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ name: 'discountValue', type: 'decimal', precision: 10, scale: 2 })
   discountValue: number;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ name: 'startAt', type: 'datetime', nullable: true })
   startAt?: Date;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ name: 'endAt', type: 'datetime', nullable: true })
   endAt?: Date;
 
   @Column({ type: 'enum', enum: Status, default: Status.ACTIVE })
   status: Status;
 
-  @Column({ default: false })
+  @Column({ name: 'channelEmail', default: false })
   channelEmail: boolean;
 
-  @Column({ default: true })
+  @Column({ name: 'channelInApp', default: true })
   channelInApp: boolean;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ name: 'usageLimit', type: 'int', nullable: true })
   usageLimit?: number;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ name: 'perUserLimit', type: 'int', nullable: true })
   perUserLimit?: number;
+
+  // Nếu true: mã sẽ được hiển thị gợi ý ở phía user (màn thanh toán)
+  @Column({ name: 'isPublic', default: false })
+  isPublic: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

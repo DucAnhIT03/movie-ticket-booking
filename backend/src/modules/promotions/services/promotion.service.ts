@@ -12,6 +12,8 @@ import { DataSource } from 'typeorm';
 import { Promotion } from '../../../shared/schemas/promotion.entity';
 import { Users } from '../../../shared/schemas/users.entity';
 import { UserPromotion } from '../../../shared/schemas/user-promotion.entity';
+import { Payment } from '../../../shared/schemas/payment.entity';
+import { PaymentStatus } from '../../../common/constrants/enums';
 import { MailService } from '../../../providers/mail/mail.service';
 import { PromotionNotificationEmailDto } from '../../../providers/mail/dto/email.dto';
 
@@ -33,6 +35,7 @@ export class PromotionService {
         perUserLimit,
         channelEmail,
         channelInApp,
+        isPublic,
         ...rest
       } = dto as Partial<CreatePromotionDto> & {
         startAt?: string;
@@ -45,6 +48,7 @@ export class PromotionService {
         channelEmail: !!channelEmail,
         channelInApp: channelInApp !== false,
         active: true,
+        isPublic: !!isPublic,
         startAt: startAt ? new Date(startAt) : undefined,
         endAt: endAt ? new Date(endAt) : undefined,
         usageLimit: usageLimit ?? null,
@@ -60,7 +64,27 @@ export class PromotionService {
   }
 
   async findAll() {
-    return this.repo.find();
+    // Đếm số lượt sử dụng dựa trên số payment đã thanh toán thành công (ONLINE + OFFLINE)
+    const qb = this.dataSource
+      .getRepository(Promotion)
+      .createQueryBuilder('promotion')
+      .leftJoin(
+        Payment,
+        'pay',
+        'pay.promotionId = promotion.id AND pay.payment_status = :completed',
+        { completed: PaymentStatus.COMPLETED },
+      )
+      .groupBy('promotion.id')
+      .addSelect('COUNT(pay.id)', 'usedTotal')
+      .orderBy('promotion.createdAt', 'DESC');
+
+    const { entities, raw } = await qb.getRawAndEntities();
+
+    return entities.map((p, index) => ({
+      ...p,
+      // Số lượt sử dụng = số payment hoàn tất dùng mã này
+      usedCountTotal: Number(raw[index]?.usedTotal ?? 0),
+    }));
   }
 
   async findOne(id: number) {
@@ -87,8 +111,68 @@ export class PromotionService {
     if (dto.usageLimit !== undefined) p.usageLimit = dto.usageLimit;
     if (dto.perUserLimit !== undefined) p.perUserLimit = dto.perUserLimit;
     if (dto.active !== undefined) p.active = !!dto.active;
+    if (dto.isPublic !== undefined) p.isPublic = !!dto.isPublic;
 
     return this.repo.save(p as any);
+  }
+
+  async getPublicSuggestions(limit = 20) {
+    const now = new Date();
+    const qb = this.dataSource
+      .getRepository(Promotion)
+      .createQueryBuilder('promotion')
+      .leftJoin(
+        Payment,
+        'pay',
+        'pay.promotionId = promotion.id AND pay.payment_status = :completed',
+        { completed: PaymentStatus.COMPLETED },
+      )
+      .where('promotion.active = :active', { active: true })
+      .andWhere('promotion.isPublic = :isPublic', { isPublic: true })
+      .andWhere(
+        '(promotion.startAt IS NULL OR promotion.startAt <= :now)',
+        { now },
+      )
+      .andWhere(
+        '(promotion.endAt IS NULL OR promotion.endAt >= :now)',
+        { now },
+      )
+      // nếu usageLimit = NULL -> không giới hạn, nếu có thì phải > 0 (còn lượt)
+      .andWhere('(promotion.usageLimit IS NULL OR promotion.usageLimit > 0)')
+      .groupBy('promotion.id')
+      .addSelect('COUNT(pay.id)', 'usedTotal')
+      .orderBy('promotion.createdAt', 'DESC')
+      .take(Math.min(50, Math.max(1, Number(limit) || 20)));
+
+    const { entities, raw } = await qb.getRawAndEntities();
+
+    // Trả về gọn để user UI đề xuất nhanh
+    return entities.map((p, index) => {
+      const usedTotal = Number(raw[index]?.usedTotal ?? 0);
+      const remaining =
+        p.usageLimit != null ? Number(p.usageLimit as any) : null;
+
+      let percentUsed: number | null = null;
+      if (remaining != null) {
+        const originalTotal = usedTotal + remaining;
+        if (originalTotal > 0) {
+          percentUsed = Math.round((usedTotal / originalTotal) * 100);
+        } else {
+          percentUsed = 0;
+        }
+      }
+
+      return {
+        id: p.id,
+        code: p.code,
+        title: p.title,
+        description: p.description,
+        discountType: p.discountType,
+        discountValue: p.discountValue,
+        endAt: p.endAt,
+        percentUsed,
+      };
+    });
   }
 
   async sendPromotion(

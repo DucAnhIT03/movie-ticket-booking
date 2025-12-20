@@ -19,6 +19,7 @@ export class ChatRepository {
     theaterId: number;
     message: string;
     isFromStaff: boolean;
+    imageUrl?: string;
   }): Promise<ChatMessage> {
     const message = this.messageRepo.create(data);
     return await this.messageRepo.save(message);
@@ -87,19 +88,9 @@ export class ChatRepository {
     conversationId: number,
     isStaff: boolean,
   ): Promise<void> {
-    if (isStaff) {
-      await this.conversationRepo.increment(
-        { id: conversationId },
-        'staffUnreadCount',
-        1,
-      );
-    } else {
-      await this.conversationRepo.increment(
-        { id: conversationId },
-        'userUnreadCount',
-        1,
-      );
-    }
+    // Nếu staff gửi thì tăng unread cho user, ngược lại tăng cho staff
+    const field = isStaff ? 'userUnreadCount' : 'staffUnreadCount';
+    await this.conversationRepo.increment({ id: conversationId }, field, 1);
   }
 
   async markMessagesAsRead(
@@ -146,6 +137,14 @@ export class ChatRepository {
     return await this.conversationRepo.find({
       where: { staffId, isActive: true },
       relations: ['user', 'theater'],
+      order: { lastMessageAt: 'DESC' },
+    });
+  }
+
+  async findTheaterConversations(theaterId: number): Promise<ChatConversation[]> {
+    return await this.conversationRepo.find({
+      where: { theaterId, isActive: true },
+      relations: ['user', 'staff', 'theater'],
       order: { lastMessageAt: 'DESC' },
     });
   }

@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { FaPlus, FaPaperPlane } from 'react-icons/fa';
 import chatService from '../../services/chat/chatService';
+import socketService from '../../services/socketService';
+import uploadService from '../../services/uploads/uploadService';
 import './ChatManagement.css';
 
 function ChatManagement() {
@@ -14,9 +17,40 @@ function ChatManagement() {
     userId: '',
     staffId: '',
   });
+  const [newMessage, setNewMessage] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadConversations();
+    
+    // Kết nối socket
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      socketService.connect(token);
+      
+      // Lắng nghe tin nhắn mới
+      const handleNewMessage = (message) => {
+        if (selectedConversation && message.userId === selectedConversation.userId && message.theaterId === selectedConversation.theaterId) {
+          setMessages((prev) => {
+            // Check if message already exists
+            const exists = prev.some(m => m.id === message.id);
+            if (!exists) {
+              return [...prev, message];
+            }
+            return prev;
+          });
+        }
+        // Reload conversations để cập nhật last message
+        loadConversations();
+      };
+      
+      socketService.onNewMessage(handleNewMessage);
+      
+      return () => {
+        socketService.offNewMessage(handleNewMessage);
+      };
+    }
   }, [pagination.page, filters]);
 
   const loadConversations = async () => {
@@ -61,6 +95,65 @@ function ChatManagement() {
     setMessages([]);
     if (conversation) {
       loadMessages(conversation.id);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    const hasText = !!newMessage.trim();
+    const hasImage = !!selectedFile;
+    if ((!hasText && !hasImage) || !selectedConversation) return;
+
+    const messageText = newMessage.trim() || '';
+    setNewMessage('');
+    let imageUrl = null;
+
+    try {
+      // Upload ảnh nếu có
+      if (hasImage) {
+        const uploadRes = await uploadService.uploadSingle(selectedFile, 'chat', 'chat_message');
+        if (uploadRes.status >= 200 && uploadRes.status < 300 && uploadRes.data?.url) {
+          imageUrl = uploadRes.data.url;
+        } else {
+          throw new Error(uploadRes.data?.message || 'Upload ảnh thất bại');
+        }
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+
+      // Gửi tin nhắn với cả text và image (nếu có)
+      const response = await socketService.sendMessage(
+        selectedConversation.theaterId, 
+        messageText, 
+        imageUrl
+      );
+
+      // Add the sent message to the messages list immediately
+      if (response && response.message) {
+        setMessages((prev) => {
+          // Kiểm tra duplicate
+          const exists = prev.some(m => m.id === response.message.id);
+          if (exists) {
+            return prev;
+          }
+          return [...prev, response.message];
+        });
+      }
+
+      // Reload conversations để cập nhật last message
+      loadConversations();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert(`Không thể gửi tin nhắn: ${error.message}`);
     }
   };
 
@@ -209,11 +302,64 @@ function ChatManagement() {
                         </strong>
                         <span className="message-time">{formatTime(message.created_at)}</span>
                       </div>
-                      <div className="message-content">{message.message}</div>
+                      <div className="message-content">
+                        {message.imageUrl ? (
+                          <img src={message.imageUrl} alt="Chat image" className="message-image" />
+                        ) : (
+                          message.message
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
               </div>
+              {selectedConversation && (
+                <form className="message-input-form" onSubmit={handleSendMessage}>
+                  {selectedFile && (
+                    <div className="chat-image-preview">
+                      <img src={URL.createObjectURL(selectedFile)} alt="Preview" />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setSelectedFile(null);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }} 
+                        className="remove-image-btn-chat"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
+                  <div className="message-input-wrapper">
+                    <button
+                      type="button"
+                      className="attach-button-chat"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      +
+                    </button>
+                    <input
+                      type="text"
+                      placeholder="Nhập tin nhắn..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      className="message-input-text"
+                    />
+                    <button type="submit" className="send-button-chat">
+                      <FaPaperPlane />
+                    </button>
+                  </div>
+                </form>
+              )}
             </>
           ) : (
             <div className="no-selection">

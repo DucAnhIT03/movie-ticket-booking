@@ -283,7 +283,7 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="loginBackground" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div className="loginBackground login-page" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div className="loginForm">
         <div className="credentialForm">
 
@@ -299,8 +299,8 @@ export default function LoginPage() {
           </div>
 
           <div className="switchMode">
-            <button className="signIn">Đăng nhập</button>
-            <button onClick={redirectTo} className="signUp" style={{ backgroundColor: "white" }}>
+            <button className="signIn" style={{ background: '#2d4ef5', color: '#fff' }}>Đăng nhập</button>
+            <button onClick={redirectTo} className="signUp" style={{ background: 'transparent', color: '#555' }}>
               Đăng ký
             </button>
           </div>
@@ -345,7 +345,7 @@ export default function LoginPage() {
                 <p>Ghi nhớ tôi</p>
               </div>
 
-              <Link to="#">Bạn quên mật khẩu?</Link>
+              <Link to="/forgot-password">Bạn quên mật khẩu?</Link>
             </div>
 
             <button className="mainLogin" type="submit">Đăng nhập</button>

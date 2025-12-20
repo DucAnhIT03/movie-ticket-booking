@@ -27,6 +27,8 @@ import { SetGenresDto } from '../dtos/request/set-genres.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CloudinaryService } from '../../../providers/cloudinary/cloudinary.service';
+import { CacheResponse, InvalidateCache } from '../../../providers/redis-cache';
+import { RedisCacheService } from '../../../providers/redis-cache/redis-cache.service';
 
 function validateImageFile(file: Express.Multer.File): void {
   const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -52,6 +54,7 @@ export class MovieController {
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
   @Post()
+  @InvalidateCache(RedisCacheService.KEYS.MOVIES, RedisCacheService.KEYS.MOVIE)
   @ApiOperation({ summary: 'Tạo phim mới (có thể tạo 1 hoặc nhiều phim) - Chỉ admin' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Phim được tạo thành công' })
@@ -151,6 +154,7 @@ export class MovieController {
   }
 
   @Get()
+  @CacheResponse(RedisCacheService.KEYS.MOVIES, RedisCacheService.TTL.MOVIES)
   @ApiOperation({ 
     summary: 'Lấy danh sách phim (có tìm kiếm và phân trang)',
     description: 'Lấy danh sách phim với tìm kiếm, phân trang và lọc theo thể loại'
@@ -202,6 +206,7 @@ export class MovieController {
   }
 
   @Get(':id')
+  @CacheResponse(RedisCacheService.KEYS.MOVIE, RedisCacheService.TTL.MOVIES_DETAIL)
   @ApiOperation({ 
     summary: 'Lấy thông tin chi tiết một phim',
     description: 'Lấy thông tin chi tiết của một phim theo ID'
@@ -244,6 +249,7 @@ export class MovieController {
   @Put(':id')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.MOVIES, RedisCacheService.KEYS.MOVIE)
   @ApiOperation({ 
     summary: 'Cập nhật thông tin phim - Chỉ admin',
     description: 'Cập nhật một hoặc nhiều thông tin của phim. Tất cả các trường đều optional, chỉ cập nhật các trường được gửi lên. Hỗ trợ upload ảnh poster.'
@@ -345,6 +351,7 @@ export class MovieController {
   @Delete(':id')
   @UseGuards(AdminGuard)
   @ApiBearerAuth('jwt')
+  @InvalidateCache(RedisCacheService.KEYS.MOVIES, RedisCacheService.KEYS.MOVIE)
   @ApiOperation({ summary: 'Xóa một phim - Chỉ admin' })
   @ApiParam({ name: 'id', description: 'ID của phim cần xóa' })
   @ApiResponse({ status: 200, description: 'Xóa phim thành công' })

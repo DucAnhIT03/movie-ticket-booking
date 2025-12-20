@@ -16,10 +16,16 @@ import { OtpService } from './otp.service';
 import { OtpPurpose } from '../../../shared/schemas/otp-verification.entity';
 import { GoogleLoginDto } from '../dtos/request/google-login.dto';
 import { AppleLoginDto } from '../dtos/request/apple-login.dto';
+import { PasswordResetRequestRepository } from '../repositories/password-reset-request.repository';
+import { PasswordResetRequest, PasswordResetStatus } from '../../../shared/schemas/password-reset-request.entity';
+import { MailService } from '../../../providers/mail/mail.service';
+import { PasswordResetCodeEmailDto } from '../../../providers/mail/dto/email.dto';
+import { LoginAttemptService } from './login-attempt.service';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly RESET_CODE_EXPIRY_MINUTES = 30;
 
   constructor(
     private usersRepo: UsersRepository,
@@ -27,6 +33,9 @@ export class AuthService {
     private userRolesRepo: UserRoleRepository,
     private jwtService: JwtService,
     private otpService: OtpService,
+    private passwordResetRequestRepo: PasswordResetRequestRepository,
+    private mailService: MailService,
+    private loginAttemptService: LoginAttemptService,
   ) {}
 
   async register(dto: RegisterDto, otpCode?: string) {
@@ -89,58 +98,91 @@ export class AuthService {
     return profile as any;
   }
 
-  async login(dto: LoginDto, options?: { allowAdmin?: boolean }) {
+  async login(dto: LoginDto, options?: { allowAdmin?: boolean; ip?: string }) {
+    const ip = options?.ip || '127.0.0.1';
+    
+    // Kiểm tra xem IP có bị chặn không
+    const blockStatus = await this.loginAttemptService.isBlocked(ip);
+    if (blockStatus.blocked) {
+      const remainingSeconds = await this.loginAttemptService.getRemainingBlockTime(ip);
+      const remainingMinutes = Math.ceil(remainingSeconds / 60);
+      throw new UnauthorizedException(
+        `Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau ${remainingMinutes} phút.`
+      );
+    }
+
     let user: Users | null = null;
-    if (dto.email) {
-      user = await this.usersRepo.findOne({
-        where: { email: dto.email } as any,
-        relations: ['roles', 'roles.role', 'theater'],
-      } as any);
-    } else if (dto.phone) {
-      user = await this.usersRepo.findOne({
-        where: { phone: dto.phone } as any,
-        relations: ['roles', 'roles.role', 'theater'],
-      } as any);
+    let loginFailed = false;
+    
+    try {
+      if (dto.email) {
+        user = await this.usersRepo.findOne({
+          where: { email: dto.email } as any,
+          relations: ['roles', 'roles.role', 'theater'],
+        } as any);
+      } else if (dto.phone) {
+        user = await this.usersRepo.findOne({
+          where: { phone: dto.phone } as any,
+          relations: ['roles', 'roles.role', 'theater'],
+        } as any);
+      }
+      
+      if (!user) {
+        loginFailed = true;
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      
+      
+      if (user.status === 'BLOCKED') {
+        throw new UnauthorizedException('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.');
+      }
+      
+      const ok = await bcrypt.compare(dto.password, user.password);
+      if (!ok) {
+        loginFailed = true;
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      
+      
+      const roleNames = (user.roles || [])
+        .map((ur) => ur.role?.roleName)
+        .filter(Boolean) as string[];
+      const hasBackofficeRole = roleNames.some((role: string) =>
+        ['ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ADMIN', 'admin', 'EMPLOYEE', 'employee'].includes(role),
+      );
+      
+      
+      if (hasBackofficeRole && !options?.allowAdmin) {
+        loginFailed = true;
+        throw new UnauthorizedException('Tài khoản mật khẩu không chính xác');
+      }
+      
+      // Đăng nhập thành công - reset số lần đăng nhập sai
+      await this.loginAttemptService.resetAttempts(ip);
+      
+      const token = this.jwtService.sign({ sub: user.id, email: user.email });
+      
+      const { password, ...profile } = user as any;
+      // Đảm bảo theaterId được trả về (có thể từ theaterId hoặc theater.id)
+      // TypeORM map theater_id từ DB thành theaterId trong entity
+      const theaterId = (user as any).theaterId || (user as any).theater?.id || null;
+      const userResponse = { 
+        ...profile, 
+        roles: roleNames, 
+        theaterId: theaterId 
+      };
+      
+      // Debug log để kiểm tra
+      console.log('Auth login - User ID:', user.id, 'TheaterId:', theaterId, 'User object:', { theaterId: (user as any).theaterId });
+      
+      return { user: userResponse, accessToken: token };
+    } catch (error) {
+      // Nếu đăng nhập thất bại, ghi nhận lần đăng nhập sai
+      if (loginFailed || error instanceof UnauthorizedException) {
+        await this.loginAttemptService.recordFailedAttempt(ip);
+      }
+      throw error;
     }
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    
-    
-    if (user.status === 'BLOCKED') {
-      throw new UnauthorizedException('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.');
-    }
-    
-    const ok = await bcrypt.compare(dto.password, user.password);
-    if (!ok) throw new UnauthorizedException('Invalid credentials');
-    
-    
-    const roleNames = (user.roles || [])
-      .map((ur) => ur.role?.roleName)
-      .filter(Boolean) as string[];
-    const hasBackofficeRole = roleNames.some((role: string) =>
-      ['ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ADMIN', 'admin', 'EMPLOYEE', 'employee'].includes(role),
-    );
-    
-    
-    if (hasBackofficeRole && !options?.allowAdmin) {
-      throw new UnauthorizedException('Tài khoản mật khẩu không chính xác');
-    }
-    
-    const token = this.jwtService.sign({ sub: user.id, email: user.email });
-    
-    const { password, ...profile } = user as any;
-    // Đảm bảo theaterId được trả về (có thể từ theaterId hoặc theater.id)
-    // TypeORM map theater_id từ DB thành theaterId trong entity
-    const theaterId = (user as any).theaterId || (user as any).theater?.id || null;
-    const userResponse = { 
-      ...profile, 
-      roles: roleNames, 
-      theaterId: theaterId 
-    };
-    
-    // Debug log để kiểm tra
-    console.log('Auth login - User ID:', user.id, 'TheaterId:', theaterId, 'User object:', { theaterId: (user as any).theaterId });
-    
-    return { user: userResponse, accessToken: token };
   }
 
 
@@ -418,5 +460,224 @@ export class AuthService {
       this.logger.error('Error verifying Apple token:', error);
       return null;
     }
+  }
+
+  private async checkIsEmployee(email: string): Promise<boolean> {
+    const user = await this.usersRepo.findOne({
+      where: { email } as any,
+      relations: ['roles', 'roles.role'],
+    } as any);
+    
+    if (!user) {
+      return false;
+    }
+    
+    const roleNames = (user.roles || [])
+      .map((ur) => ur.role?.roleName)
+      .filter(Boolean) as string[];
+    
+    return roleNames.includes('ROLE_EMPLOYEE');
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.usersRepo.findOne({
+      where: { email } as any,
+    } as any);
+    if (!user) {
+      throw new BadRequestException('Email không tồn tại trong hệ thống');
+    }
+    
+    // Chỉ nhân viên mới được dùng luồng quên mật khẩu này
+    const isEmployee = await this.checkIsEmployee(email);
+    if (!isEmployee) {
+      throw new BadRequestException('Chức năng này chỉ dành cho nhân viên. Vui lòng sử dụng chức năng quên mật khẩu thông thường.');
+    }
+    
+    await this.otpService.sendOtp(email, OtpPurpose.RESET_PASSWORD);
+  }
+
+  async resetPassword(dto: { email: string; otpCode: string; newPassword: string }) {
+    // Verify OTP
+    await this.otpService.verifyOtp(dto.email, dto.otpCode, OtpPurpose.RESET_PASSWORD, true);
+
+    // Update password
+    const user = await this.usersRepo.findOne({
+      where: { email: dto.email } as any,
+    } as any);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    const hashed = await bcrypt.hash(dto.newPassword, 10);
+    user.password = hashed;
+    await this.usersRepo.save(user as any);
+  }
+
+  private generateResetCode(length = 8): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789';
+    let code = '';
+    for (let i = 0; i < length; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  async verifyResetOtp(email: string, otpCode: string) {
+    // Kiểm tra user có phải là nhân viên không
+    const isEmployee = await this.checkIsEmployee(email);
+    if (!isEmployee) {
+      throw new BadRequestException('Chức năng này chỉ dành cho nhân viên.');
+    }
+    
+    await this.otpService.verifyOtp(email, otpCode, OtpPurpose.RESET_PASSWORD, true);
+
+    let request = await this.passwordResetRequestRepo.findOne({
+      where: { email, status: PasswordResetStatus.PENDING } as any,
+      order: { createdAt: 'DESC' } as any,
+    } as any);
+
+    if (!request) {
+      request = this.passwordResetRequestRepo.create({
+        email,
+        status: PasswordResetStatus.PENDING,
+      });
+      await this.passwordResetRequestRepo.save(request as any);
+    }
+
+    return request;
+  }
+
+  async listResetRequests(status?: PasswordResetStatus) {
+    const requests = await this.passwordResetRequestRepo.find({
+      where: status ? ({ status } as any) : {},
+      order: { createdAt: 'DESC' } as any,
+    } as any);
+
+    // Lấy thông tin user cho mỗi request để admin biết là nhân viên nào
+    const requestsWithUserInfo = await Promise.all(
+      requests.map(async (req) => {
+        const user = await this.usersRepo.findOne({
+          where: { email: req.email } as any,
+          relations: ['roles', 'roles.role'],
+        } as any);
+        
+        if (user) {
+          const roleNames = (user.roles || [])
+            .map((ur) => ur.role?.roleName)
+            .filter(Boolean) as string[];
+          
+          return {
+            ...req,
+            user: {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone,
+              roles: roleNames,
+            },
+          };
+        }
+        
+        return {
+          ...req,
+          user: null,
+        };
+      })
+    );
+
+    return requestsWithUserInfo;
+  }
+
+  async getResetRequestStatus(email: string) {
+    const isEmployee = await this.checkIsEmployee(email);
+    if (!isEmployee) {
+      throw new BadRequestException('Chức năng này chỉ dành cho nhân viên.');
+    }
+
+    const request = await this.passwordResetRequestRepo.findOne({
+      where: { email } as any,
+      order: { createdAt: 'DESC' } as any,
+    } as any);
+
+    if (!request) {
+      return { status: null };
+    }
+
+    return {
+      id: request.id,
+      status: request.status,
+      approvedAt: request.approvedAt,
+      resetCode: request.resetCode ?? null,
+      expiresAt: request.expiresAt ?? null,
+    };
+  }
+
+  async adminApproveReset(id: number, adminId: number) {
+    const request = await this.passwordResetRequestRepo.findOne({
+      where: { id } as any,
+    } as any);
+    if (!request) {
+      throw new BadRequestException('Yêu cầu không tồn tại');
+    }
+    if (request.status !== PasswordResetStatus.PENDING) {
+      throw new BadRequestException('Yêu cầu đã được xử lý');
+    }
+
+    const resetCode = this.generateResetCode();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + this.RESET_CODE_EXPIRY_MINUTES);
+
+    request.status = PasswordResetStatus.APPROVED;
+    request.resetCode = resetCode;
+    request.expiresAt = expiresAt;
+    request.approvedAt = new Date();
+    request.approvedBy = adminId;
+    await this.passwordResetRequestRepo.save(request as any);
+
+    await this.mailService.sendPasswordResetCodeEmail({
+      to: request.email,
+      userName: request.email.split('@')[0],
+      resetCode,
+      expiresIn: this.RESET_CODE_EXPIRY_MINUTES,
+    } as any as PasswordResetCodeEmailDto);
+
+    return request;
+  }
+
+  async resetWithCode(email: string, resetCode: string, newPassword: string) {
+    // Kiểm tra user có phải là nhân viên không
+    const isEmployee = await this.checkIsEmployee(email);
+    if (!isEmployee) {
+      throw new BadRequestException('Chức năng này chỉ dành cho nhân viên.');
+    }
+    
+    const request = await this.passwordResetRequestRepo.findOne({
+      where: { email, resetCode, status: PasswordResetStatus.APPROVED } as any,
+      order: { createdAt: 'DESC' } as any,
+    } as any);
+
+    if (!request) {
+      throw new BadRequestException('Mã khôi phục không hợp lệ');
+    }
+    if (request.expiresAt && new Date() > request.expiresAt) {
+      throw new BadRequestException('Mã khôi phục đã hết hạn');
+    }
+
+    const user = await this.usersRepo.findOne({
+      where: { email } as any,
+    } as any);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await this.usersRepo.save(user as any);
+
+    request.status = PasswordResetStatus.COMPLETED;
+    request.completedAt = new Date();
+    await this.passwordResetRequestRepo.save(request as any);
+
+    return { message: 'Đổi mật khẩu thành công' };
   }
 }

@@ -18,6 +18,8 @@ import {
 import { ApiBearerAuth, ApiTags, ApiBody, ApiOperation, ApiResponse, ApiParam, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { CacheResponse, InvalidateCache } from '../../../providers/redis-cache';
+import { RedisCacheService } from '../../../providers/redis-cache/redis-cache.service';
 import { UserService } from '../services/user.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../../common/guards/admin.guard';
@@ -52,6 +54,7 @@ export class UserController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
+  @CacheResponse(`${RedisCacheService.KEYS.USER_PROFILE}:me`, RedisCacheService.TTL.USER_PROFILE)
   @ApiOperation({ 
     summary: 'Lấy thông tin người dùng hiện tại',
     description: 'Lấy thông tin của người dùng đang đăng nhập (từ JWT token)'
@@ -80,6 +83,7 @@ export class UserController {
 
   @UseGuards(JwtAuthGuard)
   @Put('me')
+  @InvalidateCache(`${RedisCacheService.KEYS.USER_PROFILE}:me`)
   @ApiOperation({ summary: 'Cập nhật thông tin cá nhân (hỗ trợ upload ảnh avatar)' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'Cập nhật thành công', type: UserResponseDto })
@@ -194,7 +198,7 @@ export class UserController {
   @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
   @ApiResponse({ status: 403, description: 'Không có quyền admin' })
   async findAll(@Request() req: any) {
-    const users = await this.userService.findAll();
+    const users = await this.userService.findAllNonAdmin();
     return users.map(user => UserResponseDto.fromEntity(user));
   }
 
