@@ -272,7 +272,7 @@ export default function LoginPage() {
     document.body.appendChild(appleScript);
 
     return () => {
-      
+      // Cleanup
       if (document.body.contains(googleScript)) {
         document.body.removeChild(googleScript);
       }
