@@ -446,7 +446,7 @@ export default function PaymentPage() {
         try {
           
           const apiBaseUrl = axiosClient.defaults.baseURL || 'http://localhost:3000';
-          const returnUrl = `${apiBaseUrl}/api/payments/vnpay/return`;
+          const returnUrl = `${apiBaseUrl}/payments/vnpay/return`;
           
           console.log("🔗 [Payment] Creating VNPAY URL with returnUrl:", returnUrl);
           console.log("💳 [Payment] Payment ID:", payment.id);

@@ -13,6 +13,15 @@ import { formatGenres as formatGenresUtil, getGenresData as getGenresDataUtil } 
  * @param {Array} movie.genres - Danh sách thể loại (nếu có)
  */
 export default function MovieCard({ movie }) {
+  // Đảm bảo lấy đúng id (API có thể trả về id, movieId hoặc movie_id)
+  const movieId =
+    movie?.id ??
+    movie?.movieId ??
+    movie?.movie_id ??
+    movie?.movie?.id ??
+    movie?.movie?.movieId;
+  const idStr =
+    movieId !== undefined && movieId !== null ? String(movieId) : null;
  
   const formatDate = (movie) => {
   
@@ -121,9 +130,43 @@ export default function MovieCard({ movie }) {
     });
   }
 
+  const CardBody = (
+    <>
+      <img
+        src={posterUrl}
+        alt={movie.title || "Movie poster"}
+        onError={(e) => {
+          e.target.src = "/logo.png";
+        }}
+      />
+      <div className="movie-info-container">
+        {(genres || releaseDate) && (
+          <div className="movie-des">
+            {genres && <p className="movie-genre">{genres}</p>}
+            {releaseDate && <p className="movie-date">{releaseDate}</p>}
+          </div>
+        )}
+        <h4 className="movie-title">{movie.title || "Chưa có tên"}</h4>
+      </div>
+    </>
+  );
+
+  if (!idStr || idStr === "undefined" || idStr === "null") {
+    // Nếu không có id hợp lệ, hiển thị thẻ nhưng không cho click
+    return (
+      <div
+        className="movie-card"
+        style={{ textDecoration: "none", color: "inherit", cursor: "not-allowed" }}
+        title="Thiếu ID phim"
+      >
+        {CardBody}
+      </div>
+    );
+  }
+
   return (
     <Link
-      to={`/movie-detail/${movie.id}`}
+      to={`/movie-detail/${idStr}`}
       className="movie-card"
       style={{ textDecoration: "none", color: "inherit" }}
     >

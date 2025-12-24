@@ -37,11 +37,13 @@ import { ChatModule } from './modules/chat/chat.module';
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT || 3306),
-      username: process.env.DB_USER || 'root',
-      password: process.env.DB_PASS || '',
-      database: process.env.DB_NAME || 'cinema_dev',
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT),
+      // Ưu tiên bộ biến mới trong .env: DB_USERNAME, DB_PASSWORD, DB_DATABASE
+      // vẫn hỗ trợ DB_USER / DB_PASS / DB_NAME nếu đã được cấu hình trước đó
+      username: process.env.DB_USERNAME || process.env.DB_USER,
+      password: process.env.DB_PASSWORD ?? process.env.DB_PASS,
+      database: process.env.DB_DATABASE || process.env.DB_NAME,
       autoLoadEntities: true,
       synchronize: false,
     }),

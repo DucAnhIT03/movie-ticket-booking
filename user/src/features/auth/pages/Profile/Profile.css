@@ -294,6 +294,30 @@
   margin-bottom: 4px;
 }
 
+.navigation-button {
+  padding: 4px 8px;
+  background: #2d4ef5;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.navigation-button:hover {
+  background: #1f3adb;
+  transform: scale(1.1);
+}
+
+.navigation-button:active {
+  transform: scale(0.95);
+}
+
 .ticket-code {
   margin: 0;
   color: rgba(255, 255, 255, 0.6);

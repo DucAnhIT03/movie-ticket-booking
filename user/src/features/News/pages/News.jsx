@@ -47,6 +47,16 @@ export default function News() {
     });
   };
 
+  // Lấy đoạn trích ngắn từ nội dung (bỏ thẻ HTML)
+  const getExcerpt = (html = "", maxLen = 140) => {
+    const text = html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text) return "";
+    return text.length > maxLen ? `${text.slice(0, maxLen)}…` : text;
+  };
+
   return (
     <>
       <Header />
@@ -89,6 +99,9 @@ export default function News() {
                         {formatDate(item.createdAt || item.created_at)}
                       </p>
                       <h3 className="news-text">{item.title}</h3>
+                      {item.content && (
+                        <p className="news-excerpt">{getExcerpt(item.content)}</p>
+                      )}
                     </div>
                   </Link>
                 ))}

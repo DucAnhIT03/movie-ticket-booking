@@ -373,7 +373,18 @@ export default function Profile() {
             <p>{startTime}</p>
           </div>
           <div>
-            <span className="label">Rạp</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+              <span className="label">Rạp</span>
+              {(theater.id || theater.name) && (
+                <button
+                  onClick={() => openMapNavigation(theater)}
+                  className="navigation-button"
+                  title="Điều hướng đến rạp"
+                >
+                  🗺️
+                </button>
+              )}
+            </div>
             <p>
               {theater.name
                 ? theater.name
@@ -381,30 +392,6 @@ export default function Profile() {
                 ? `Phòng ${screen.name}`
                 : "Không xác định"}
             </p>
-            {theater.location && (
-              <button
-                onClick={() => openMapNavigation(theater)}
-                style={{
-                  marginTop: "8px",
-                  padding: "6px 12px",
-                  background: "#1976d2",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  transition: "background 0.2s"
-                }}
-                onMouseEnter={(e) => e.target.style.background = "#1565c0"}
-                onMouseLeave={(e) => e.target.style.background = "#1976d2"}
-              >
-                <span>🗺️</span>
-                <span>Điều hướng</span>
-              </button>
-            )}
           </div>
           <div>
             <span className="label">Ghế</span>

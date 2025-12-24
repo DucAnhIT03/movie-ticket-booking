@@ -807,6 +807,7 @@ export class BookingsService {
     query.addSelect([
       'theater.id',
       'theater.name',
+      'theater.location',
       'seat.id',
       'seat.seatNumber',
       'seat.type', // Note: field name is 'type', not 'seatType' (see Seat entity)

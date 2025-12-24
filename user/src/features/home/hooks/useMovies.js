@@ -23,7 +23,10 @@ export function useMovies() {
         ]);
 
         if (nowShowingResponse.status === 200) {
-          const movies = nowShowingResponse.data || [];
+          const raw = nowShowingResponse.data || [];
+          const movies = Array.isArray(raw)
+            ? raw
+            : raw.items || raw.data || [];
           console.log("Now showing movies:", movies);
           setNowShowing(movies);
         } else {
@@ -32,7 +35,10 @@ export function useMovies() {
         }
 
         if (comingSoonResponse.status === 200) {
-          const movies = comingSoonResponse.data || [];
+          const raw = comingSoonResponse.data || [];
+          const movies = Array.isArray(raw)
+            ? raw
+            : raw.items || raw.data || [];
           console.log("Coming soon movies:", movies);
           setComingSoon(movies);
         } else {

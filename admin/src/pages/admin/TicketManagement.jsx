@@ -228,7 +228,8 @@ export default function TicketManagement() {
         style={{
           display: "flex",
           flexWrap: "wrap",
-          gap: "12px",
+          gap: "10px",
+          rowGap: "10px",
           marginBottom: "15px",
           alignItems: "flex-end",
         }}
@@ -236,9 +237,10 @@ export default function TicketManagement() {
         <div
           style={{
             position: "relative",
-            flex: "0 0 420px",
+            flex: "1 1 100%",
+            flexBasis: "100%",
             minWidth: "260px",
-            maxWidth: "420px",
+            maxWidth: "100%",
           }}
         >
           <Search
@@ -257,77 +259,11 @@ export default function TicketManagement() {
               borderRadius: "6px",
               padding: "8px 10px 8px 35px",
               width: "100%",
-              height: "40px",
+              height: "44px",
               outline: "none",
+              boxSizing: "border-box",
             }}
           />
-        </div>
-
-        {/* Nhóm lọc theo ngày luôn chiếm 1 hàng riêng để tránh đè lên ô tìm kiếm */}
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            alignItems: "center",
-            flexWrap: "wrap",
-            flex: "1 1 100%",
-            minWidth: "260px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-              flex: "1 1 120px",
-            }}
-          >
-            <span style={{ fontSize: "12px", color: "#9ca3af" }}>Từ ngày</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setPage(1);
-                setStartDate(e.target.value);
-              }}
-              style={{
-                background: "#1a1f29",
-                color: "#fff",
-                border: "1px solid #333",
-                borderRadius: "6px",
-                padding: "8px 10px",
-                minWidth: "120px",
-                height: "40px",
-              }}
-            />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-              flex: "1 1 120px",
-            }}
-          >
-            <span style={{ fontSize: "12px", color: "#9ca3af" }}>Đến ngày</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setPage(1);
-                setEndDate(e.target.value);
-              }}
-              style={{
-                background: "#1a1f29",
-                color: "#fff",
-                border: "1px solid #333",
-                borderRadius: "6px",
-                padding: "8px 10px",
-                minWidth: "120px",
-                height: "40px",
-              }}
-            />
-          </div>
         </div>
 
         <select
@@ -342,9 +278,11 @@ export default function TicketManagement() {
             border: "1px solid #333",
             borderRadius: "6px",
             padding: "8px 12px",
-            minWidth: "160px",
-            height: "40px",
-            flex: "0 1 160px",
+            minWidth: "180px",
+            flex: "0 1 200px",
+            height: "44px",
+            width: "100%",
+            boxSizing: "border-box",
           }}
         >
           {statusOptions.map((option) => (
@@ -353,6 +291,70 @@ export default function TicketManagement() {
             </option>
           ))}
         </select>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+            flex: "0 1 200px",
+            flexBasis: "200px",
+            minWidth: "170px",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: "12px", color: "#9ca3af" }}>Từ ngày</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => {
+              setPage(1);
+              setStartDate(e.target.value);
+            }}
+            style={{
+              background: "#1a1f29",
+              color: "#fff",
+              border: "1px solid #333",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              minWidth: "140px",
+              height: "44px",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+            flex: "0 1 200px",
+            flexBasis: "200px",
+            minWidth: "170px",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: "12px", color: "#9ca3af" }}>Đến ngày</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => {
+              setPage(1);
+              setEndDate(e.target.value);
+            }}
+            style={{
+              background: "#1a1f29",
+              color: "#fff",
+              border: "1px solid #333",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              minWidth: "140px",
+              height: "44px",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
 
         <select
           value={channelFilter}
@@ -366,9 +368,11 @@ export default function TicketManagement() {
             border: "1px solid #333",
             borderRadius: "6px",
             padding: "8px 12px",
-            minWidth: "150px",
-            height: "40px",
-            flex: "0 1 150px",
+            minWidth: "180px",
+            flex: "0 1 200px",
+            height: "44px",
+            width: "100%",
+            boxSizing: "border-box",
           }}
         >
           {channelOptions.map((option) => (
@@ -378,36 +382,13 @@ export default function TicketManagement() {
           ))}
         </select>
 
-        <select
-          value={limit}
-          onChange={(e) => {
-            setLimit(Number(e.target.value));
-            setPage(1);
-          }}
-          style={{
-            background: "#1a1f29",
-            color: "#fff",
-            border: "1px solid #333",
-            borderRadius: "6px",
-            padding: "8px 12px",
-            minWidth: "100px",
-            height: "40px",
-            flex: "0 1 100px",
-          }}
-        >
-          {[10, 20, 50].map((size) => (
-            <option key={size} value={size}>
-              {size} / trang
-            </option>
-          ))}
-        </select>
-
         <div
           style={{
             display: "flex",
-            flexWrap: "wrap",
             gap: "8px",
-            flex: "1 1 240px",
+            flexWrap: "nowrap",
+            justifyContent: "flex-end",
+            flex: "0 0 auto",
           }}
         >
           <button
@@ -420,7 +401,9 @@ export default function TicketManagement() {
               borderRadius: "6px",
               cursor: "pointer",
               fontWeight: "500",
-              flex: "0 1 90px",
+              minWidth: "90px",
+              height: "44px",
+              boxSizing: "border-box",
             }}
           >
             Tìm kiếm
@@ -435,7 +418,9 @@ export default function TicketManagement() {
               borderRadius: "6px",
               cursor: "pointer",
               fontWeight: "500",
-              flex: "0 1 90px",
+              minWidth: "90px",
+              height: "44px",
+              boxSizing: "border-box",
             }}
           >
             Xóa lọc
@@ -452,7 +437,9 @@ export default function TicketManagement() {
               display: "flex",
               alignItems: "center",
               gap: "4px",
-              flex: "0 1 100px",
+              minWidth: "100px",
+              height: "44px",
+              boxSizing: "border-box",
             }}
           >
             <RefreshCcw size={16} /> Làm mới
@@ -654,44 +641,78 @@ export default function TicketManagement() {
             ? `Hiển thị ${currentRangeStart}-${currentRangeEnd} trong ${total} vé`
             : "Không có dữ liệu"}
         </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button
-            onClick={gotoPrev}
-            disabled={page === 1 || loading}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <select
+            value={limit}
+            onChange={(e) => {
+              setLimit(Number(e.target.value));
+              setPage(1);
+            }}
             style={{
-              background: "#1f2937",
+              background: "#1a1f29",
               color: "#fff",
-              border: "1px solid #374151",
+              border: "1px solid #333",
               borderRadius: "6px",
-              padding: "6px 12px",
-              cursor: page === 1 || loading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
+              padding: "8px 12px",
+              minWidth: "140px",
+              height: "40px",
             }}
           >
-            <ChevronLeft size={16} /> Trước
-          </button>
-          <div style={{ display: "flex", alignItems: "center", color: "#cbd5f5" }}>
-            Trang {page}/{Math.max(totalPages, 1)}
+            {[10, 20, 50].map((size) => (
+              <option key={size} value={size}>
+                {size} / trang
+              </option>
+            ))}
+          </select>
+
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={gotoPrev}
+              disabled={page === 1 || loading}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: page === 1 || loading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <ChevronLeft size={16} /> Trước
+            </button>
+            <div style={{ display: "flex", alignItems: "center", color: "#cbd5f5" }}>
+              Trang {page}/{Math.max(totalPages, 1)}
+            </div>
+            <button
+              onClick={gotoNext}
+              disabled={page >= totalPages || loading}
+              style={{
+                background: "#1f2937",
+                color: "#fff",
+                border: "1px solid #374151",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                cursor: page >= totalPages || loading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              Sau <ChevronRight size={16} />
+            </button>
           </div>
-          <button
-            onClick={gotoNext}
-            disabled={page >= totalPages || loading}
-            style={{
-              background: "#1f2937",
-              color: "#fff",
-              border: "1px solid #374151",
-              borderRadius: "6px",
-              padding: "6px 12px",
-              cursor: page >= totalPages || loading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            Sau <ChevronRight size={16} />
-          </button>
         </div>
       </div>
     </div>

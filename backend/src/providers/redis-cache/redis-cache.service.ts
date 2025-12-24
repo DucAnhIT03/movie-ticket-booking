@@ -50,6 +50,13 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit() {
+    // TEMP: disable Redis caching completely (no connection, no cache usage)
+    this.logger.warn('Redis caching is temporarily disabled (no connection will be established).');
+    this.isConnected = false;
+    return;
+
+    // Original connection code kept below for future re‑enable
+    /*
     try {
       this.client = new Redis({
         host: this.configService.get<string>('REDIS_HOST', '127.0.0.1'),
@@ -86,6 +93,7 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Failed to connect to Redis Cache: ${error.message}. Caching disabled.`);
       this.isConnected = false;
     }
+    */
   }
 
   async onModuleDestroy() {
@@ -98,7 +106,8 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
    * Check if Redis is connected
    */
   isAvailable(): boolean {
-    return this.isConnected && this.client?.status === 'ready';
+    // Caching is disabled, always return false
+    return false;
   }
 
   /**
